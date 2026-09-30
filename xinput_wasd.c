@@ -1,6 +1,6 @@
 // Keyboard & mouse as a controller for Minecraft Dungeons II.
 //
-// Drop-in xinput1_4.dll. Keys and mouse buttons from wasdmod.ini are reported
+// Drop-in xinput1_4.dll. Keys and mouse buttons from default.txt are reported
 // as controller 0 (sticks, buttons, triggers), and hidden from the game, so the
 // game only ever sees a controller and never flips between keyboard and
 // controller mode. A small on-screen legend shows which key does what. Text
@@ -219,14 +219,14 @@ static void loadSettings(void) {
     DWORD n = GetModuleFileNameA(self, dir, sizeof(dir));
     while (n && dir[n - 1] != '\\' && dir[n - 1] != '/') n--;
     dir[n] = 0;
-    // Settings: wasdmod.ini, or a layout the key editor saved (wasdmod.txt,
-    // wasdmod-093026.txt...) -- whichever was changed most recently. Files from
-    // older versions (wasd-mod...) still count.
+    // Settings: default.txt (the installed defaults), author.txt, or a layout the
+    // key editor saved (wasdmod-093026.txt...) -- whichever was changed most
+    // recently. Files from older versions (wasdmod.ini, wasd-mod...) still count.
     {
-        const char *names[] = {"wasdmod.ini", "wasdmod*.txt", "wasd-mod.ini", "wasd-mod*.txt"};
+        const char *names[] = {"default.txt", "author.txt", "wasdmod*.txt", "wasdmod.ini", "wasd-mod.ini", "wasd-mod*.txt"};
         DWORD best[2] = {0, 0}; int found = 0;
-        ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), "wasdmod.ini");
-        for (int i = 0; i < 4; i++) {
+        ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), "default.txt");
+        for (int i = 0; i < 6; i++) {
             char pattern[1100] = {0}; append(pattern, sizeof(pattern), dir); append(pattern, sizeof(pattern), names[i]);
             FINDDATA f; HANDLE h = FindFirstFileA(pattern, &f);
             if (h == (HANDLE)-1) continue;

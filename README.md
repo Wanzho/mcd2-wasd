@@ -59,7 +59,7 @@ that bottle: prefer the game folder's `xinput1_4.dll` for this game (Wine uses
 its own otherwise), send Option as Alt, and confine the cursor to a screen area
 rather than one window. `uninstall.command` undoes all of it.
 
-**Linux / Steam Deck (Proton):** copy `xinput1_4.dll` and `wasdmod.ini` from
+**Linux / Steam Deck (Proton):** copy `xinput1_4.dll` and `default.txt` from
 `dist/Mac` into `Dungeons/Binaries/Win64` and set the launch option
 `WINEDLLOVERRIDES=xinput1_4=n,b %command%` (untested).
 
@@ -80,13 +80,17 @@ package and next to the game after a Windows install) has:
   keyboard mode uses the same keys as the mod. Controller settings stay at the
   game's defaults.
 
-Saving downloads `wasdmod-MMDDYY.txt`. Put it in the game's Win64 folder (or
+Saving downloads `default.txt` or `author.txt` for an unchanged built-in
+layout, otherwise `wasdmod-MMDDYY.txt`. Put it in the game's Win64 folder (or
 use the Windows setup's Load layout file) and restart the game. The mod uses the
-newest of `wasdmod.ini` and any `wasdmod*.txt`; the installers keep a saved
-layout in charge after updates. Files from older versions (`wasd-mod...`) are
-still read and get renamed on install.
+newest of `default.txt`, `author.txt` and any `wasdmod*.txt`; the installers
+keep a saved layout in charge after updates. Files from older versions
+(`wasdmod.ini`, `wasd-mod...`) are still read, and get renamed on install.
 
-You can also edit `wasdmod.ini` directly; every option is explained in it. A few
+`author.txt` (in both packages) is the author's layout. It only changes which
+keys you press; the game's own keyboard settings stay at their defaults.
+
+You can also edit `default.txt` directly; every option is explained in it. A few
 worth knowing:
 
 - `MouseMoveSwitches=0`: moving the mouse never leaves controller mode; only

@@ -22,7 +22,7 @@ if [ -f "$GAME/xinput1_4.dll" ]; then
     if grep -q -E "WASD mod loaded|Controller mod loaded" "$GAME/xinput1_4.dll"; then rm "$GAME/xinput1_4.dll"
     else echo "Leaving $GAME/xinput1_4.dll alone: it is not this mod's file."; fi
 fi
-rm -f "$GAME/wasdmod.ini" "$GAME/wasdmod.log" "$GAME/wasd-mod.ini" "$GAME/wasd-mod.log"
+rm -f "$GAME/default.txt" "$GAME/default.txt.bak" "$GAME/wasdmod.log" "$GAME/wasdmod.ini" "$GAME/wasd-mod.ini" "$GAME/wasd-mod.log"
 "$WINE" --bottle "$(basename "$BOTTLE")" --debugmsg -all reg delete \
     'HKCU\Software\Wine\AppDefaults\Dungeons-Win64-Shipping.exe\DllOverrides' \
     /v xinput1_4 /f >/dev/null 2>&1

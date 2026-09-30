@@ -142,7 +142,7 @@ void mainCRTStartup(void) {
         get(0, &s);
     }
     // Opt-in: injects real key events, so only run with the game closed.
-    // Needs RequireFocus=0 in wasdmod.ini, since this console test has no window.
+    // Needs RequireFocus=0 in default.txt, since this console test has no window.
     const char *cmd = GetCommandLineA(); int keys = 0;
     for (const char *p = cmd; *p; p++) if (p[0] == '-' && p[1] == '-' && p[2] == 'k' && p[3] == 'e' && p[4] == 'y' && p[5] == 's') keys = 1;
     if (!keys) { out(fail ? "RESULT FAIL\r\n" : "RESULT PASS (basic; run with --keys for the key test)\r\n"); ExitProcess(fail); }

@@ -20,8 +20,12 @@ T starts typing (Esc ends it).
 
 Change keys
 -----------
+To use the author's layout: "Load layout file..." and pick author.txt (next to
+the setup). It only changes which keys you press; the game's own settings stay
+as they are.
+
 "Edit key layout..." opens the layout editor in your browser. Saving there
-downloads wasdmod-MMDDYY.txt; click "Load layout file..." and pick it. Restart the
+downloads a layout (wasdmod-MMDDYY.txt); click "Load layout file..." and pick it. Restart the
 game afterwards. "Open settings file" opens the settings in Notepad.
 
 Uninstall

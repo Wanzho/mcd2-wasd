@@ -162,7 +162,7 @@ code { font-family: var(--mono); font-size: .92em; }
 
   <section class="card" id="importCard" hidden style="margin-top:16px">
     <h2>Import settings</h2>
-    <p class="lede">Load a <code>wasdmod.ini</code> or a saved <code>wasdmod…txt</code> to edit it. Drop the file here, choose it, or paste its text.</p>
+    <p class="lede">Load a <code>default.txt</code>, <code>author.txt</code> or a saved <code>wasdmod…txt</code> to edit it. Drop the file here, choose it, or paste its text.</p>
     <div class="drop" id="drop">Drop a settings file here, or <label style="text-decoration:underline;cursor:pointer">choose one<input id="fileInput" type="file" accept=".ini,.txt,text/plain" hidden></label></div>
     <textarea id="importText" placeholder="…or paste the file's text here"></textarea>
     <div class="out-actions"><button class="primary" id="importBtn" type="button">Load pasted text</button><span class="status" id="importStatus"></span></div>
@@ -203,7 +203,7 @@ code { font-family: var(--mono); font-size: .92em; }
             <li>Mac (CrossOver, default Steam bottle): put it in
               <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
               <button id="copyPath" type="button">Copy folder path</button> <span class="note">In Finder: Go › Go to Folder (⇧⌘G), paste.</span></li>
-            <li>The file is named by date (<code>wasdmod-MMDDYY.txt</code>). The mod uses the newest of <code>wasdmod.ini</code> and any <code>wasdmod*.txt</code>, so a fresh save always wins. Restart the game.</li>
+            <li>The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins. Restart the game.</li>
           </ol>
         </details>
         <pre class="ini" id="iniOut"></pre>
@@ -362,9 +362,8 @@ AlwaysConnected=1
 Log=1`;
 // The mod author's own layout: bow on both side buttons, inventory (E), quests (V),
 // social (/) and teleport (X) on the controller so you can keep moving, Tab for the
-// map, everything else on the game's own keys.
-// [GameKeys] is the author's in-game keyboard setup; switching to this layout keeps
-// *your* game's keys and lists the in-game changes that make keyboard mode match.
+// map, everything else on the game's own keys. It only sets the keys you press:
+// switching to it keeps your game's own keys, and the mod converts where needed.
 const AUTHOR_INI = `[Move]
 Up=W
 Left=A
@@ -409,7 +408,7 @@ AimStrength=45
 AimLeadMs=35
 AimHoldMs=120
 [Keys]
-MenuKeys=M, G, B, K, Escape
+MenuKeys=M, G, K, Escape
 BackKeys=Escape
 MouseAfter=DUp, DDown
 MenuTapMs=300
@@ -423,7 +422,7 @@ Toggle=Backtick
 Legend=F9
 [Remap]
 Tab=M
-Mouse5=Mouse4
+B=U
 [Modes]
 inventory=Controller
 map=Keyboard
@@ -432,31 +431,6 @@ quest=Controller
 social=Controller
 tpplayer=Controller
 emotes=Keyboard
-[GameKeys]
-dodge=Mouse2
-fdodge=Shift
-jump=Space
-melee=Mouse1
-ranged=Mouse4
-art1=Q
-art2=2
-art3=3
-potion=R
-trail=Mouse3
-statue=Z
-tp1=F1
-tp2=F2
-tp3=F3
-tp4=F4
-inventory=E
-map=M
-wheel=Tab
-quest=V
-social=Y
-tpplayer=X
-emotes=G
-collect=B
-events=K
 [Options]
 HideMouse=1
 BlockOtherKeys=1
@@ -611,7 +585,7 @@ function iniText(st) {
   const L = [];
   L.push("; Keyboard & mouse as a controller for Minecraft Dungeons II.",
     "; Made with Dungeons II Keybinder. Put this file in the game's Win64 folder and",
-    "; restart the game. The mod uses the newest of wasdmod.ini and wasdmod*.txt.", "");
+    "; restart the game. The mod uses the newest of default.txt, author.txt and wasdmod*.txt.", "");
   const moveKeys = m => st.keys[ACTIONS.find(a => a.move === m).id];
   L.push("[Move]", ...["Up", "Left", "Down", "Right"].map(k => k + "=" + j(moveKeys(k))), "Dodge=None", "DodgeMouse=" + j(moveKeys("DodgeMouse")),
     "DodgeDragPx=" + st.num.DodgeDragPx, "DodgeFlickMs=" + st.num.DodgeFlickMs, "");
@@ -962,9 +936,14 @@ $("copyBtn").addEventListener("click", () => copy(iniText(state), "Copied. Paste
 $("copyPath").addEventListener("click", () => copy($("gamePath").textContent, "Folder path copied."));
 
 // Saving: inside Claude the viewer's download prompt, opened as a local file a normal
-// download. Named by date (wasdmod-MMDDYY.txt); the mod picks the newest layout.
+// download: default.txt or author.txt for an unedited built-in layout, otherwise
+// wasdmod-MMDDYY.txt. The mod uses the newest of them.
 let downloads = null;
-const fileName = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return "wasdmod-" + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getFullYear() % 100) + ".txt"; };
+const fileName = () => {
+  if (profile && !profile.edited) return profile.id === "author" ? "author.txt" : "default.txt";
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return "wasdmod-" + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getFullYear() % 100) + ".txt";
+};
 $("saveBtn").addEventListener("click", async () => {
   const text = iniText(state), name = fileName();
   if (downloads) {

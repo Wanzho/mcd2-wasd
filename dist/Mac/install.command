@@ -28,20 +28,23 @@ if [ -f "$GAME/xinput1_4.dll" ] && ! grep -q -E "WASD mod loaded|Controller mod 
     echo "A different xinput1_4.dll is already in the game folder; not overwriting it."; exit 1
 fi
 cp "$DLL" "$GAME/xinput1_4.dll"
-# Older versions named the files wasd-mod...; saved layouts keep their date.
+# Older versions named the files wasd-mod... and wasdmod.ini; saved layouts keep
+# their date, edited settings are kept as default.txt.bak.
 for f in "$GAME"/wasd-mod*.txt; do [ -e "$f" ] && mv -f "$f" "$GAME/wasdmod${f##*/wasd-mod}"; done
-if [ -f "$GAME/wasd-mod.ini" ]; then
-    cmp -s wasdmod.ini "$GAME/wasd-mod.ini" || cp "$GAME/wasd-mod.ini" "$GAME/wasdmod.ini.bak"
-    rm -f "$GAME/wasd-mod.ini" "$GAME/wasd-mod.log"
+for old in wasd-mod.ini wasdmod.ini; do
+    [ -f "$GAME/$old" ] || continue
+    cmp -s default.txt "$GAME/$old" || cp "$GAME/$old" "$GAME/default.txt.bak"
+    rm -f "$GAME/$old"
+done
+rm -f "$GAME/wasd-mod.log"
+if [ -f "$GAME/default.txt" ] && ! cmp -s default.txt "$GAME/default.txt"; then
+    cp "$GAME/default.txt" "$GAME/default.txt.bak"
+    echo "Previous settings saved as default.txt.bak"
 fi
-if [ -f "$GAME/wasdmod.ini" ] && ! cmp -s wasdmod.ini "$GAME/wasdmod.ini"; then
-    cp "$GAME/wasdmod.ini" "$GAME/wasdmod.ini.bak"
-    echo "Previous settings saved as wasdmod.ini.bak"
-fi
-cp wasdmod.ini "$GAME/wasdmod.ini"
-# A saved layout (wasdmod.txt or wasdmod-MMDDYY.txt from the Keybinder) keeps
+cp default.txt "$GAME/default.txt"
+# A saved layout (author.txt or wasdmod-MMDDYY.txt from the Keybinder) keeps
 # priority: the mod reads whichever settings file is newest.
-NEWEST=$(ls -t "$GAME"/wasdmod*.txt 2>/dev/null | head -1)
+NEWEST=$(ls -t "$GAME"/author.txt "$GAME"/wasdmod*.txt 2>/dev/null | head -1)
 if [ -n "$NEWEST" ]; then touch "$NEWEST"; echo "Your saved layout $(basename "$NEWEST") stays in charge (delete it to use the defaults)."; fi
 
 # Wine prefers its own XInput by default; tell it to use the game folder's copy,
@@ -60,4 +63,4 @@ for side in Left Right; do
         'HKCU\Software\Wine\Mac Driver' /v ${side}OptionIsAlt /t REG_SZ /d y /f >/dev/null
 done
 echo "Installed. Restart the game. F9 shows the key list; hold Option for the cursor; the backtick key (\`) switches the mod off/on."
-echo "Settings: $GAME/wasdmod.ini"
+echo "Settings: $GAME/default.txt (your own layouts: author.txt, wasdmod-MMDDYY.txt)"

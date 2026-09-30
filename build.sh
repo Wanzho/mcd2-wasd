@@ -41,6 +41,7 @@ rm -f build/*.obj build/payload.h
 # Ready-to-use packages: dist/Windows (the installer) and dist/Mac (double-click scripts).
 mkdir -p dist/Windows dist/Mac
 cp "$SETUP" dist/Windows/
-cp build/xinput1_4.dll wasdmod.ini install.command uninstall.command dist/Mac/
+cp build/xinput1_4.dll default.txt author.txt install.command uninstall.command dist/Mac/
+cp author.txt dist/Windows/
 cp Keybinder.html "dist/Mac/Key Layout Editor.html"
 echo "Built build/xinput1_4.dll, Keybinder.html, $SETUP and dist/"
