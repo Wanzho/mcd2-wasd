@@ -62,12 +62,12 @@ void mainCRTStartup(void) {
         for (int i = 0; i < 240; i++) get(0, &s); // the mod rescans windows every 240 polls
         MSG msg; UINT m[4]; unsigned long long k[4];
         PostMessageA(wnd, 0x100, 'W', 0x00110001); // W keydown, scan code 0x11
-        PostMessageA(wnd, 0x100, 'Z', 0x002C0001);
+        PostMessageA(wnd, 0x100, 'P', 0x00190001);
         PostMessageA(wnd, 0x200, 0, 0x00100010); // WM_MOUSEMOVE
         for (int i = 0; i < 4; i++) { m[i] = 0xffff; k[i] = 0; if (PeekMessageA(&msg, wnd, 0, 0, 1)) { m[i] = msg.message; k[i] = msg.wParam; } }
         // Expected: W hidden (0), E keydown (256), then W's typed character (258 'w').
         num("gameplay: W keydown arrives as message ", m[0]);
-        num("gameplay: Z (unused) keydown arrives as message (0 = blocked) ", m[1]);
+        num("gameplay: P (unused) keydown arrives as message (0 = blocked) ", m[1]);
         num("gameplay: mouse move arrives as message (0 = hidden) ", m[2]);
         num("gameplay: typed character for W (65535 = none; TypedCharacters=0) ", m[3]);
         if (m[0] != 0 || m[1] != 0 || m[2] != 0 || m[3] != 0xffff) fail = 1;
@@ -142,7 +142,7 @@ void mainCRTStartup(void) {
         get(0, &s);
     }
     // Opt-in: injects real key events, so only run with the game closed.
-    // Needs RequireFocus=0 in wasd-mod.ini, since this console test has no window.
+    // Needs RequireFocus=0 in wasdmod.ini, since this console test has no window.
     const char *cmd = GetCommandLineA(); int keys = 0;
     for (const char *p = cmd; *p; p++) if (p[0] == '-' && p[1] == '-' && p[2] == 'k' && p[3] == 'e' && p[4] == 'y' && p[5] == 's') keys = 1;
     if (!keys) { out(fail ? "RESULT FAIL\r\n" : "RESULT PASS (basic; run with --keys for the key test)\r\n"); ExitProcess(fail); }

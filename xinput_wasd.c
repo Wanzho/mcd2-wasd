@@ -1,6 +1,6 @@
 // Keyboard & mouse as a controller for Minecraft Dungeons II.
 //
-// Drop-in xinput1_4.dll. Keys and mouse buttons from wasd-mod.ini are reported
+// Drop-in xinput1_4.dll. Keys and mouse buttons from wasdmod.ini are reported
 // as controller 0 (sticks, buttons, triggers), and hidden from the game, so the
 // game only ever sees a controller and never flips between keyboard and
 // controller mode. A small on-screen legend shows which key does what. Text
@@ -33,6 +33,10 @@ IMP DWORD GetPrivateProfileStringA(const char *, const char *, const char *, cha
 IMP DWORD GetPrivateProfileSectionA(const char *, char *, DWORD, const char *);
 typedef struct { DWORD attributes; DWORD created[2], accessed[2], written[2]; DWORD sizeHigh, sizeLow; } FILEINFO;
 IMP BOOL GetFileAttributesExA(const char *, int, FILEINFO *);
+typedef struct { DWORD attributes; DWORD created[2], accessed[2], written[2]; DWORD sizeHigh, sizeLow, reserved0, reserved1; char name[260]; char shortName[14]; } FINDDATA;
+IMP HANDLE FindFirstFileA(const char *, FINDDATA *);
+IMP BOOL FindNextFileA(HANDLE, FINDDATA *);
+IMP BOOL FindClose(HANDLE);
 IMP DWORD GetCurrentProcessId(void);
 IMP U64 GetTickCount64(void);
 IMP HANDLE CreateFileA(const char *, DWORD, DWORD, void *, DWORD, DWORD, HANDLE);
@@ -109,7 +113,7 @@ static BYTE bowVk[256]; // mouse buttons that aim the bow with the mouse (keyboa
 // [Remap]: pressing the key sends the game a different key instead (B=U: B
 // opens collectibles). The original key is hidden; the sent key is a real key
 // press, so menu keys among them still switch to mouse mode.
-static BYTE remapTo[256]; static char remapText[64];
+static BYTE remapTo[256]; static char remapText[200];
 // Key presses the mod itself sent (remaps) are let through for a moment, even
 // if that key is otherwise blocked.
 static U64 sentUntil[256];
@@ -130,7 +134,7 @@ static struct {
 
 static void logline(const char *s) {
     if (!cfg.log) return;
-    char path[1100] = {0}; append(path, sizeof(path), dir); append(path, sizeof(path), "wasd-mod.log");
+    char path[1100] = {0}; append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
     HANDLE h = CreateFileA(path, 4 /*FILE_APPEND_DATA*/, 3, 0, 4 /*OPEN_ALWAYS*/, 128, 0);
     if (h == (HANDLE)-1) return;
     DWORD w; WriteFile(h, s, len(s), &w, 0); WriteFile(h, "\r\n", 2, &w, 0); CloseHandle(h);
@@ -188,7 +192,7 @@ static void readBinding(const char *section, const char *name, const char *fallb
             if (b->text[0]) append(b->text, sizeof(b->text), " / ");
             append(b->text, sizeof(b->text), start);
         } else if (vk < 0) {
-            char msg[128] = "Unknown key name in wasd-mod.ini: "; append(msg, sizeof(msg), start); logline(msg);
+            char msg[128] = "Unknown key name in the settings: "; append(msg, sizeof(msg), start); logline(msg);
         }
         *end = save;
     }
@@ -215,14 +219,26 @@ static void loadSettings(void) {
     DWORD n = GetModuleFileNameA(self, dir, sizeof(dir));
     while (n && dir[n - 1] != '\\' && dir[n - 1] != '/') n--;
     dir[n] = 0;
-    // Settings: wasd-mod.ini, or wasd-mod.txt (what the online configurator
-    // saves) -- whichever was changed most recently.
-    char txt[1100] = {0}; FILEINFO a, b;
-    ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), "wasd-mod.ini");
-    append(txt, sizeof(txt), dir); append(txt, sizeof(txt), "wasd-mod.txt");
-    int hasIni = GetFileAttributesExA(ini, 0, &a), hasTxt = GetFileAttributesExA(txt, 0, &b);
-    if (hasTxt && (!hasIni || b.written[1] > a.written[1] || (b.written[1] == a.written[1] && b.written[0] > a.written[0]))) {
-        ini[0] = 0; append(ini, sizeof(ini), txt);
+    // Settings: wasdmod.ini, or a layout the key editor saved (wasdmod.txt,
+    // wasdmod-093026.txt...) -- whichever was changed most recently. Files from
+    // older versions (wasd-mod...) still count.
+    {
+        const char *names[] = {"wasdmod.ini", "wasdmod*.txt", "wasd-mod.ini", "wasd-mod*.txt"};
+        DWORD best[2] = {0, 0}; int found = 0;
+        ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), "wasdmod.ini");
+        for (int i = 0; i < 4; i++) {
+            char pattern[1100] = {0}; append(pattern, sizeof(pattern), dir); append(pattern, sizeof(pattern), names[i]);
+            FINDDATA f; HANDLE h = FindFirstFileA(pattern, &f);
+            if (h == (HANDLE)-1) continue;
+            do {
+                if (f.attributes & 0x10 /*directory*/) continue;
+                if (!found || f.written[1] > best[1] || (f.written[1] == best[1] && f.written[0] > best[0])) {
+                    best[0] = f.written[0]; best[1] = f.written[1]; found = 1;
+                    ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), f.name);
+                }
+            } while (FindNextFileA(h, &f));
+            FindClose(h);
+        }
     }
     cfg.log = GetPrivateProfileIntA("Options", "Log", 1, ini);
     cfg.requireFocus = GetPrivateProfileIntA("Options", "RequireFocus", 1, ini);
@@ -859,7 +875,8 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
             if (wParam == 1 /*PM_REMOVE*/ && (!isDown || !repeat) && focused()) {
                 sentUntil[to] = GetTickCount64() + 500;
                 keybd_event(to, (BYTE)MapVirtualKeyA(to, 0), isDown ? 0 : 2 /*KEYEVENTF_KEYUP*/, 0);
-                if (isDown) menuKeyPress(1, backVk[to], "Controller mode (remapped back key)", "Mouse mode (remapped menu key)");
+                // A remap onto one of the PassKeys is an instant action (teleport...), not a menu.
+                if (isDown && !passVk[to]) menuKeyPress(1, backVk[to], "Controller mode (remapped back key)", "Mouse mode (remapped menu key)");
             }
             m->message = 0;
             return 0;

@@ -42,36 +42,52 @@ shortcuts never fire an ability.
 
 ## Install
 
-**Windows:** run `dist/Dungeons II Controller Mod Setup.exe`. It finds the game
-through Steam (or use Browse), installs, updates and uninstalls, and opens the
-key layout editor. The file isn't signed, so Windows may say "Windows protected
-your PC": click More info, then Run anyway. Command line: `/find`, `/status`,
-`/install`, `/uninstall` (optionally followed by the game's Win64 folder).
+Download this repository (Code › Download ZIP) and open the `dist` folder.
 
-**Mac (CrossOver):**
+**Windows:** run `dist/Windows/Dungeons II Controller Mod Setup.exe`. It finds
+the game through Steam (or use Browse), installs, updates and uninstalls, loads
+a saved key layout and opens the key layout editor. The file isn't signed, so
+Windows may say "Windows protected your PC": click More info, then Run anyway.
+Command line: `/find`, `/status`, `/install`, `/uninstall` (optionally followed
+by the game's Win64 folder).
 
-```sh
-./build.sh           # Apple clang + the lld-link from a Rust toolchain
-./install.command    # default bottle: "Steam"; pass another bottle folder as an argument
-```
+**Mac (CrossOver):** quit the game and double-click `dist/Mac/install.command`.
+It finds the game in your CrossOver bottles. If macOS won't open it, right-click
+it › Open (or System Settings › Privacy & Security › Open Anyway). The game must
+already run in CrossOver. The installer also sets three CrossOver options for
+that bottle: prefer the game folder's `xinput1_4.dll` for this game (Wine uses
+its own otherwise), send Option as Alt, and confine the cursor to a screen area
+rather than one window. `uninstall.command` undoes all of it.
 
-The Mac installer also sets three CrossOver options for the bottle: prefer the
-game folder's `xinput1_4.dll` for this game (Wine uses its own otherwise), send
-Option as Alt, and confine the cursor to a screen area rather than one window.
-`./uninstall.command` undoes all of it.
-
-**Linux / Steam Deck (Proton):** copy `xinput1_4.dll` and `wasd-mod.ini` into
-`Dungeons/Binaries/Win64` and set the launch option
+**Linux / Steam Deck (Proton):** copy `xinput1_4.dll` and `wasdmod.ini` from
+`dist/Mac` into `Dungeons/Binaries/Win64` and set the launch option
 `WINEDLLOVERRIDES=xinput1_4=n,b %command%` (untested).
 
 ## Changing keys
 
-`configurator.html` is the key layout editor (`Keybinder.html` is the offline
-copy that build.sh generates). It saves a `wasd-mod.txt`/`wasd-mod.ini`; put it
-in the game's Win64 folder and restart the game. The mod reads whichever of
-`wasd-mod.ini` and `wasd-mod.txt` changed last, and the installers keep a saved
-`wasd-mod.txt` in charge. You can also edit `wasd-mod.ini` directly; every
-option is explained in it. A few worth knowing:
+The key layout editor (`configurator.html`; `Key Layout Editor.html` in the Mac
+package and next to the game after a Windows install) has:
+
+- **Layouts:** Default, the Author's keybinds, or import a saved file.
+- **Movement & Actions:** always the controller. Each action shows the game's
+  own keyboard key ("in game") next to yours.
+- **Menus:** the ones the game has both ways (inventory, map, menu wheel,
+  quests, social, teleport, emotes) switch between **Keyboard** (default: your
+  keys send the game's shortcut) and **Controller** (your keys press the pad
+  button: tap for the inventory, hold for the mini inventory while moving).
+  Only one is active. A key that isn't the game's own is converted ("E as I").
+- **Match the game's keyboard keys:** the in-game keyboard settings to change so
+  keyboard mode uses the same keys as the mod. Controller settings stay at the
+  game's defaults.
+
+Saving downloads `wasdmod-MMDDYY.txt`. Put it in the game's Win64 folder (or
+use the Windows setup's Load layout file) and restart the game. The mod uses the
+newest of `wasdmod.ini` and any `wasdmod*.txt`; the installers keep a saved
+layout in charge after updates. Files from older versions (`wasd-mod...`) are
+still read and get renamed on install.
+
+You can also edit `wasdmod.ini` directly; every option is explained in it. A few
+worth knowing:
 
 - `MouseMoveSwitches=0`: moving the mouse never leaves controller mode; only
   Alt, the menu keys or backtick give you the mouse.
@@ -81,7 +97,7 @@ option is explained in it. A few worth knowing:
 - `BumpNudgePct`: after a small mouse bump the game shows keyboard prompts; the
   mod flips it back with a tiny right-stick nudge. Lower it if you ever dodge by accident.
 
-`wasd-mod.log` next to the DLL records what the mod does (mode switches, text
+`wasdmod.log` next to the DLL records what the mod does (mode switches, text
 boxes, timing).
 
 ## How it works
@@ -99,8 +115,9 @@ CrossOver), and `ClipCursor` (confined the mouse to the wrong area).
 
 ## Build and test
 
-`./build.sh` builds `build/xinput1_4.dll`, `build/test_load.exe`, `Keybinder.html`
-and the Windows installer (copied to `dist/`). No Windows SDK or C runtime is
+`./build.sh` (Apple clang + the lld-link from a Rust toolchain) builds
+`build/xinput1_4.dll`, `build/test_load.exe`, `Keybinder.html`, the Windows
+installer, and the ready-to-use `dist/Windows` and `dist/Mac` packages. No Windows SDK or C runtime is
 needed. `build/test_load.exe` runs inside a Wine bottle and checks the exports
 and the input filtering (gameplay, typing, menus, remaps, bow, text boxes);
 `smooth_test.c` and `dodge_test.c` test the movement smoothing and drag dodge on

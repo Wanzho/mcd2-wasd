@@ -21,7 +21,7 @@ T starts typing (Esc ends it).
 Change keys
 -----------
 "Edit key layout..." opens the layout editor in your browser. Saving there
-downloads wasd-mod.ini; click "Load layout file..." and pick it. Restart the
+downloads wasdmod-MMDDYY.txt; click "Load layout file..." and pick it. Restart the
 game afterwards. "Open settings file" opens the settings in Notepad.
 
 Uninstall
