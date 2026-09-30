@@ -12,28 +12,38 @@ the Windows installer is built and checked but not yet tested on a Windows PC.
 
 ## Default controls
 
+The default layout is the game's own keyboard layout, played as a controller.
+Only the menu wheel moves from S (a movement key here) to Tab.
+
 | Key | Does |
 |---|---|
 | W A S D | Move |
-| Space or F | Jump / interact |
-| Left click | Melee |
-| Right click | Dodge the way you're moving; press, drag 40 px and release to roll that way |
-| Shift | Forward dodge |
-| Side button 5 | Bow (hold it to aim with the mouse) |
-| Q / 2 / 3 | Artifacts 1 / 2 / 3 |
-| R | Health potion |
+| Space | Jump / interact |
+| Left click | Melee (in the air: heavy jump attack) |
+| Right click | Bow (hold it to aim with the mouse) |
+| R or side button 4 | Directional dodge: the way you're moving; hold and drag the mouse to roll that way |
+| Side button 5 | Forward dodge |
+| 1 / 2 / 3 | Artifacts 1 / 2 / 3 |
+| E | Health potion |
 | Middle click | Guidance trail |
-| E, I or ↑ | Inventory (tap: full inventory, hold: mini inventory) |
-| ↓ | Social menu |
-| ← or X | Teleport to player |
-| → or V | Track quest / quest log |
-| Esc or Tab | Game menu |
-| B | Collectibles |
-| M, J, U, K, G | The game's own menu shortcuts |
-| T | Typing mode (every key goes to the game until Esc) |
+| I | Inventory (tap: full inventory, hold: mini inventory) |
+| M | World map |
+| Tab | Menu wheel |
+| J | Quest log / track quest |
+| F | Social menu |
+| G | Emotes |
+| U | Collectibles |
+| K | Event log |
+| X, F1–F4 | Teleport to player |
+| Z | Teleport statue |
+| Esc | Game menu |
+| T | Typing mode: every key goes to the game until Esc; a banner shows while it's on |
 | Alt (Option on a Mac) or Ctrl | Hold for the mouse cursor |
 | F9 | Show or hide the on-screen key list |
 | Backtick (`) | Turn the mod off and on |
+
+`author.txt` is the recommended setup instead (Q/2/3 artifacts, R potion, Shift
+forward dodge, right-click dodge, bow on side button 5, E inventory, Tab map).
 
 Opening a menu switches to **mouse mode**: the cursor and keyboard work
 normally, and clicks never leave it. Any fight key (WASD, Space, Shift...)
@@ -68,7 +78,7 @@ rather than one window. `uninstall.command` undoes all of it.
 The key layout editor (`configurator.html`; `Key Layout Editor.html` in the Mac
 package and next to the game after a Windows install) has:
 
-- **Layouts:** Default, the Author's keybinds, or import a saved file.
+- **Layouts:** Default, Recommended setup, or import a saved file.
 - **Movement & Actions:** always the controller. Each action shows the game's
   own keyboard key ("in game") next to yours.
 - **Menus:** the ones the game has both ways (inventory, map, menu wheel,
@@ -87,7 +97,7 @@ newest of `default.txt`, `author.txt` and any `wasdmod*.txt`; the installers
 keep a saved layout in charge after updates. Files from older versions
 (`wasdmod.ini`, `wasd-mod...`) are still read, and get renamed on install.
 
-`author.txt` (in both packages) is the author's layout. It only changes which
+`author.txt` (in both packages) is the recommended setup. It only changes which
 keys you press; the game's own keyboard settings stay at their defaults.
 
 You can also edit `default.txt` directly; every option is explained in it. A few
@@ -100,6 +110,9 @@ worth knowing:
   so the game aims the bow at the cursor.
 - `BumpNudgePct`: after a small mouse bump the game shows keyboard prompts; the
   mod flips it back with a tiny right-stick nudge. Lower it if you ever dodge by accident.
+- `DisabledKeys` (filled in by the key layout editor): the game's own keys for
+  actions you moved to other keys. They never reach the game, in any mode, so a
+  key only ever does what your layout says. Left click is never disabled.
 
 `wasdmod.log` next to the DLL records what the mod does (mode switches, text
 boxes, timing).

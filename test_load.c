@@ -109,27 +109,35 @@ void mainCRTStartup(void) {
           num("back: Esc in mouse mode arrives as message (256 = the game gets it) ", e[1]);
           num("back: mouse move after Esc arrives as message (0 = controller mode again) ", e[2]);
           if (e[0] != 0x100 || e[1] != 0x100 || e[2] != 0) fail = 1; }
-        // Remap (B=U by default): B itself is hidden from the game. (The U it sends only
-        // goes out while the game window is in front, so this test can't see it.)
-        PostMessageA(wnd, 0x100, 'B', 0x00300001);
-        { UINT b = 0xffff; if (PeekMessageA(&msg, wnd, 0, 0, 1)) b = msg.message;
-          num("remap: B arrives as message (0 = hidden, U sent instead) ", b); if (b != 0) fail = 1; }
-        // Bow on side button 5: holding it is keyboard mode (aim with the mouse); after
+        // Disabled keys (DisabledKeys=..., none by default): print only. With U listed,
+        // U in mouse mode arrives as 0 (off); otherwise 256.
+        PostMessageA(wnd, 0x100, 'M', 0x00320001);                 // mouse mode
+        PostMessageA(wnd, 0x100, 'U', 0x00160001);
+        { UINT e[2]; for (int i = 0; i < 2; i++) { e[i] = 0xffff; if (PeekMessageA(&msg, wnd, 0, 0, 1)) e[i] = msg.message; }
+          num("disabled: U in mouse mode arrives as message (0 = off if listed) ", e[1]); }
+        // Remap (Tab=S by default, the menu wheel): Tab itself is hidden from the game.
+        // (The S it sends only goes out while the game window is in front, so this test
+        // can't see it.)
+        PostMessageA(wnd, 0x100, 0x09, 0x000F0001);
+        PostMessageA(wnd, 0x101, 0x09, 0xC00F0001); // and up again, so the S it sent is released
+        { UINT b = 0xffff, u = 0xffff; if (PeekMessageA(&msg, wnd, 0, 0, 1)) b = msg.message; if (PeekMessageA(&msg, wnd, 0, 0, 1)) u = msg.message;
+          num("remap: Tab arrives as message (0 = hidden, S sent instead) ", b); if (b != 0 || u != 0) fail = 1; }
+        // Bow on right click (the default): holding it is keyboard mode (aim with the mouse); after
         // release WASD returns to controller mode. (WASD being ignored while it's held
         // needs a physically held button, which a posted message can't fake.)
         PostMessageA(wnd, 0x100, 'W', 0x00110001);                 // back to controller mode
-        PostMessageA(wnd, 0x20B, (2 << 16) | 0x40, 0x00100010);    // side button 5 down
+        PostMessageA(wnd, 0x204, 0x02, 0x00100010);                // right button down
         PostMessageA(wnd, 0x200, 0, 0x00100010);
-        PostMessageA(wnd, 0x20C, 2 << 16, 0x00100010);             // side button 5 up
+        PostMessageA(wnd, 0x205, 0, 0x00100010);                   // right button up
         PostMessageA(wnd, 0x100, 'W', 0x00110001);
         PostMessageA(wnd, 0x200, 0, 0x00100010);
         { UINT e[6]; for (int i = 0; i < 6; i++) { e[i] = 0xffff; if (PeekMessageA(&msg, wnd, 0, 0, 1)) e[i] = msg.message; }
-          num("bow: side button 5 down arrives as message (523 = the game gets it) ", e[1]);
+          num("bow: right button down arrives as message (516 = the game gets it) ", e[1]);
           num("bow: mouse move while aiming arrives as message (512 = passes) ", e[2]);
-          num("bow: side button 5 up arrives as message (524 = passes) ", e[3]);
+          num("bow: right button up arrives as message (517 = passes) ", e[3]);
           num("bow: W after release arrives as message (0 = hidden, controller mode) ", e[4]);
           num("bow: mouse move after that arrives as message (0 = hidden) ", e[5]);
-          if (e[0] != 0 || e[1] != 0x20B || e[2] != 0x200 || e[3] != 0x20C || e[4] != 0 || e[5] != 0) fail = 1; }
+          if (e[0] != 0 || e[1] != 0x204 || e[2] != 0x200 || e[3] != 0x205 || e[4] != 0 || e[5] != 0) fail = 1; }
         // Like Unreal with a text box focused: the window gets an IMM context back.
         ImmAssociateContext(wnd, imc ? imc : ImmCreateContext());
         Sleep(60); get(0, &s);

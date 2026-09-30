@@ -20,7 +20,7 @@ T starts typing (Esc ends it).
 
 Change keys
 -----------
-To use the author's layout: "Load layout file..." and pick author.txt (next to
+To use the recommended setup: "Load layout file..." and pick author.txt (next to
 the setup). It only changes which keys you press; the game's own settings stay
 as they are.
 

@@ -157,7 +157,7 @@ code { font-family: var(--mono); font-size: .92em; }
       <span class="label">Layout</span>
       <div class="btns">
         <button type="button" data-profile="default" aria-pressed="false">Default</button>
-        <button type="button" data-profile="author" aria-pressed="false" title="The mod author's own layout">Author's keybinds</button>
+        <button type="button" data-profile="author" aria-pressed="false" title="Bow on side button 5, menus you can use while moving">Recommended setup</button>
         <button type="button" id="importToggle">Import file…</button>
       </div>
       <div class="profile-status" id="profileStatus"></div>
@@ -277,11 +277,93 @@ const PAD_LABEL = { A: "Jump / interact", X: "Melee (in the air: heavy jump atta
 const PAD_ORDER = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Back", "Start", "LS", "RS", "DUp", "DDown", "DLeft", "DRight"];
 
 // =================================================================== layouts
-// The game's keyboard defaults for the actions the Keybinder routes or recommends. "?" = not known.
-const GAME_DEFAULTS = { dodge: "?", fdodge: "?", jump: "Space", melee: "Mouse1", ranged: "?", art1: "1", art2: "2", art3: "3", potion: "?", trail: "Mouse3",
+// The game's own keyboard defaults (Settings › Controls › Keyboard). "?" = not known.
+const GAME_DEFAULTS = { dodge: "R", fdodge: "Mouse5", jump: "Space", melee: "Mouse1", ranged: "Mouse2", art1: "1", art2: "2", art3: "3", potion: "E", trail: "Mouse3",
   statue: "Z", tp1: "F1", tp2: "F2", tp3: "F3", tp4: "F4", inventory: "I", map: "M", wheel: "S", quest: "J", social: "F", tpplayer: "X", emotes: "G",
   collect: "U", events: "K", esc: "Escape" };
+// Default layout: the game's own keyboard keys, as a controller. The menu wheel
+// moves from S (a movement key here) to Tab, so the inventory is I only.
 const DEFAULT_INI = `[Move]
+Up=W
+Left=A
+Down=S
+Right=D
+Dodge=None
+DodgeMouse=R, Mouse4
+DodgeDragPx=40
+DodgeFlickMs=80
+[Movement]
+AccelMs=45
+DecelMs=35
+TurnMs=110
+[Buttons]
+A=Space
+B=2
+X=Mouse1
+Y=1
+LB=Mouse5
+RB=3
+LT=E
+RT=Mouse2
+Back=None
+Start=None
+LS=Mouse3
+RS=None
+DUp=None
+DDown=None
+DLeft=None
+DRight=None
+[Mouse]
+Crosshair=0
+KeepCursorInWindow=1
+MouseModeOnMovePx=40
+MouseMoveSwitches=1
+FreezeCursorForGame=0
+BumpNudgePct=30
+BowAimsWithMouse=1
+AimStick=None
+AimButtons=X, RT
+AimStrength=45
+AimLeadMs=35
+AimHoldMs=120
+[Keys]
+MenuKeys=I, M, J, F, G, U, K, Escape
+BackKeys=Escape
+MouseAfter=None
+MenuTapMs=300
+TypeKey=T
+PassKeys=Z, F1, F2, F3, F4, X
+Cursor=Alt, Ctrl
+CursorMode=Hold
+BowAim=None
+BowAimSends=Mouse2
+Toggle=Backtick
+Legend=F9
+[Remap]
+Tab=S
+[Modes]
+inventory=Keyboard
+map=Keyboard
+wheel=Keyboard
+quest=Keyboard
+social=Keyboard
+tpplayer=Keyboard
+emotes=Keyboard
+[Options]
+HideMouse=1
+BlockOtherKeys=1
+DetectTextBoxes=1
+TypedCharacters=0
+Legend=1
+LegendSeconds=0
+RequireFocus=1
+AlwaysConnected=1
+Log=1`;
+// The recommended setup: bow on side button 5, inventory (E), quests (V), social
+// (/) and teleport (X) on the controller so you can keep moving, Tab for the map,
+// everything else on the game's own keys. It only sets the keys you press:
+// switching to it keeps your game's own keys, and the mod converts where needed.
+const AUTHOR_INI = `[Move]
 Up=W
 Left=A
 Down=S
@@ -307,97 +389,11 @@ Back=None
 Start=None
 LS=Mouse3
 RS=None
-DUp=None
-DDown=None
-DLeft=None
-DRight=None
-[Mouse]
-Crosshair=0
-KeepCursorInWindow=1
-MouseModeOnMovePx=40
-MouseMoveSwitches=1
-FreezeCursorForGame=0
-BumpNudgePct=30
-BowAimsWithMouse=1
-AimStick=None
-AimButtons=X, RT
-AimStrength=45
-AimLeadMs=35
-AimHoldMs=120
-[Keys]
-MenuKeys=I, M, J, G, U, K, Escape
-BackKeys=Escape
-MouseAfter=None
-MenuTapMs=300
-TypeKey=T
-PassKeys=Z, F1, F2, F3, F4, X
-Cursor=Alt, Ctrl
-CursorMode=Hold
-BowAim=None
-BowAimSends=Mouse4
-Toggle=Backtick
-Legend=F9
-[Remap]
-E=I
-Up=I
-V=J
-Right=J
-Down=F
-Left=X
-B=U
-Tab=Escape
-[Modes]
-inventory=Keyboard
-map=Keyboard
-wheel=Keyboard
-quest=Keyboard
-social=Keyboard
-tpplayer=Keyboard
-emotes=Keyboard
-[Options]
-HideMouse=1
-BlockOtherKeys=1
-DetectTextBoxes=1
-TypedCharacters=0
-Legend=1
-LegendSeconds=15
-RequireFocus=1
-AlwaysConnected=1
-Log=1`;
-// The mod author's own layout: bow on both side buttons, inventory (E), quests (V),
-// social (/) and teleport (X) on the controller so you can keep moving, Tab for the
-// map, everything else on the game's own keys. It only sets the keys you press:
-// switching to it keeps your game's own keys, and the mod converts where needed.
-const AUTHOR_INI = `[Move]
-Up=W
-Left=A
-Down=S
-Right=D
-Dodge=None
-DodgeMouse=Mouse2
-DodgeDragPx=40
-DodgeFlickMs=80
-[Movement]
-AccelMs=45
-DecelMs=35
-TurnMs=110
-[Buttons]
-A=Space, F
-B=2
-X=Mouse1
-Y=Q
-LB=Shift
-RB=3
-LT=R
-RT=Mouse4, Mouse5
-Back=None
-Start=None
-LS=Mouse3
-RS=None
-DUp=E, I
+DUp=E
 DDown=/
 DLeft=X
-DRight=V, J
+DRight=V
+
 [Mouse]
 Crosshair=0
 KeepCursorInWindow=1
@@ -421,12 +417,13 @@ PassKeys=Z, F1, F2, F3, F4
 Cursor=Alt
 CursorMode=Hold
 BowAim=None
-BowAimSends=Mouse4
+BowAimSends=Mouse2
 Toggle=Backtick
 Legend=F9
 [Remap]
 Tab=M
 B=U
+Mouse5=Mouse2
 [Modes]
 inventory=Controller
 map=Keyboard
@@ -445,7 +442,7 @@ LegendSeconds=15
 RequireFocus=1
 AlwaysConnected=1
 Log=1`;
-const PROFILES = { default: { name: "Default", text: DEFAULT_INI }, author: { name: "Author's keybinds", text: AUTHOR_INI } };
+const PROFILES = { default: { name: "Default", text: DEFAULT_INI }, author: { name: "Recommended setup", text: AUTHOR_INI } };
 
 // =================================================================== key names
 const CODE_NAMES = { Space: "Space", Enter: "Enter", NumpadEnter: "Enter", Escape: "Escape", Tab: "Tab", ShiftLeft: "Shift", ShiftRight: "Shift",
@@ -507,7 +504,7 @@ const TUNE = [
   { sec: "Mouse", key: "MouseModeOnMovePx", label: "Mouse wakes the cursor", sub: "mouse travel (after letting go of WASD) that switches to mouse mode", min: 0, max: 150, step: 5, unit: "px" },
   { sec: "Mouse", key: "BumpNudgePct", label: "Bump correction", sub: "light right-stick nudge that undoes a small mouse bump; lower it if it ever makes you dodge, 0 = off", min: 0, max: 60, step: 5, unit: "%" },
   { sec: "Keys", key: "MenuTapMs", label: "Tap vs hold", sub: "shorter = tap (full menu), longer = hold (quick overlay)", min: 100, max: 600, step: 25, unit: "ms" },
-  { sec: "Options", key: "LegendSeconds", label: "Key list at start", sub: "seconds the on-screen list shows (0 = only on its key)", min: 0, max: 60, step: 5, unit: "s" },
+  { sec: "Options", key: "LegendSeconds", label: "Key list at start", sub: "seconds the on-screen list shows when the game starts (0 = only on its key); it can make the game stutter under CrossOver while it's up", min: 0, max: 60, step: 5, unit: "s" },
 ];
 const flag = { read: v => v === "1", write: b => b ? "1" : "0" };
 const TOGGLES = [
@@ -599,8 +596,10 @@ function iniText(st) {
   L.push("[Labels]", ...PAD_ORDER.map(b => b + "=" + PAD_LABEL[b]), "");
   // Keyboard routes: a key that is the game's own key goes straight to the game;
   // any other key is remapped onto it.
-  const menuKeys = [], passKeys = [], remaps = [];
-  const allKeys = new Set(ACTIONS.flatMap(a => st.keys[a.id]));
+  const menuKeys = [], passKeys = [], remaps = [], instant = [];
+  // Every key you press for something (the game's own key for an action you moved
+  // elsewhere is disabled unless it's one of these).
+  const inputKeys = new Set([...ACTIONS.flatMap(a => st.keys[a.id]), ...MOD_ROWS.flatMap(r => r.get(st)), ...st.extraRemaps.map(([f]) => f)]);
   for (const a of ACTIONS) {
     if (route(a, st) !== "kb") continue;
     const g = a.fixedGame || st.game[a.id];
@@ -609,22 +608,27 @@ function iniText(st) {
       if (k === g) (a.kb === "pass" ? passKeys : menuKeys).push(k);
       else remaps.push([k, g]);
     }
-    // An instant action's game key is a pass key, so a remap onto it doesn't open mouse mode.
-    if (a.kb === "pass" && !st.keys[a.id].includes(g) && st.keys[a.id].length && !allKeys.has(g)) passKeys.push(g);
+    // A key remapped onto an instant action's game key (a teleport) doesn't open mouse mode.
+    if (a.kb === "pass" && st.keys[a.id].some(k => k !== g)) instant.push(g);
   }
-  // The bow in keyboard mode: a side button the game doesn't know is sent as the one it does.
+  // The bow in keyboard mode: a side button the game doesn't use for it is sent as the
+  // mouse button it does use (e.g. side 4 as right click).
   const bowGame = st.game.ranged;
-  if (st.opt.BowAimsWithMouse && (bowGame === "Mouse4" || bowGame === "Mouse5"))
+  if (st.opt.BowAimsWithMouse && isMouse(bowGame) && bowGame !== "Mouse3")
     for (const k of st.keys.ranged) if ((k === "Mouse4" || k === "Mouse5") && k !== bowGame) remaps.push([k, bowGame]);
   const mouseAfter = ACTIONS.filter(a => a.opens && route(a, st) === "pad" && st.keys[a.id].length).map(a => a.pad);
+  // The game's own key for an action you put on other keys stays off, in every mode.
+  // Left click stays: it clicks in menus.
+  const disabled = uniq(ACTIONS.map(a => a.fixedGame || st.game[a.id]).filter(g => g && g !== "?" && g !== "Mouse1" && !inputKeys.has(g)));
   L.push("[Mouse]", "Crosshair=" + TG("Crosshair").write(st.opt.Crosshair), "KeepCursorInWindow=" + TG("KeepCursorInWindow").write(st.opt.KeepCursorInWindow),
     "MouseModeOnMovePx=" + st.num.MouseModeOnMovePx, "MouseMoveSwitches=" + TG("MouseMoveSwitches").write(st.opt.MouseMoveSwitches), "FreezeCursorForGame=0",
     "BumpNudgePct=" + st.num.BumpNudgePct, "BowAimsWithMouse=" + TG("BowAimsWithMouse").write(st.opt.BowAimsWithMouse), "AimStick=" + TG("AimStick").write(st.opt.AimStick),
     "AimButtons=" + st.aimButtons, "AimStrength=" + st.mouseRaw.AimStrength, "AimLeadMs=" + st.mouseRaw.AimLeadMs, "AimHoldMs=" + st.mouseRaw.AimHoldMs, "");
   L.push("[Keys]", "MenuKeys=" + j(uniq([...menuKeys, ...st.extraMenuKeys])), "BackKeys=Escape", "MouseAfter=" + j(mouseAfter),
     "MenuTapMs=" + st.num.MenuTapMs, "TypeKey=" + j(st.mod.TypeKey), "PassKeys=" + uniq([...passKeys, ...st.extraPass]).join(", "),
+    "DisabledKeys=" + disabled.join(", "), "InstantKeys=" + uniq(instant).join(", "),
     "Cursor=" + j(st.mod.Cursor), "CursorMode=" + TG("CursorMode").write(st.opt.CursorMode), "BowAim=" + st.bowAim,
-    "BowAimSends=" + (bowGame && bowGame !== "?" ? bowGame : "Mouse4"), "Toggle=" + j(st.mod.Toggle), "Legend=" + j(st.mod.Legend), "");
+    "BowAimSends=" + (bowGame && bowGame !== "?" ? bowGame : "Mouse2"), "Toggle=" + j(st.mod.Toggle), "Legend=" + j(st.mod.Legend), "");
   const remapLines = [...remaps, ...st.extraRemaps].map(([f, t]) => f + "=" + t);
   // An empty section would bring back the mod's built-in remaps; "None=None" keeps it empty.
   L.push("[Remap]", ...(remapLines.length ? remapLines : ["None=None"]), "");
@@ -695,8 +699,7 @@ const el = (tag, attrs = {}, ...kids) => {
 function routeCell(a) {
   if (both(a)) {
     const name = "mode-" + a.id, seg = el("div", { class: "seg", role: "radiogroup", "aria-label": a.label + ": keyboard or controller" });
-    const short = { RS: "R-stick", Back: "View", Start: "Menu" }[a.pad] || PAD_NAMES[a.pad];
-    for (const [m, text] of [["kb", "Keyboard"], ["pad", short]]) {
+    for (const [m, text] of [["kb", "Keyboard"], ["pad", "Controller"]]) {
       seg.append(el("label", { title: m === "kb" ? "Your keys send the game's keyboard shortcut" : "Your keys press the controller's " + PAD_NAMES[a.pad] },
         el("input", { type: "radio", name, value: m, checked: state.mode[a.id] === m, onchange: () => { state.mode[a.id] = m; changed(); } }), text));
     }
@@ -728,6 +731,8 @@ function keysCell(keys, set, rowName, uses, opts = {}) {
 function gameCell(a) {
   const cell = el("div", { class: "ingame" }, "in game");
   if (a.fixedGame) { cell.append(el("span", { class: "fixed", text: pretty(a.fixedGame) })); return cell; }
+  // On the controller, the game gets its controller button.
+  if (both(a) && state.mode[a.id] === "pad") { cell.append(el("span", { class: "fixed", text: PAD_NAMES[a.pad], title: "The controller button the mod presses" })); return cell; }
   if (!a.game) return el("div", { class: "ingame" });
   const g = state.game[a.id], keys = state.keys[a.id];
   const b = el("button", { type: "button", class: g === "?" ? "unknown" : keys.includes(g) ? "match" : "",

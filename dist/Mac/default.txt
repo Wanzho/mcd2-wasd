@@ -6,20 +6,22 @@
 ; Mouse1-Mouse5), None, or a virtual-key code (0x20). Several keys per line are allowed,
 ; comma-separated (up to three). Mouse1 = left, Mouse2 = right, Mouse3 = middle, Mouse4/5 = side.
 ;
-; Keyboard keys follow the game's own keyboard layout, and each presses the
-; controller button the game uses for that action.
+; The keys are the game's own keyboard defaults (Settings > Controls > Keyboard),
+; each pressing the controller button the game uses for that action. Only the
+; menu wheel moves, from S (a movement key here) to Tab.
 
 [Move]
 Up=W
 Left=A
 Down=S
 Right=D
-; Directional dodge key: one quick right-stick flick per press, in the direction
-; you're moving. (Shift is the game's forward dodge instead: LB under [Buttons].)
+; Quick dodge: one right-stick flick per press, the way you're moving. (The
+; forward dodge is LB under [Buttons].)
 Dodge=None
-; Mouse dodge: click = dodge the way you're moving. Press, drag at least
-; DodgeDragPx pixels in any direction (any speed), release = roll that way.
-DodgeMouse=Mouse2
+; Directional dodge (the game's R and side button 4): press = dodge the way
+; you're moving. Hold, drag the mouse at least DodgeDragPx pixels in any direction
+; (any speed), release = roll that way.
+DodgeMouse=R, Mouse4
 DodgeDragPx=40
 ; How long each dodge flick is held on the stick.
 DodgeFlickMs=80
@@ -33,14 +35,14 @@ TurnMs=110
 
 [Buttons]
 ; Controller buttons as the game uses them (Settings > Controls on a controller).
-A=Space, F
+A=Space
 B=2
 X=Mouse1
-Y=Q
-LB=Shift
+Y=1
+LB=Mouse5
 RB=3
-LT=R
-RT=Mouse5
+LT=E
+RT=Mouse2
 Back=None
 Start=None
 LS=Mouse3
@@ -102,12 +104,12 @@ AimHoldMs=120
 
 [Keys]
 ; The game's own menu shortcuts (its defaults: I inventory, M map, J quests,
-; G emotes, U collectibles, K event log). They go straight to the game and switch
+; F social, G emotes, U collectibles, K event log). They go straight to the game and switch
 ; to mouse mode (normal cursor, clicking stays in mouse mode). Any fight key
 ; (movement, jump, abilities) switches back to controller mode. The menus can
 ; also be put on the controller's buttons instead ([Buttons] DUp...; the key
 ; layout editor switches each menu between keyboard and controller).
-MenuKeys=I, M, J, G, U, K, Escape
+MenuKeys=I, M, J, F, G, U, K, Escape
 ; In mouse mode these close the menu (the game gets them) and switch straight
 ; back to controller mode.
 BackKeys=Escape
@@ -115,7 +117,7 @@ BackKeys=Escape
 ; Pressing the same key again (e.g. E) closes the menu and stays in controller mode.
 MouseAfter=None
 ; Only a tap (shorter than this) leaves you in mouse mode. Holding longer opens a
-; quick overlay instead (hold E/I/Tab = mini inventory, hold G = emote wheel):
+; quick overlay instead (hold I = mini inventory, hold G = emote wheel):
 ; you're back in controller mode as soon as you let go.
 MenuTapMs=300
 ; Typing mode: starts typing (this key itself isn't typed); every key then
@@ -125,6 +127,12 @@ TypeKey=T
 ; the game's teleport statue (Z), teleport to player 1-4 (F1-F4) and teleport to
 ; player (X).
 PassKeys=Z, F1, F2, F3, F4, X
+; The game's own keys for actions you moved to other keys: they never reach the
+; game, in any mode (typing aside). The key layout editor fills this in.
+DisabledKeys=
+; Game keys of instant actions (teleports): a key remapped onto one doesn't switch
+; to mouse mode. The key layout editor fills this in.
+InstantKeys=
 ; Hold for the normal mouse cursor (like Genshin's Alt). On a Mac this is the
 ; Option key: install.command tells CrossOver to send Option as Alt.
 Cursor=Alt, Ctrl
@@ -135,7 +143,7 @@ CursorMode=Hold
 ; game's own bow button (BowAimSends: its keyboard-mode Ranged Attack key) down
 ; until you let go. None = off.
 BowAim=None
-BowAimSends=Mouse4
+BowAimSends=Mouse2
 ; Switches the mod off/on until pressed again.
 Toggle=Backtick
 ; Shows or hides the key list. (F1-F4 are the game's teleport keys.)
@@ -143,18 +151,8 @@ Legend=F9
 
 [Remap]
 ; Pressing the left key sends the game the right key instead (the game's own
-; keyboard shortcut). E and Up open the inventory (the game's I), V and Right
-; the quests (J), Down the social menu (F), Left teleports to a player (X),
-; B = backpack: collectibles (U). Tab is the game menu (Esc): opens it, and
-; inside a menu goes back and returns to controller mode.
-E=I
-Up=I
-V=J
-Right=J
-Down=F
-Left=X
-B=U
-Tab=Escape
+; keyboard shortcut). Tab opens the menu wheel (the game's S).
+Tab=S
 
 ; Used by the key layout editor only (the mod ignores these sections): keyboard
 ; or controller for each menu, and the game's own keyboard keys.
@@ -175,8 +173,10 @@ HideMouse=1
 BlockOtherKeys=1
 DetectTextBoxes=1
 TypedCharacters=0
+; On-screen key list: F9 shows/hides it. LegendSeconds = how long it shows when
+; the game starts (0 = only on F9); CrossOver can stutter while it's up.
 Legend=1
-LegendSeconds=15
+LegendSeconds=0
 RequireFocus=1
 AlwaysConnected=1
 Log=1

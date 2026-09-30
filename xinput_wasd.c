@@ -106,6 +106,8 @@ static BYTE menuVk[256]; static char menuText[128];
 // mod doesn't use is blocked in controller mode (BlockOtherKeys), so the game
 // never sees keyboard input there.
 static BYTE passVk[256];
+static BYTE disabledVk[256]; // the game's own key for an action you moved to another key: never reaches the game
+static BYTE instantVk[256];  // game keys of instant actions (teleports): a key remapped onto one doesn't open mouse mode
 // Back keys (Esc): in mouse mode they close the menu (the game gets them) and
 // switch straight back to controller mode.
 static BYTE backVk[256];
@@ -246,7 +248,7 @@ static void loadSettings(void) {
     cfg.detectText = GetPrivateProfileIntA("Options", "DetectTextBoxes", 1, ini);
     cfg.hideMouse = GetPrivateProfileIntA("Options", "HideMouse", 1, ini);
     cfg.legend = GetPrivateProfileIntA("Options", "Legend", 1, ini);
-    cfg.legendSeconds = GetPrivateProfileIntA("Options", "LegendSeconds", 20, ini);
+    cfg.legendSeconds = GetPrivateProfileIntA("Options", "LegendSeconds", 0, ini);
     readBinding("Move", "Up", "W", &moveUp);
     readBinding("Move", "Down", "S", &moveDown);
     readBinding("Move", "Left", "A", &moveLeft);
@@ -273,6 +275,8 @@ static void loadSettings(void) {
     }
     readKeyList("MenuKeys", "M, J, U, K, G, Escape", menuVk, menuText, sizeof(menuText));
     readKeyList("PassKeys", "", passVk, 0, 0);
+    readKeyList("DisabledKeys", "", disabledVk, 0, 0);
+    readKeyList("InstantKeys", "", instantVk, 0, 0);
     readKeyList("BackKeys", "Escape", backVk, 0, 0);
     {
         char sec[512]; DWORD n = GetPrivateProfileSectionA("Remap", sec, sizeof(sec), ini);
@@ -564,6 +568,13 @@ static void menuKeyPress(int isMenu, int isBack, const char *toController, const
 static int mouseMode(void) { return mouseMenu || cursorHeld; }
 
 
+// The game window's client area in screen coordinates, kept current by the overlay thread.
+static volatile LONG gameLeft, gameTop, gameWidth, gameHeight;
+// Keys the mod pressed for a remap (Tab -> S...) and hasn't released yet.
+static BYTE remapSent[256];
+static void releaseRemaps(void) {
+    for (int vk = 1; vk < 256; vk++) if (remapSent[vk]) { remapSent[vk] = 0; keybd_event((BYTE)vk, (BYTE)MapVirtualKeyA(vk, 0), 2 /*KEYEVENTF_KEYUP*/, 0); }
+}
 static int movementHeld(void) { return held(&moveUp) || held(&moveDown) || held(&moveLeft) || held(&moveRight); }
 
 static int commandHeld(void);
@@ -571,12 +582,14 @@ static void updateModes(void) {
     static int toggleWas, legendWas; static U64 checkedAt;
     int t = held(&toggleKey), l = held(&legendKey);
     if (focused()) {
-        if (t && !toggleWas && !commandHeld()) { paused = !paused; logline(paused ? "Controller keys off (toggle key)" : "Controller keys on (toggle key)"); legendUntil = GetTickCount64() + 3000; }
+        if (t && !toggleWas && !commandHeld()) { releaseRemaps(); paused = !paused; logline(paused ? "Controller keys off (toggle key)" : "Controller keys on (toggle key)"); }
         if (l && !legendWas) { legendVisible = !legendVisible; legendUntil = 0; }
         {   // Holding the cursor key (Option/Alt) pops the cursor into the middle of the
             // window; letting go nudges the right stick so the game is back on the pad.
             // In toggle mode a press shows it and the next press locks it again.
-            int c = held(&cursorKey) || cursorKeyMsg;
+            // From the key's own press/release only: CrossOver's key state can report
+            // Alt as held forever when it's let go in another app.
+            int c = cursorKeyMsg;
             if (cfg.cursorToggle) {
                 static int keyWas, released;
                 if (c && !keyWas && !commandHeld()) released = !released;
@@ -646,33 +659,59 @@ static void updateModes(void) {
             if (!menuNow && menuWas && mouseMenu && tick - menuSince >= (U64)cfg.menuTapMs) { mouseMenu = 0; logline("Controller mode (menu key held, overlay closed)"); }
             menuWas = menuNow;
         }
-    } else cursorHeld = 0;
+    } else { cursorHeld = cursorKeyMsg = 0; releaseRemaps(); } // a release in another app never arrives: start over
     toggleWas = t; legendWas = l;
     // Moving the mouse while not moving the character switches to mouse mode (the
     // cursor stays where it is). While a movement key or mouse button is held the
     // reference point just follows, so nudges during a fight don't count.
-    // With MouseMoveSwitches=0 it never switches; the game still flips its prompts
-    // to keyboard when it sees the cursor move, so once the mouse stops, one short
-    // right-stick nudge flips it back.
+    // With MouseMoveSwitches=0 it never switches. Either way a small bump flips the
+    // game's prompts to keyboard; once the mouse has stopped, one short right-stick
+    // nudge flips it back. Never while the mouse is moving: going back to the
+    // controller, the game puts its cursor in the middle, so nudging a moving mouse
+    // traps it there. That jump back to the middle isn't the player's movement.
     {
         static int haveRef; static POINT ref;
         int busy = movementHeld() || ((GetAsyncKeyState(0x01) | GetAsyncKeyState(0x02) | GetAsyncKeyState(0x04) | GetAsyncKeyState(0x05) | GetAsyncKeyState(0x06)) & 0x8000);
         int watch = cfg.mouseMoveSwitches ? cfg.mouseWakePx : cfg.bumpNudgePct;
         POINT p;
-        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !GetCursorPos(&p)) haveRef = 0;
+        // Diagnostics: each mouse movement is summed up once it stops (how far it got, what blocked it).
+        static int dbgLogged, dbgMoving; static LONG dbgMax; static POINT dbgLast; static const char *dbgWhy;
+        int gotPos = GetCursorPos(&p);
+        if (gotPos && dbgLogged < 60) {
+            int movedNow = p.x != dbgLast.x || p.y != dbgLast.y;
+            const char *why = !watch ? "switch off" : mouseMode() ? "mouse mode" : typing ? "text box" : typingManual ? "typing" : paused ? "mod off" : !focused() ? "not focused" : busy ? "key/button held" : 0;
+            if (movedNow) {
+                if (!dbgMoving) { dbgMoving = 1; dbgMax = 0; dbgWhy = why; }
+                if (why) dbgWhy = why;
+                if (haveRef) { LONG dx = p.x - ref.x, dy = p.y - ref.y, d2 = dx * dx + dy * dy; if (d2 > dbgMax) dbgMax = d2; }
+                LONG cx = gameLeft + gameWidth / 2, cy = gameTop + gameHeight / 2;
+                if (gameWidth && (dbgLast.x - cx) * (dbgLast.x - cx) + (dbgLast.y - cy) * (dbgLast.y - cy) > 2500 && (p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy) < 9) { dbgLogged++; logline("Mouse: cursor jumped to the middle of the window"); }
+            } else if (dbgMoving) {
+                dbgMoving = 0; dbgLogged++;
+                char l[128] = "Mouse moved: up to "; LONG r = 0; while ((r + 1) * (r + 1) <= dbgMax) r++;
+                appendNum(l, sizeof(l), (U64)r); append(l, sizeof(l), " px from the rest point (needs "); appendNum(l, sizeof(l), (U64)cfg.mouseWakePx);
+                append(l, sizeof(l), ")"); if (dbgWhy) { append(l, sizeof(l), "; not counted: "); append(l, sizeof(l), dbgWhy); }
+                logline(l);
+            }
+            dbgLast = p;
+        }
+        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !gotPos) haveRef = 0;
         else if (busy || !haveRef) { ref = p; haveRef = 1; }
         else {
-            static POINT last; static int haveLast; static U64 movedAt;
-            LONG dx = p.x - ref.x, dy = p.y - ref.y;
-            int moved = haveLast && (p.x != last.x || p.y != last.y);
+            static POINT last; static int haveLast; static U64 movedAt, graceUntil;
             U64 t = GetTickCount64();
-            if (!cfg.mouseMoveSwitches) {
-                if (moved) movedAt = t;
-                else if (movedAt && t - movedAt >= 80) { nudgeUntil = t + 40; movedAt = 0; }
+            if (t < graceUntil) { ref = p; last = p; haveLast = 1; movedAt = 0; } // the game re-centring its cursor
+            else {
+                LONG dx = p.x - ref.x, dy = p.y - ref.y;
+                int moved = haveLast && (p.x != last.x || p.y != last.y);
+                if (cfg.mouseMoveSwitches && dx * dx + dy * dy > (LONG)cfg.mouseWakePx * cfg.mouseWakePx) {
+                    mouseMenu = 1; mouseFromMove = 1; haveRef = 0; haveLast = 0; movedAt = 0; logline("Mouse mode (mouse moved)");
+                } else if (cfg.bumpNudgePct) {
+                    if (moved) movedAt = t;
+                    else if (movedAt && t - movedAt >= 150) { nudgeUntil = t + 40; movedAt = 0; graceUntil = t + 400; logline("Mouse: small bump, nudged the game back to the controller"); }
+                }
+                last = p; haveLast = 1;
             }
-            else if (dx * dx + dy * dy > (LONG)cfg.mouseWakePx * cfg.mouseWakePx) { mouseMenu = 1; mouseFromMove = 1; haveRef = 0; haveLast = 0; logline("Mouse mode (mouse moved)"); }
-            else if (cfg.bumpNudgePct && moved) nudgeUntil = t + 40;
-            last = p; haveLast = 1;
         }
     }
     U64 tick = GetTickCount64();
@@ -689,7 +728,6 @@ static int active(void) { return !typing && !typingManual && !paused && !mouseMo
 
 // The game window's client area in screen coordinates, kept current by the
 // overlay thread (legend.inc). Used as the aiming centre.
-static volatile LONG gameLeft, gameTop, gameWidth, gameHeight;
 IMP BOOL SetCursorPos(int, int);
 // Controller mode: the game hides its cursor, so keep that invisible cursor inside
 // the game window (a few pixels in from the edges) -- a click can't land in another
@@ -734,7 +772,6 @@ static int keyboardPad(XINPUT_GAMEPAD *g) {
     float dt = lastPollTime && perfFreq ? (float)(now - lastPollTime) * 1000.0f / (float)perfFreq : 16.7f;
     lastPollTime = now;
     if (!active() || commandHeld()) { moveSmooth.mag = 0; memset(aimPress, 0, sizeof(aimPress)); memset(&mouseDodge, 0, sizeof(mouseDodge)); return 0; }
-    keepCursorInside();
     U64 tick = GetTickCount64();
     int any = 0, aimingNow = 0;
     for (int i = 0; i < NBTN; i++) {
@@ -892,11 +929,14 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
         unsigned rk = m->wParam & 0xFF; BYTE to = remapTo[rk];
         if (to) {
             int isDown = msg == 0x100 || msg == 0x104, repeat = (m->lParam >> 30) & 1;
-            if (wParam == 1 /*PM_REMOVE*/ && (!isDown || !repeat) && focused()) {
+            // The key goes down only while the game is in front, and always comes back up
+            // once it went down (a key left down stays "held" for the whole bottle).
+            if (wParam == 1 /*PM_REMOVE*/ && (!isDown || !repeat) && (isDown ? focused() : remapSent[to])) {
                 sentUntil[to] = GetTickCount64() + 500;
+                remapSent[to] = (BYTE)isDown;
                 keybd_event(to, (BYTE)MapVirtualKeyA(to, 0), isDown ? 0 : 2 /*KEYEVENTF_KEYUP*/, 0);
                 // A remap onto one of the PassKeys is an instant action (teleport...), not a menu.
-                if (isDown && !passVk[to]) menuKeyPress(1, backVk[to], "Controller mode (remapped back key)", "Mouse mode (remapped menu key)");
+                if (isDown && !passVk[to] && !instantVk[to]) menuKeyPress(1, backVk[to], "Controller mode (remapped back key)", "Mouse mode (remapped menu key)");
             }
             m->message = 0;
             return 0;
@@ -917,6 +957,7 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
         }
     } else if (msg >= 0x200 && msg <= 0x20E) { // mouse messages: clicks never change modes (except the bow)
         int mvk = mouseVk(msg, m->wParam);
+        if (mvk && disabledVk[mvk]) { m->message = 0; return 0; } // the game's button for an action you moved
         if (msg >= 0x20B && msg <= 0x20C) {
             static int logged;
             if (logged < 30 && wParam == 1) {
@@ -931,12 +972,15 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
             else if (msg == 0x20C || msg == 0x202 || msg == 0x205 || msg == 0x208) { bowDown[mvk] = 0; endBowAim(); }
         }
         if (mouseMode()) {
-            // Side-button remaps (e.g. Mouse5=Mouse4): the game sees the other side button.
+            // Side-button remaps (Mouse5=Mouse4, Mouse4=Mouse2...): the game sees the other button.
             BYTE to = mvk >= 0x05 ? remapTo[mvk] : 0;
-            if ((to == 0x05 || to == 0x06) && msg >= 0x20B && msg <= 0x20D) {
+            if (to >= 0x01 && to <= 0x06 && to != 0x03 && msg >= 0x20B && msg <= 0x20D) {
+                static const UINT downMsg[7] = {0, 0x201, 0x204, 0, 0x207, 0x20B, 0x20B};
+                static const WPARAM flag[7] = {0, 0x01, 0x02, 0, 0x10, 0x20, 0x40};
                 WPARAM flags = m->wParam & 0xFFFF;
-                if (flags & (mvk == 0x05 ? 0x20 : 0x40)) flags = (flags & ~0x60) | (to == 0x05 ? 0x20 : 0x40);
-                m->wParam = ((WPARAM)(to == 0x05 ? 1 : 2) << 16) | flags;
+                if (flags & flag[mvk]) flags = (flags & ~flag[mvk]) | flag[to];
+                m->message = downMsg[to] + (msg - 0x20B); // down / up / double click
+                m->wParam = to >= 0x05 ? ((WPARAM)(to == 0x05 ? 1 : 2) << 16) | flags : flags;
             }
             return 0;
         }
@@ -946,6 +990,9 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
 
     if (passVk[vk]) return 0;
     if (sentUntil[vk] && GetTickCount64() < sentUntil[vk]) return 0; // sent by the mod (remap)
+    // The game's own key for an action you put on another key stays off in every mode
+    // (typing mode and text boxes aside, handled above).
+    if (disabledVk[vk]) { m->message = 0; return 0; }
     // The game's menu shortcuts always reach the game. The normal key message
     // (not its raw copy, which arrives first) decides the mode, once per press:
     // in controller mode a menu key opens mouse mode; in mouse mode a back key

@@ -134,6 +134,36 @@ static LRESULT legendProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
 #define CROSS 30
 static HANDLE crossWnd; static int crossShown; static LONG crossX = -1, crossY = -1;
 
+// Typing-mode banner: a small bar at the top of the game window while typing mode
+// is on. Placed once when typing starts and hidden when it ends (a window moving
+// over the game every tick makes CrossOver stutter).
+static HANDLE typeWnd, typeFont, typeBrush, typeEdge;
+static int typeW, typeH, typeShown;
+static const char TYPE_TEXT[] = "TYPING  -  Esc to finish";
+static LRESULT typeProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x0F) { // WM_PAINT
+        PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
+        RECT r = {0, 0, typeW, typeH}; FillRect(dc, &r, typeEdge);
+        RECT in = {3, 3, typeW - 3, typeH - 3}; FillRect(dc, &in, typeBrush);
+        SelectObject(dc, typeFont); SetBkMode(dc, 1 /*TRANSPARENT*/); SetTextColor(dc, RGB(255, 214, 102));
+        SIZE sz; GetTextExtentPoint32A(dc, TYPE_TEXT, sizeof(TYPE_TEXT) - 1, &sz);
+        TextOutA(dc, (typeW - sz.cx) / 2, (typeH - sz.cy) / 2, TYPE_TEXT, sizeof(TYPE_TEXT) - 1);
+        EndPaint(w, &ps);
+        return 0;
+    }
+    if (msg == 0x84) return -1; // WM_NCHITTEST: clicks go to the game
+    return DefWindowProcA(w, msg, wp, lp);
+}
+static void showTyping(int want) {
+    if (!typeWnd || want == typeShown) return;
+    if (!want) { ShowWindow(typeWnd, 0 /*SW_HIDE*/); typeShown = 0; return; }
+    if (!gameWnd || gameWidth < 400) return;
+    POINT p = {0, 0}; ClientToScreen(gameWnd, &p);
+    SetWindowPos(typeWnd, (HANDLE)-1 /*HWND_TOPMOST*/, p.x + (gameWidth - typeW) / 2, p.y + 24, typeW, typeH, 0x10 | 0x40 /*SWP_NOACTIVATE|SWP_SHOWWINDOW*/);
+    InvalidateRect(typeWnd, 0, 1);
+    typeShown = 1;
+}
+
 static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == 0x0F) {
         PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
@@ -155,6 +185,7 @@ static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     if (msg == 0x113) { // WM_TIMER: follow the mouse, keep it inside the game while aiming
+        showTyping(typingManual && !paused);
         int inControl = gameWnd && active();
         int want = cfg.crosshair && inControl;
         if (want) {
@@ -173,6 +204,7 @@ static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         DWORD fgPid = 0; HANDLE fg = GetForegroundWindow(); if (fg) GetWindowThreadProcessId(fg, &fgPid);
         int sane = gameWnd && gameWidth >= 400 && gameHeight >= 300 && fgPid == GetCurrentProcessId();
         int buttonsHeld = (GetAsyncKeyState(0x01) | GetAsyncKeyState(0x02) | GetAsyncKeyState(0x04) | GetAsyncKeyState(0x05) | GetAsyncKeyState(0x06)) & 0x8000;
+        if (inControl && sane) keepCursorInside();
         if (inControl && cfg.clipCursor && sane && !buttonsHeld && movementHeld()) {
             POINT p; GetCursorPos(&p);
             LONG cx = gameLeft + gameWidth / 2, cy = gameTop + gameHeight / 2;
@@ -212,6 +244,20 @@ static DWORD legendThread(void *unused) {
     SetLayeredWindowAttributes(legendWnd, 0, 215, 2 /*LWA_ALPHA*/);
     legendUntil = GetTickCount64() + (U64)cfg.legendSeconds * 1000;
     SetTimer(legendWnd, 1, 250, 0);
+    {   // typing banner
+        WNDCLASSA tc; memset(&tc, 0, sizeof(tc));
+        tc.proc = typeProc; tc.instance = self; tc.className = "WasdModTyping";
+        RegisterClassA(&tc);
+        typeFont = CreateFontA(-22, 0, 0, 0, 700, 0, 0, 0, 0, 0, 0, 5 /*CLEARTYPE*/, 0, "Arial");
+        typeBrush = CreateSolidBrush(RGB(20, 22, 28)); typeEdge = CreateSolidBrush(RGB(255, 214, 102));
+        HANDLE tdc = GetDC(0); SelectObject(tdc, typeFont); SIZE ts;
+        if (!GetTextExtentPoint32A(tdc, TYPE_TEXT, sizeof(TYPE_TEXT) - 1, &ts)) { ts.cx = 260; ts.cy = 26; }
+        ReleaseDC(0, tdc);
+        typeW = ts.cx + 40; typeH = ts.cy + 18;
+        typeWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TRANSPARENT|TOPMOST|TOOLWINDOW|NOACTIVATE*/,
+                                  "WasdModTyping", "Typing mode", 0x80000000 /*WS_POPUP*/, 0, 0, typeW, typeH, 0, 0, self, 0);
+        if (typeWnd) SetLayeredWindowAttributes(typeWnd, 0, 230, 2 /*LWA_ALPHA*/);
+    }
     WNDCLASSA cc; memset(&cc, 0, sizeof(cc));
     cc.proc = crossProc; cc.instance = self; cc.className = "WasdModCrosshair";
     RegisterClassA(&cc);

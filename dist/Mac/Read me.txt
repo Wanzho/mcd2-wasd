@@ -24,12 +24,12 @@ T starts typing (Esc ends it), hold Option for the cursor.
 
 Change keys
 -----------
-default.txt holds the default keys. To use the author's layout instead, put
+default.txt holds the default keys. To use the recommended setup instead, put
 author.txt in the game's Win64 folder (below). It only changes which keys you
 press; the game's own settings stay as they are.
 
 Or open "Key Layout Editor.html" (it opens in your browser). Pick Default,
-Author's keybinds, or make your own, then Save: it downloads default.txt,
+Recommended setup, or make your own, then Save: it downloads default.txt,
 author.txt, or wasdmod-MMDDYY.txt for your own. Put it in the game's Win64 folder:
 ~/Library/Application Support/CrossOver/Bottles/<bottle>/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64
 (Finder: Go > Go to Folder, paste), and restart the game. The newest layout

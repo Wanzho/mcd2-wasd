@@ -1,6 +1,6 @@
-; Author's keybinds for the Minecraft Dungeons II controller mod.
-; Bow on both side buttons; inventory (E, I), quests (V, J), social (/) and
-; teleport (X) on the controller so you can keep moving; Tab opens the map.
+; Recommended setup for the Minecraft Dungeons II controller mod.
+; Bow on side button 5; inventory (E), quests (V), social (/) and teleport (X) on
+; the controller so you can keep moving; Tab opens the map; Shift forward dodge.
 ; Only the keys you press change; the game's own keys stay at their defaults.
 ; Put this file in the game's Win64 folder (Windows setup: Load layout file) and
 ; restart the game. The newest of default.txt, author.txt and wasdmod*.txt is used.
@@ -28,15 +28,15 @@ Y=Q
 LB=Shift
 RB=3
 LT=R
-RT=Mouse4, Mouse5
+RT=Mouse5
 Back=None
 Start=None
 LS=Mouse3
 RS=None
-DUp=E, I
+DUp=E
 DDown=/
 DLeft=X
-DRight=V, J
+DRight=V
 
 [Labels]
 A=Jump / interact
@@ -77,16 +77,19 @@ MouseAfter=DUp, DDown
 MenuTapMs=300
 TypeKey=T
 PassKeys=Z, F1, F2, F3, F4
+DisabledKeys=1, I, J, U
+InstantKeys=
 Cursor=Alt
 CursorMode=Hold
 BowAim=None
-BowAimSends=Mouse4
+BowAimSends=Mouse2
 Toggle=Backtick
 Legend=F9
 
 [Remap]
 Tab=M
 B=U
+Mouse5=Mouse2
 
 ; Keybinder only (the mod ignores these): keyboard or controller for each menu,
 ; and the game's own keyboard keys (Settings > Controls > Keyboard).
@@ -100,15 +103,15 @@ tpplayer=Controller
 emotes=Keyboard
 
 [GameKeys]
-dodge=?
-fdodge=?
+dodge=R
+fdodge=Mouse5
 jump=Space
 melee=Mouse1
-ranged=?
+ranged=Mouse2
 art1=1
 art2=2
 art3=3
-potion=?
+potion=E
 trail=Mouse3
 statue=Z
 tp1=F1
