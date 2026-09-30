@@ -182,6 +182,9 @@ static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         // A menu opened from a key or button: cursor to the middle. (Switching to
         // mouse mode by moving the mouse leaves the cursor where it is.)
         if (centerCursor) { centerCursor = 0; if (sane) SetCursorPos(gameLeft + gameWidth / 2, gameTop + gameHeight / 2); }
+        // Cursor key pressed: a one-pixel real mouse move there and back, so the game
+        // notices the mouse and shows its cursor.
+        if (mouseMoveNudge) { mouseMoveNudge = 0; mouse_event(1 /*MOUSEEVENTF_MOVE*/, 1, 0, 0, 0); mouse_event(1, (DWORD)-1, 0, 0, 0); }
         return 0;
     }
     if (msg == 0x84) return -1;

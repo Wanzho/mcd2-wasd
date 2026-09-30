@@ -518,9 +518,11 @@ static int patchGameCursor(void) {
     return 0;
 }
 static volatile int mouseMenu, cursorHeld;
+static volatile int cursorKeyMsg; // the cursor key is down, from its key messages
 static volatile U64 nudgeUntil; // a small mouse bump in controller mode: nudge the right stick briefly
 static volatile U64 hookPressAt[256]; // when the input filter last handled a menu/back key press
-static volatile int centerCursor; // a menu opened from a key: overlay puts the cursor in the middle
+static volatile int centerCursor;
+static volatile int mouseMoveNudge; // the overlay thread wiggles the mouse by a pixel (cursor key pressed) // a menu opened from a key: overlay puts the cursor in the middle
 static volatile BYTE bowDown[7]; // bow mouse buttons held, from press/release messages and state changes
 static volatile int bowAiming; // a bow mouse button is held in keyboard mode: WASD doesn't switch back
 static volatile int mouseFromMove; // mouse mode came from moving the mouse, not from opening a menu
@@ -574,14 +576,18 @@ static void updateModes(void) {
         {   // Holding the cursor key (Option/Alt) pops the cursor into the middle of the
             // window; letting go nudges the right stick so the game is back on the pad.
             // In toggle mode a press shows it and the next press locks it again.
-            int c = held(&cursorKey);
+            int c = held(&cursorKey) || cursorKeyMsg;
             if (cfg.cursorToggle) {
                 static int keyWas, released;
                 if (c && !keyWas && !commandHeld()) released = !released;
                 keyWas = c;
                 c = released;
             }
-            if (c && !cursorHeld) { centerCursor = 1; logline("Cursor key held: cursor shown"); }
+            if (c && !cursorHeld) {
+                cursorHeld = 1; centerCursor = 1; logline("Cursor key held: cursor shown");
+                // A tiny real mouse move, so the game switches to mouse & keyboard and shows its cursor.
+                mouseMoveNudge = 1;
+            }
             if (!c && cursorHeld) { if (!mouseMenu) nudgeUntil = GetTickCount64() + 40; logline("Cursor key released"); }
             cursorHeld = c;
         }
@@ -678,11 +684,24 @@ static void updateModes(void) {
 
 static int commandHeld(void) { return (GetAsyncKeyState(0x5B) & 0x8000) || (GetAsyncKeyState(0x5C) & 0x8000); }
 
+
 static int active(void) { return !typing && !typingManual && !paused && !mouseMode() && focused(); }
 
 // The game window's client area in screen coordinates, kept current by the
 // overlay thread (legend.inc). Used as the aiming centre.
 static volatile LONG gameLeft, gameTop, gameWidth, gameHeight;
+IMP BOOL SetCursorPos(int, int);
+// Controller mode: the game hides its cursor, so keep that invisible cursor inside
+// the game window (a few pixels in from the edges) -- a click can't land in another
+// app, and it can't get lost. Checked every poll; mouse mode leaves it free.
+static void keepCursorInside(void) {
+    LONG l = gameLeft, t = gameTop, w = gameWidth, h = gameHeight;
+    if (!cfg.clipCursor || w < 400 || h < 300) return;
+    POINT p; if (!GetCursorPos(&p)) return;
+    LONG x = p.x < l + 4 ? l + 4 : p.x > l + w - 5 ? l + w - 5 : p.x;
+    LONG y = p.y < t + 4 ? t + 4 : p.y > t + h - 5 ? t + h - 5 : p.y;
+    if (x != p.x || y != p.y) SetCursorPos(x, y);
+}
 
 static Smooth moveSmooth;
 static float lastDirX, lastDirY = 1; // last direction of travel, for dodging
@@ -715,6 +734,7 @@ static int keyboardPad(XINPUT_GAMEPAD *g) {
     float dt = lastPollTime && perfFreq ? (float)(now - lastPollTime) * 1000.0f / (float)perfFreq : 16.7f;
     lastPollTime = now;
     if (!active() || commandHeld()) { moveSmooth.mag = 0; memset(aimPress, 0, sizeof(aimPress)); memset(&mouseDodge, 0, sizeof(mouseDodge)); return 0; }
+    keepCursorInside();
     U64 tick = GetTickCount64();
     int any = 0, aimingNow = 0;
     for (int i = 0; i < NBTN; i++) {
@@ -934,7 +954,14 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
     // lone Alt can't open the window menu or count as a keyboard press.
     for (int b = 0; b < 2; b++) {
         const Binding *own = b ? &bowKey : &cursorKey;
-        for (int k = 0; k < MAXKEYS; k++) if (own->vk[k] && (own->vk[k] == vk || (own->vk[k] == 0x12 && (vk == 0xA4 || vk == 0xA5)) || (own->vk[k] == 0x11 && (vk == 0xA2 || vk == 0xA3)))) { m->message = 0; return 0; }
+        for (int k = 0; k < MAXKEYS; k++) if (own->vk[k] && (own->vk[k] == vk || (own->vk[k] == 0x12 && (vk == 0xA4 || vk == 0xA5)) || (own->vk[k] == 0x11 && (vk == 0xA2 || vk == 0xA3)))) {
+            if (!b && !raw && wParam == 1 /*PM_REMOVE*/) {
+                static int logged;
+                if (logged < 6 && down != cursorKeyMsg) { logged++; logline(down ? "Cursor key message: down" : "Cursor key message: up"); }
+                cursorKeyMsg = down;
+            }
+            m->message = 0; return 0;
+        }
     }
     // Esc and the menu shortcuts always reach the game, pressed and released, in
     // every mode (only typing mode keeps Esc for itself).
