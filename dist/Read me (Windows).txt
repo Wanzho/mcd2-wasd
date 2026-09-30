@@ -1,0 +1,37 @@
+Minecraft Dungeons II Controller Mod (Windows)
+==============================================
+
+Plays the game with WASD, mouse and keys by turning them into a virtual
+controller. The game itself isn't modified; the mod is one file
+(xinput1_4.dll) next to the game's exe.
+
+Install
+-------
+1. Close Minecraft Dungeons II.
+2. Run "Dungeons II Controller Mod Setup.exe".
+   Windows may say "Windows protected your PC" because the file isn't signed:
+   click "More info", then "Run anyway".
+3. It finds the game through Steam. If it doesn't, click Browse and pick
+   Dungeons-Win64-Shipping.exe (in Dungeons\Binaries\Win64) or Dungeons.exe.
+4. Click Install, then start the game.
+
+In game: F9 shows the key list, the backtick key (`) turns the mod off and on,
+T starts typing (Esc ends it).
+
+Change keys
+-----------
+"Edit key layout..." opens the layout editor in your browser. Saving there
+downloads wasd-mod.ini; click "Load layout file..." and pick it. Restart the
+game afterwards. "Open settings file" opens the settings in Notepad.
+
+Uninstall
+---------
+Run the setup again and click Uninstall. Steam's "Verify integrity" does not
+remove the mod's files.
+
+Notes
+-----
+- Built and tested on a Mac (CrossOver). Not yet tested on a Windows PC.
+- Antivirus may flag the mod: it reads keys and presses controller buttons,
+  which looks like other input tools.
+- If install fails with a write error, run the setup as administrator.

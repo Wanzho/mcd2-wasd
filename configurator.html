@@ -1,0 +1,671 @@
+<title>Dungeons II Keybinder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600&family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: binding lists on the left, a sticky keyboard map + settings file on the right; one column on phones.
+   Look: the game's own settings menus (deep teal, grey keycaps, orange tab underline). */
+:root {
+  --bg: #e9f0ef; --panel: #ffffff; --panel-2: #f3f7f6; --line: #cfdcdb; --fg: #13262c; --muted: #58727a;
+  --accent: #d9801a; --accent-fg: #ffffff;
+  --cap: #e4e8e8; --cap-edge: #a9b3b4; --cap-fg: #1a2226; --cap-empty: #f4f6f6;
+  --move: #2f8fbf; --action: #d9801a; --menu: #3f9a55; --mod: #7d62d6; --danger: #cc3b33; --danger-bg: #fbe9e7;
+  --xa: #3f9a3f; --xb: #c7382f; --xx: #2f6fc0; --xy: #c9960e;
+  --display: "Pixelify Sans", "Menlo", monospace; --body: "Chivo", "Helvetica Neue", Arial, sans-serif; --mono: "JetBrains Mono", "Menlo", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d2027; --panel: #122c35; --panel-2: #17363f; --line: #22505c; --fg: #e6f0f1; --muted: #8fb0b7;
+  --accent: #f19a2e; --accent-fg: #1a1206;
+  --cap: #d4d9d9; --cap-edge: #7f8c8e; --cap-fg: #1a2226; --cap-empty: #1d3f49;
+  --move: #5bb5e0; --action: #f19a2e; --menu: #6cc27f; --mod: #a68cf0; --danger: #f06a5f; --danger-bg: #3a1d1d;
+  --xa: #5cbf5c; --xb: #e0584f; --xx: #4f8fe0; --xy: #e8b83a; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d2027; --panel: #122c35; --panel-2: #17363f; --line: #22505c; --fg: #e6f0f1; --muted: #8fb0b7;
+  --accent: #f19a2e; --accent-fg: #1a1206;
+  --cap: #d4d9d9; --cap-edge: #7f8c8e; --cap-fg: #1a2226; --cap-empty: #1d3f49;
+  --move: #5bb5e0; --action: #f19a2e; --menu: #6cc27f; --mod: #a68cf0; --danger: #f06a5f; --danger-bg: #3a1d1d;
+  --xa: #5cbf5c; --xb: #e0584f; --xx: #4f8fe0; --xy: #e8b83a; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; border-bottom: 3px solid var(--accent); padding-bottom: 14px; }
+h1 { font: 600 34px/1.05 var(--display); margin: 0; letter-spacing: .5px; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+.hdr-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button, .btn { font: 600 13px/1 var(--body); border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 9px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 470px); gap: 20px; margin-top: 18px; align-items: start; }
+@media (max-width: 960px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: grid; gap: 16px; }
+@media (max-width: 960px) { .side { position: static; } }
+section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px 16px; }
+.card + .card { margin-top: 16px; }
+h2 { font: 600 19px/1.2 var(--display); margin: 0 0 2px; letter-spacing: .4px; display: flex; align-items: center; gap: 8px; }
+h2 .dot { width: 10px; height: 10px; border-radius: 2px; }
+.lede { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; max-width: 70ch; }
+.row { display: grid; grid-template-columns: minmax(0, 13rem) auto minmax(0, 1fr); gap: 6px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.row:first-of-type { border-top: 0; }
+@media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr) auto; } .row .keys { grid-column: 1 / -1; } }
+.name { font-weight: 600; min-width: 0; }
+.name input { font: 600 14px var(--body); color: var(--fg); background: transparent; border: 1px dashed transparent; border-radius: 3px; padding: 2px 4px; margin-left: -5px; width: 100%; }
+.name input:hover, .name input:focus { border-color: var(--line); background: var(--panel-2); }
+.sub { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.badge { font: 600 11px/1 var(--mono); padding: 5px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg); white-space: nowrap; justify-self: start; }
+.badge.face { width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 0; color: #fff; font-size: 12px; }
+.badge.A { background: var(--xa); } .badge.B { background: var(--xb); } .badge.X { background: var(--xx); } .badge.Y { background: var(--xy); color: #1a1406; }
+.badge.game { background: transparent; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.cap { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 var(--body); background: var(--cap); color: var(--cap-fg); border: 1px solid var(--cap-edge); border-bottom-width: 3px; border-radius: 4px; padding: 5px 4px 4px 8px; }
+.cap.fixed { padding-right: 8px; }
+.cap.conflict { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger); }
+.cap button { border: 0; background: transparent; color: var(--cap-fg); padding: 0 4px; font-size: 15px; line-height: 1; opacity: .55; }
+.cap button:hover { opacity: 1; }
+.add { border: 1px dashed var(--line); background: transparent; color: var(--muted); padding: 6px 10px; }
+.add:hover { color: var(--fg); }
+.add.listening { border: 1px solid var(--accent); color: var(--accent); background: var(--panel-2); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .add.listening { animation: none; } }
+.flag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.note { font-size: 12px; color: var(--muted); }
+.conflicts { margin-top: 16px; border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 6px; padding: 10px 14px; }
+.conflicts strong { color: var(--danger); }
+.conflicts ul { margin: 4px 0 0; padding-left: 18px; }
+/* keyboard map */
+.kbd { display: grid; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.krow { display: flex; gap: 4px; }
+.k { flex: 0 0 auto; width: 30px; height: 34px; border-radius: 4px; border: 1px solid var(--line); background: var(--cap-empty); color: var(--muted); font: 600 9.5px/1 var(--mono); display: grid; place-items: center; text-align: center; position: relative; }
+.k.w15 { width: 46px; } .k.w18 { width: 56px; } .k.w22 { width: 68px; } .k.w6 { width: 186px; }
+.k.used { background: var(--cap); color: var(--cap-fg); border-color: var(--cap-edge); border-bottom-width: 3px; }
+.k.used::after { content: ""; position: absolute; left: 3px; right: 3px; bottom: -3px; height: 3px; border-radius: 0 0 3px 3px; background: var(--cat); }
+.k.conflict { box-shadow: 0 0 0 2px var(--danger); }
+.k.off { opacity: .4; background-image: repeating-linear-gradient(45deg, transparent 0 4px, var(--line) 4px 5px); }
+.legend-row { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.legend-row span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; background: var(--c); vertical-align: -1px; }
+.mouse { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.mouse .k { width: auto; padding: 0 8px; }
+.hover-info { min-height: 1.5em; margin-top: 8px; font-size: 13px; }
+/* output */
+pre.ini { margin: 10px 0 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font: 12px/1.45 var(--mono); max-height: 320px; overflow: auto; white-space: pre; }
+.out-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.status { font-size: 13px; margin-top: 8px; min-height: 1.4em; }
+.path { font: 12px/1.4 var(--mono); background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; word-break: break-all; margin: 6px 0; }
+ol.steps { margin: 6px 0 0; padding-left: 20px; font-size: 13.5px; } ol.steps li + li { margin-top: 4px; }
+.tune { display: grid; grid-template-columns: minmax(0, 1fr) 11rem 4.5rem; gap: 8px 12px; align-items: center; }
+@media (max-width: 560px) { .tune { grid-template-columns: minmax(0, 1fr) 4.5rem; } .tune input[type=range] { grid-column: 1 / -1; } }
+.tune input[type=range] { width: 100%; accent-color: var(--accent); }
+.tune output { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.toggles { display: grid; gap: 8px; margin-top: 12px; }
+.toggles label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.toggles input { accent-color: var(--accent); margin-top: 3px; }
+textarea#importText { width: 100%; min-height: 90px; font: 12px/1.4 var(--mono); background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+.drop { border: 2px dashed var(--line); border-radius: 6px; padding: 10px; text-align: center; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.drop.over { border-color: var(--accent); color: var(--fg); }
+.capture { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); display: grid; place-items: center; z-index: 10; padding: 16px; }
+.capture .box { background: var(--panel); border: 2px solid var(--accent); border-radius: 8px; padding: 22px 24px; max-width: 420px; text-align: center; }
+.capture .box h3 { font: 600 22px var(--display); margin: 0 0 6px; }
+.capture .box p { margin: 0 0 14px; color: var(--muted); }
+details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Dungeons II Keybinder</h1>
+      <p>Choose which keys and mouse buttons do what in the WASD controller mod for Minecraft Dungeons II. The mod turns them into the game's controller buttons, shown next to each action. Save the settings file into the game folder and restart the game.</p>
+    </div>
+    <div class="hdr-actions">
+      <button id="resetBtn" type="button">Reset to defaults</button>
+      <button id="importToggle" type="button">Import settings</button>
+    </div>
+  </header>
+
+  <section class="card" id="importCard" hidden style="margin-top:16px">
+    <h2>Import settings</h2>
+    <p class="lede">Load an existing <code>wasd-mod.ini</code> or <code>wasd-mod.txt</code> to edit it. Drop the file here, choose it, or paste its text.</p>
+    <div class="drop" id="drop">Drop a settings file here, or <label style="text-decoration:underline;cursor:pointer">choose one<input id="fileInput" type="file" accept=".ini,.txt,text/plain" hidden></label></div>
+    <textarea id="importText" placeholder="…or paste the file's text here"></textarea>
+    <div class="out-actions"><button class="primary" id="importBtn" type="button">Load pasted text</button><span class="status" id="importStatus"></span></div>
+  </section>
+
+  <div id="conflicts"></div>
+
+  <div class="grid">
+    <main>
+      <section class="card" id="sec-move"></section>
+      <section class="card" id="sec-action"></section>
+      <section class="card" id="sec-menu"></section>
+      <section class="card" id="sec-mod"></section>
+      <section class="card" id="sec-tune"></section>
+    </main>
+    <aside class="side">
+      <section class="card">
+        <h2>Keyboard map</h2>
+        <p class="lede">Grey keys do something. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.</p>
+        <div class="kbd" id="kbd"></div>
+        <div class="mouse" id="mouseMap"></div>
+        <div class="hover-info" id="hoverInfo">&nbsp;</div>
+        <div class="legend-row">
+          <span style="--c:var(--move)">Movement</span><span style="--c:var(--action)">Actions</span><span style="--c:var(--menu)">Menus</span><span style="--c:var(--mod)">Mod keys</span>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Settings file</h2>
+        <div class="out-actions">
+          <button class="primary" id="saveBtn" type="button">Save settings file</button>
+          <button id="copyBtn" type="button">Copy text</button>
+        </div>
+        <div class="status" id="saveStatus"></div>
+        <details>
+          <summary>Where it goes</summary>
+          <ol class="steps">
+            <li>Put the file in the game's <code>Win64</code> folder. In CrossOver's default Steam bottle that is:
+              <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
+              <button id="copyPath" type="button">Copy folder path</button> <span class="note">In Finder: Go › Go to Folder (⇧⌘G), paste.</span></li>
+            <li>The mod reads <code>wasd-mod.ini</code> or <code>wasd-mod.txt</code>, whichever is newer, so a fresh save always wins.</li>
+            <li>Restart the game.</li>
+          </ol>
+        </details>
+        <pre class="ini" id="iniOut"></pre>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="capture" id="capture" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="capTitle">
+    <h3 id="capTitle">Press a key</h3>
+    <p id="capFor">…or click a mouse button inside this box.</p>
+    <p class="note" id="capMsg"></p>
+    <button id="capCancel" type="button">Cancel</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- defaults (the mod's current layout)
+const DEFAULT_INI = `[Move]
+Up=W
+Left=A
+Down=S
+Right=D
+Dodge=None
+DodgeMouse=Mouse2
+DodgeDragPx=40
+DodgeFlickMs=80
+[Movement]
+AccelMs=45
+DecelMs=35
+TurnMs=110
+[Buttons]
+A=Space, F
+B=2
+X=Mouse1
+Y=Q
+LB=Shift
+RB=3
+LT=R
+RT=Mouse5
+Back=None
+Start=None
+LS=Mouse3
+RS=None
+DUp=Up, E, I
+DDown=Down
+DLeft=Left, X
+DRight=Right, V
+[Labels]
+A=Jump / interact
+B=Artifact 2
+X=Melee (in the air: heavy jump attack)
+Y=Artifact 1
+LB=Forward dodge
+RB=Artifact 3
+LT=Health potion
+RT=Ranged (bow)
+Back=World map
+Start=Menu wheel / event log
+LS=Guidance trail
+RS=Emotes
+DUp=Inventory (tap: full, hold: mini)
+DDown=Social menu
+DLeft=Teleport to player
+DRight=Track quest / quest log
+[Mouse]
+Crosshair=0
+MouseModeOnMovePx=40
+MouseMoveSwitches=1
+FreezeCursorForGame=0
+BumpNudgePct=30
+KeepCursorInWindow=1
+BowAimsWithMouse=1
+AimStick=None
+AimButtons=X, RT
+AimStrength=45
+AimLeadMs=35
+AimHoldMs=120
+[Keys]
+MenuKeys=M, J, U, K, G, Escape
+BackKeys=Escape
+MouseAfter=DUp, DDown, Back, Start
+MenuTapMs=300
+TypeKey=T
+PassKeys=
+Cursor=Alt, Ctrl
+CursorMode=Hold
+BowAim=None
+BowAimSends=Mouse4
+Toggle=Backtick
+Legend=F9
+[Remap]
+B=U
+Tab=Escape
+[Options]
+HideMouse=1
+BlockOtherKeys=1
+DetectTextBoxes=1
+TypedCharacters=0
+Legend=1
+LegendSeconds=15
+RequireFocus=1
+AlwaysConnected=1
+Log=1`;
+
+// ---------------------------------------------------------------- the game's actions
+// Controller buttons in the order of the game's controller settings.
+const BUTTONS = [
+  ["A", "A"], ["X", "X"], ["RT", "RT"], ["Y", "Y"], ["B", "B"], ["RB", "RB"], ["LT", "LT"], ["LB", "LB"],
+  ["LS", "L-stick click"], ["RS", "R-stick click"], ["DUp", "D-pad ↑"], ["DDown", "D-pad ↓"], ["DLeft", "D-pad ←"], ["DRight", "D-pad →"],
+  ["Back", "View"], ["Start", "Menu"],
+];
+// The game's own keyboard shortcuts for menus (Settings › Controls › Keyboard).
+const MENUS = [
+  { id: "inventory", label: "Inventory (game's key)", sub: "the mod opens it with D-pad ↑ under Actions instead", game: ["I", "Tab"] },
+  { id: "map", label: "World map", game: ["M"] },
+  { id: "quest", label: "Quest log", game: ["J"] },
+  { id: "collect", label: "Collectibles", sub: "capes, pets, books", game: ["U"] },
+  { id: "events", label: "Event log", game: ["K"] },
+  { id: "social", label: "Social menu", game: ["F"] },
+  { id: "emotes", label: "Emotes", sub: "hold for the wheel", game: ["G"] },
+  { id: "esc", label: "Game menu / back", game: ["Escape"] },
+];
+
+// ---------------------------------------------------------------- key names
+const CODE_NAMES = { Space: "Space", Enter: "Enter", NumpadEnter: "Enter", Escape: "Escape", Tab: "Tab", ShiftLeft: "Shift", ShiftRight: "Shift",
+  ControlLeft: "Ctrl", ControlRight: "Ctrl", AltLeft: "Alt", AltRight: "Alt", Backspace: "Backspace", CapsLock: "CapsLock",
+  ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Backquote: "Backtick", Minus: "-", Equal: "=",
+  BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/" };
+const ALIASES = { esc: "Escape", escape: "Escape", return: "Enter", enter: "Enter", control: "Ctrl", ctrl: "Ctrl", grave: "Backtick", tilde: "Backtick",
+  backtick: "Backtick", space: "Space", tab: "Tab", shift: "Shift", alt: "Alt", backspace: "Backspace", capslock: "CapsLock",
+  up: "Up", down: "Down", left: "Left", right: "Right", mouse1: "Mouse1", mouse2: "Mouse2", mouse3: "Mouse3", mouse4: "Mouse4", mouse5: "Mouse5" };
+const VK_NAMES = { 0x20: "Space", 0x0D: "Enter", 0x1B: "Escape", 0x09: "Tab", 0x10: "Shift", 0x11: "Ctrl", 0x12: "Alt", 0x08: "Backspace", 0x14: "CapsLock",
+  0x26: "Up", 0x28: "Down", 0x25: "Left", 0x27: "Right", 0x01: "Mouse1", 0x02: "Mouse2", 0x04: "Mouse3", 0x05: "Mouse4", 0x06: "Mouse5", 0xC0: "Backtick" };
+const PRETTY = { Up: "↑", Down: "↓", Left: "←", Right: "→", Escape: "Esc", Backtick: "`", Mouse1: "Left click", Mouse2: "Right click",
+  Mouse3: "Middle click", Mouse4: "Side 4 (back)", Mouse5: "Side 5 (front)", CapsLock: "Caps Lock" };
+const pretty = k => PRETTY[k] || k;
+
+function normKey(raw) {
+  let v = String(raw || "").trim();
+  if (!v || /^none$/i.test(v)) return null;
+  if (v.length === 1) return /[a-z]/.test(v) ? v.toUpperCase() : v;
+  const lower = v.toLowerCase();
+  if (ALIASES[lower]) return ALIASES[lower];
+  const f = /^f(\d{1,2})$/i.exec(v); if (f && +f[1] >= 1 && +f[1] <= 12) return "F" + (+f[1]);
+  const n = /^0x[0-9a-f]+$/i.test(v) ? parseInt(v, 16) : /^\d{2,3}$/.test(v) ? parseInt(v, 10) : NaN;
+  if (!isNaN(n)) {
+    if (VK_NAMES[n]) return VK_NAMES[n];
+    if ((n >= 0x41 && n <= 0x5A) || (n >= 0x30 && n <= 0x39)) return String.fromCharCode(n);
+    if (n >= 0x70 && n <= 0x7B) return "F" + (n - 0x6F);
+  }
+  return v;
+}
+const splitKeys = s => String(s || "").split(",").map(normKey).filter(Boolean);
+
+// ---------------------------------------------------------------- ini parsing
+function parseIni(text) {
+  const out = {}; let sec = null;
+  for (const lineRaw of String(text).split(/\r?\n/)) {
+    const line = lineRaw.trim();
+    if (!line || line[0] === ";" || line[0] === "#") continue;
+    const s = /^\[(.+)\]$/.exec(line);
+    if (s) { sec = s[1].trim(); out[sec] = out[sec] || []; continue; }
+    const i = line.indexOf("=");
+    if (i < 0 || !sec) continue;
+    out[sec].push([line.slice(0, i).trim(), line.slice(i + 1).trim()]);
+  }
+  return out;
+}
+const get = (ini, sec, key) => { const e = (ini[sec] || []).filter(([k]) => k.toLowerCase() === key.toLowerCase()); return e.length ? e[e.length - 1][1] : undefined; };
+
+// ---------------------------------------------------------------- state
+let state;
+function stateFromIni(text) {
+  const ini = parseIni(text), def = parseIni(DEFAULT_INI);
+  const val = (sec, key) => { const v = get(ini, sec, key); return v !== undefined ? v : get(def, sec, key); };
+  const st = { move: {}, buttons: {}, labels: {}, mouseAfter: new Set(), aimButtons: new Set(), menus: {}, mod: {}, num: {}, opt: {}, extraRemaps: [], extraMenuKeys: [] };
+  for (const k of ["Up", "Left", "Down", "Right", "Dodge", "DodgeMouse"]) st.move[k] = splitKeys(val("Move", k));
+  for (const [b] of BUTTONS) { st.buttons[b] = splitKeys(val("Buttons", b)); st.labels[b] = val("Labels", b) || b; }
+  for (const b of String(val("Keys", "MouseAfter")).split(",")) if (b.trim()) st.mouseAfter.add(b.trim());
+  for (const b of String(val("Mouse", "AimButtons")).split(",")) if (b.trim()) st.aimButtons.add(b.trim());
+  // Menus: the game's own keys come from MenuKeys; other keys are remaps onto them.
+  for (const m of MENUS) st.menus[m.id] = [];
+  const menuFor = key => MENUS.find(m => m.game.includes(key));
+  for (const k of splitKeys(val("Keys", "MenuKeys"))) { const m = menuFor(k); if (m) st.menus[m.id].push(k); else st.extraMenuKeys.push(k); }
+  const remaps = ini.Remap ? ini.Remap : (def.Remap || []);
+  for (const [from, to] of remaps) {
+    const f = normKey(from), t = normKey(to); if (!f || !t) continue;
+    const m = menuFor(t); if (m) st.menus[m.id].push(f); else st.extraRemaps.push([f, t]);
+  }
+  st.mod.TypeKey = splitKeys(val("Keys", "TypeKey"));
+  st.bowAim = (val("Keys", "BowAim") || "None").trim(); st.bowAimSends = (val("Keys", "BowAimSends") || "Mouse4").trim(); // kept as written
+  st.mod.Cursor = splitKeys(val("Keys", "Cursor"));
+  st.mod.Toggle = splitKeys(val("Keys", "Toggle"));
+  st.mod.Legend = splitKeys(val("Keys", "Legend"));
+  st.mod.PassKeys = splitKeys(val("Keys", "PassKeys"));
+  st.backKeys = splitKeys(val("Keys", "BackKeys"));
+  for (const [sec, k] of TUNE.map(t => [t.sec, t.key])) st.num[k] = Number(val(sec, k));
+  for (const t of TOGGLES) st.opt[t.key] = t.read(val(t.sec, t.key));
+  st.optionsRaw = def.Options.map(([k]) => [k, val("Options", k)]);
+  st.mouseRaw = { AimStrength: val("Mouse", "AimStrength"), AimLeadMs: val("Mouse", "AimLeadMs"), AimHoldMs: val("Mouse", "AimHoldMs") };
+  st.typedChars = val("Options", "TypedCharacters");
+  return st;
+}
+
+const TUNE = [
+  { sec: "Movement", key: "AccelMs", label: "Speed-up time", sub: "time to reach full speed", min: 0, max: 200, step: 5, unit: "ms" },
+  { sec: "Movement", key: "DecelMs", label: "Stopping time", sub: "time to come to a stop", min: 0, max: 200, step: 5, unit: "ms" },
+  { sec: "Movement", key: "TurnMs", label: "Turn time", sub: "a full 180° turn; 90° takes half", min: 0, max: 300, step: 10, unit: "ms" },
+  { sec: "Move", key: "DodgeDragPx", label: "Drag to roll", sub: "mouse travel that turns a dodge click into a roll", min: 10, max: 150, step: 5, unit: "px" },
+  { sec: "Move", key: "DodgeFlickMs", label: "Dodge flick", sub: "how long each dodge holds the stick", min: 30, max: 200, step: 10, unit: "ms" },
+  { sec: "Mouse", key: "MouseModeOnMovePx", label: "Mouse wakes the cursor", sub: "mouse travel (after letting go of WASD) that switches to mouse mode; 0 = off", min: 0, max: 150, step: 5, unit: "px" },
+  { sec: "Mouse", key: "BumpNudgePct", label: "Bump correction", sub: "light right-stick nudge that undoes a small mouse bump; lower it if it ever makes you dodge, 0 = off", min: 0, max: 60, step: 5, unit: "%" },
+  { sec: "Keys", key: "MenuTapMs", label: "Tap vs hold", sub: "shorter = tap (full menu), longer = hold (quick overlay)", min: 100, max: 600, step: 25, unit: "ms" },
+  { sec: "Options", key: "LegendSeconds", label: "Key list at start", sub: "seconds the on-screen list shows (0 = only on its key)", min: 0, max: 60, step: 5, unit: "s" },
+];
+const TOGGLES = [
+  { sec: "Mouse", key: "AimStick", label: "Turn toward the mouse before attacking", sub: "old Dungeons style, for the melee and bow buttons", read: v => /^left$/i.test(String(v)), write: b => b ? "Left" : "None" },
+  { sec: "Mouse", key: "Crosshair", label: "Show a mouse pointer while playing", sub: "the game hides its cursor in controller mode; costs performance under CrossOver", read: v => v === "1", write: b => b ? "1" : "0" },
+  { sec: "Mouse", key: "KeepCursorInWindow", label: "Keep the mouse inside the game window while playing", sub: "so a click can't land in another app", read: v => v === "1", write: b => b ? "1" : "0" },
+  { sec: "Options", key: "BlockOtherKeys", label: "Block keys that aren't used", sub: "a stray key can't flip the game into keyboard mode", read: v => v === "1", write: b => b ? "1" : "0" },
+  { sec: "Options", key: "HideMouse", label: "Hide mouse movement from the game while playing", sub: "keeps the game in controller mode", read: v => v === "1", write: b => b ? "1" : "0" },
+  { sec: "Options", key: "Legend", label: "On-screen key list", read: v => v === "1", write: b => b ? "1" : "0" },
+  { sec: "Mouse", key: "MouseMoveSwitches", label: "Moving the mouse switches to mouse mode", sub: "off: only the cursor key (Alt), menus or the toggle key give you the mouse", read: v => v !== "0", write: b => b ? "1" : "0" },
+  { sec: "Keys", key: "CursorMode", label: "Cursor key toggles the cursor", sub: "on: press once to show the cursor, again to lock it; off: shows only while held", read: v => /^toggle$/i.test(String(v).trim()), write: b => b ? "Toggle" : "Hold" },
+  { sec: "Mouse", key: "BowAimsWithMouse", label: "Aim the bow with the mouse", sub: "holding a mouse button bound to the bow switches to keyboard mode until you let go", read: v => v === "1", write: b => b ? "1" : "0" },
+];
+
+// ---------------------------------------------------------------- rows (what can be bound)
+function rows() {
+  const r = [];
+  const mv = [["Up", "Move up"], ["Left", "Move left"], ["Down", "Move down"], ["Right", "Move right"]];
+  for (const [k, l] of mv) r.push({ cat: "move", sec: "move", key: k, label: l, badge: "L-stick", max: 3, get: () => state.move[k], set: v => state.move[k] = v });
+  r.push({ cat: "move", sec: "move", key: "Dodge", label: "Quick dodge", sub: "one flick the way you're moving", badge: "R-stick", max: 3, get: () => state.move.Dodge, set: v => state.move.Dodge = v });
+  r.push({ cat: "move", sec: "move", key: "DodgeMouse", label: "Mouse dodge", sub: "click: dodge · click + drag: roll that way", badge: "R-stick", max: 3, get: () => state.move.DodgeMouse, set: v => state.move.DodgeMouse = v });
+  for (const [b, badge] of BUTTONS) r.push({ cat: "action", sec: "action", key: b, button: b, badge, max: 3, get: () => state.buttons[b], set: v => state.buttons[b] = v });
+  for (const m of MENUS) r.push({ cat: "menu", sec: "menu", key: m.id, menu: m, label: m.label, sub: m.sub, max: 6, get: () => state.menus[m.id], set: v => state.menus[m.id] = v });
+  r.push({ cat: "mod", sec: "mod", key: "TypeKey", label: "Typing mode", sub: "every key goes to the game until Esc", max: 3, get: () => state.mod.TypeKey, set: v => state.mod.TypeKey = v });
+  r.push({ cat: "mod", sec: "mod", key: "Cursor", label: "Hold for cursor", sub: "the normal mouse while held", max: 3, get: () => state.mod.Cursor, set: v => state.mod.Cursor = v });
+  r.push({ cat: "mod", sec: "mod", key: "Toggle", label: "Mod on / off", max: 3, get: () => state.mod.Toggle, set: v => state.mod.Toggle = v });
+  r.push({ cat: "mod", sec: "mod", key: "Legend", label: "On-screen key list", max: 3, get: () => state.mod.Legend, set: v => state.mod.Legend = v });
+  r.push({ cat: "mod", sec: "mod", key: "PassKeys", label: "Always send to the game", sub: "the game gets these keys as they are", max: 8, get: () => state.mod.PassKeys, set: v => state.mod.PassKeys = v });
+  return r;
+}
+const rowName = row => row.button ? (state.labels[row.button] || row.button) : row.label;
+
+// Every key -> the rows that use it.
+function usage() {
+  const map = new Map();
+  for (const row of rows()) for (const k of row.get()) {
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(row);
+  }
+  for (const [f] of state.extraRemaps) { if (!map.has(f)) map.set(f, []); map.get(f).push({ cat: "menu", label: "Custom remap", key: "remap-" + f }); }
+  return map;
+}
+
+// ---------------------------------------------------------------- rendering
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+};
+
+function badgeEl(row) {
+  if (row.menu) return el("span", { class: "badge game", text: "game key " + row.menu.game.map(pretty).join(" / ") });
+  const face = ["A", "B", "X", "Y"].includes(row.button);
+  return el("span", { class: "badge" + (face ? " face " + row.button : ""), text: row.badge, title: "Controller: " + row.badge });
+}
+
+function keysEl(row, uses) {
+  const box = el("div", { class: "keys" });
+  for (const k of row.get()) {
+    const clash = (uses.get(k) || []).length > 1;
+    const cap = el("span", { class: "cap" + (clash ? " conflict" : ""), title: clash ? "Also used by: " + uses.get(k).filter(r => r !== row).map(rowName).join(", ") : "" }, pretty(k));
+    cap.append(el("button", { type: "button", "aria-label": "Remove " + pretty(k) + " from " + rowName(row), text: "×", onclick: () => { row.set(row.get().filter(x => x !== k)); changed(); } }));
+    box.append(cap);
+  }
+  if (row.get().length < row.max) box.append(el("button", { class: "add", type: "button", text: "+ key", onclick: e => startCapture(row, e.currentTarget) }));
+  if (row.button) {
+    const lab = el("label", { class: "flag" }, el("input", { type: "checkbox", ...(state.mouseAfter.has(row.button) ? { checked: "" } : {}), onchange: e => { e.target.checked ? state.mouseAfter.add(row.button) : state.mouseAfter.delete(row.button); changed(); } }), "opens a menu");
+    lab.title = "A tap switches to mouse mode afterwards, so you can click in the menu";
+    box.append(lab);
+  }
+  if (row.menu && !row.get().some(k => row.menu.game.includes(k)) && row.get().length) box.append(el("span", { class: "note", text: "game key " + pretty(row.menu.game[0]) + " is blocked; your keys send it" }));
+  return box;
+}
+
+function rowEl(row, uses) {
+  const name = row.button
+    ? el("div", { class: "name" }, el("input", { value: state.labels[row.button] || "", "aria-label": "Name for controller button " + row.badge, oninput: e => { state.labels[row.button] = e.target.value; save(); renderOut(); } }))
+    : el("div", { class: "name" }, row.label, row.sub ? el("span", { class: "sub", text: row.sub }) : null);
+  return el("div", { class: "row" }, name, badgeEl(row), keysEl(row, uses));
+}
+
+function section(id, color, title, lede, list, uses) {
+  const s = $(id); s.replaceChildren();
+  s.append(el("h2", {}, el("span", { class: "dot", style: "background:" + color }), title), el("p", { class: "lede", text: lede }));
+  for (const row of list) s.append(rowEl(row, uses));
+}
+
+function renderTune() {
+  const s = $("sec-tune"); s.replaceChildren();
+  s.append(el("h2", {}, el("span", { class: "dot", style: "background:var(--muted)" }), "Feel & options"),
+    el("p", { class: "lede", text: "Smoothing makes WASD speed up, stop and turn gradually instead of snapping. Set a slider to 0 for instant." }));
+  const g = el("div", { class: "tune" });
+  for (const t of TUNE) {
+    const id = "t-" + t.key, out = el("output", { for: id, text: state.num[t.key] + " " + t.unit });
+    g.append(el("label", { for: id }, t.label, el("span", { class: "sub", text: t.sub })),
+      el("input", { id, type: "range", min: t.min, max: t.max, step: t.step, value: state.num[t.key], oninput: e => { state.num[t.key] = +e.target.value; out.textContent = e.target.value + " " + t.unit; save(); renderOut(); } }), out);
+  }
+  s.append(g);
+  const tg = el("div", { class: "toggles" });
+  for (const t of TOGGLES) {
+    const id = "o-" + t.key;
+    tg.append(el("label", { for: id }, el("input", { id, type: "checkbox", ...(state.opt[t.key] ? { checked: "" } : {}), onchange: e => { state.opt[t.key] = e.target.checked; changed(); } }),
+      el("span", {}, t.label, t.sub ? el("span", { class: "sub", text: t.sub }) : null)));
+  }
+  s.append(tg);
+}
+
+// Keyboard map: Mac layout; Command can't be bound (it's for Mac shortcuts).
+const KBD = [
+  [["Escape", "esc"], ["F1"], ["F2"], ["F3"], ["F4"], ["F5"], ["F6"], ["F7"], ["F8"], ["F9"], ["F10"], ["F11"], ["F12"]],
+  [["Backtick", "`"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["0"], ["-"], ["="], ["Backspace", "⌫", "w18"]],
+  [["Tab", "tab", "w15"], ["Q"], ["W"], ["E"], ["R"], ["T"], ["Y"], ["U"], ["I"], ["O"], ["P"], ["["], ["]"]],
+  [["CapsLock", "caps", "w18"], ["A"], ["S"], ["D"], ["F"], ["G"], ["H"], ["J"], ["K"], ["L"], [";"], ["'"], ["Enter", "⏎", "w18"]],
+  [["Shift", "⇧", "w22"], ["Z"], ["X"], ["C"], ["V"], ["B"], ["N"], ["M"], [","], ["."], ["/"], ["Shift", "⇧", "w22"]],
+  [["Ctrl", "ctrl", "w15"], ["Alt", "⌥", "w15"], ["cmd", "⌘", "w15"], ["Space", "space", "w6"], ["cmd", "⌘", "w15"], ["Left", "←"], ["Up", "↑"], ["Down", "↓"], ["Right", "→"]],
+];
+function describe(k, uses) {
+  if (k === "cmd") return "⌘ Command: while held, no key registers (Mac shortcuts stay safe). It can't be bound.";
+  const u = uses.get(k);
+  if (!u || !u.length) return pretty(k) + ": blocked while playing" + (state.opt.BlockOtherKeys ? "" : " (off: sent to the game)");
+  return pretty(k) + ": " + u.map(rowName).join(" · ") + (u.length > 1 ? "  ⚠ conflict" : "");
+}
+function renderMap(uses) {
+  const cat = { move: "var(--move)", action: "var(--action)", menu: "var(--menu)", mod: "var(--mod)" };
+  const cell = (k, text, w) => {
+    const u = uses.get(k) || [];
+    const c = el("div", { class: "k" + (w ? " " + w : "") + (u.length ? " used" : " off") + (u.length > 1 ? " conflict" : ""), tabindex: "0", text: text || k });
+    if (u.length) c.style.setProperty("--cat", cat[u[0].cat]);
+    if (k === "cmd") { c.classList.remove("off"); c.style.opacity = ".6"; }
+    const show = () => { $("hoverInfo").textContent = describe(k, uses); };
+    c.addEventListener("mouseenter", show); c.addEventListener("focus", show);
+    return c;
+  };
+  $("kbd").replaceChildren(...KBD.map(r => el("div", { class: "krow" }, ...r.map(([k, t, w]) => cell(k, t, w)))));
+  $("mouseMap").replaceChildren(...["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k))));
+}
+
+function renderConflicts(uses) {
+  const bad = [...uses.entries()].filter(([, u]) => u.length > 1);
+  const box = $("conflicts");
+  if (!bad.length) { box.replaceChildren(); return; }
+  box.replaceChildren(el("div", { class: "conflicts" }, el("strong", { text: bad.length === 1 ? "1 key does two things" : bad.length + " keys do two things" }),
+    el("ul", {}, ...bad.map(([k, u]) => el("li", { text: pretty(k) + " — " + u.map(rowName).join(" and ") })))));
+}
+
+// ---------------------------------------------------------------- ini output
+function iniText() {
+  const j = a => a.length ? a.join(", ") : "None";
+  const L = [];
+  L.push("; Keyboard & mouse as a controller for Minecraft Dungeons II.",
+    "; Made with Dungeons II Keybinder. Put this file in the game's Win64 folder and",
+    "; restart the game. The mod reads wasd-mod.ini or wasd-mod.txt, whichever is newer.", "");
+  L.push("[Move]", ...["Up", "Left", "Down", "Right", "Dodge", "DodgeMouse"].map(k => k + "=" + j(state.move[k])),
+    "DodgeDragPx=" + state.num.DodgeDragPx, "DodgeFlickMs=" + state.num.DodgeFlickMs, "");
+  L.push("[Movement]", "AccelMs=" + state.num.AccelMs, "DecelMs=" + state.num.DecelMs, "TurnMs=" + state.num.TurnMs, "");
+  const order = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Back", "Start", "LS", "RS", "DUp", "DDown", "DLeft", "DRight"];
+  L.push("[Buttons]", ...order.map(b => b + "=" + j(state.buttons[b])), "");
+  L.push("[Labels]", ...order.map(b => b + "=" + (state.labels[b] || b).replace(/[\r\n]/g, " ")), "");
+  L.push("[Mouse]", "Crosshair=" + TOGGLES[1].write(state.opt.Crosshair), "KeepCursorInWindow=" + TOGGLES[2].write(state.opt.KeepCursorInWindow),
+    "MouseModeOnMovePx=" + state.num.MouseModeOnMovePx, "MouseMoveSwitches=" + TOGGLES[6].write(state.opt.MouseMoveSwitches), "FreezeCursorForGame=0", "BumpNudgePct=" + state.num.BumpNudgePct, "BowAimsWithMouse=" + TOGGLES[8].write(state.opt.BowAimsWithMouse), "AimStick=" + TOGGLES[0].write(state.opt.AimStick), "AimButtons=" + ([...state.aimButtons].join(", ") || "None"),
+    "AimStrength=" + state.mouseRaw.AimStrength, "AimLeadMs=" + state.mouseRaw.AimLeadMs, "AimHoldMs=" + state.mouseRaw.AimHoldMs, "");
+  // Menus: a key that is one of the game's own keys goes to the game as is; any
+  // other key is remapped onto the game's first key for that menu.
+  const menuKeys = [], remaps = [];
+  for (const m of MENUS) for (const k of state.menus[m.id]) (m.game.includes(k) ? menuKeys : remaps).push(m.game.includes(k) ? k : [k, m.game[0]]);
+  menuKeys.push(...state.extraMenuKeys);
+  L.push("[Keys]", "MenuKeys=" + (menuKeys.join(", ") || "None"), "MouseAfter=" + ([...state.mouseAfter].join(", ") || "None"),
+    "BackKeys=" + (state.backKeys.join(", ") || "None"), "MenuTapMs=" + state.num.MenuTapMs, "TypeKey=" + j(state.mod.TypeKey), "PassKeys=" + state.mod.PassKeys.join(", "),
+    "Cursor=" + j(state.mod.Cursor), "CursorMode=" + TOGGLES[7].write(state.opt.CursorMode), "BowAim=" + state.bowAim, "BowAimSends=" + state.bowAimSends, "Toggle=" + j(state.mod.Toggle), "Legend=" + j(state.mod.Legend), "");
+  const remapLines = [...remaps.map(([f, t]) => f + "=" + t), ...state.extraRemaps.map(([f, t]) => f + "=" + t)];
+  // An empty section would bring back the mod's built-in remaps; "None=None" keeps it empty.
+  L.push("[Remap]", ...(remapLines.length ? remapLines : ["None=None"]), "");
+  L.push("[Options]", ...state.optionsRaw.map(([k, v]) => {
+    if (k === "HideMouse") return k + "=" + TOGGLES[4].write(state.opt.HideMouse);
+    if (k === "BlockOtherKeys") return k + "=" + TOGGLES[3].write(state.opt.BlockOtherKeys);
+    if (k === "Legend") return k + "=" + TOGGLES[5].write(state.opt.Legend);
+    if (k === "LegendSeconds") return k + "=" + state.num.LegendSeconds;
+    return k + "=" + v;
+  }));
+  return L.join("\n") + "\n";
+}
+function renderOut() { $("iniOut").textContent = iniText(); }
+
+function render() {
+  const uses = usage(), all = rows();
+  section("sec-move", "var(--move)", "Movement", "W A S D push the left stick, smoothed. Dodges flick the right stick, which is the game's directional dodge.", all.filter(r => r.sec === "move"), uses);
+  section("sec-action", "var(--action)", "Actions", "Each row is a controller button, in the order of the game's controller settings. Rename a row to match what it does for you. Tick \"opens a menu\" for buttons that open a screen you'll click around in.", all.filter(r => r.sec === "action"), uses);
+  section("sec-menu", "var(--menu)", "Menus", "These are the game's own keyboard shortcuts. Pressing one opens the screen and switches to mouse mode; a movement or action key switches back. Add any key to open the same screen, or remove the game's key to free it.", all.filter(r => r.sec === "menu"), uses);
+  section("sec-mod", "var(--mod)", "Mod keys", "Keys for the mod itself. Every other key is blocked while you play, unless listed under \"Always send to the game\".", all.filter(r => r.sec === "mod"), uses);
+  renderTune(); renderMap(uses); renderConflicts(uses); renderOut();
+}
+
+// ---------------------------------------------------------------- key capture
+let capturing = null;
+function startCapture(row, btn) {
+  capturing = { row, btn };
+  btn.classList.add("listening");
+  $("capTitle").textContent = "Press a key for " + rowName(row);
+  $("capMsg").textContent = "";
+  $("capture").hidden = false;
+  $("capCancel").focus();
+}
+function stopCapture() {
+  if (capturing) capturing.btn.classList.remove("listening");
+  capturing = null; $("capture").hidden = true;
+}
+function take(key) {
+  const { row } = capturing;
+  if (row.get().includes(key)) { $("capMsg").textContent = pretty(key) + " is already on this row."; return; }
+  if (row.menu && (key === "=" || key === ";")) { $("capMsg").textContent = "That key can't open a menu. Pick another."; return; }
+  row.set([...row.get(), key]);
+  stopCapture(); changed();
+}
+window.addEventListener("keydown", e => {
+  if (!capturing) return;
+  e.preventDefault(); e.stopPropagation();
+  if (e.key === "Meta" || e.code.startsWith("Meta") || e.code.startsWith("OS")) { $("capMsg").textContent = "⌘ Command is kept for Mac shortcuts and can't be bound."; return; }
+  let k = CODE_NAMES[e.code];
+  if (!k) { const m = /^(Key|Digit)(.)$/.exec(e.code) || /^Numpad(\d)$/.exec(e.code); if (m) k = m[m.length - 1]; }
+  if (!k) { const f = /^F(\d{1,2})$/.exec(e.code); if (f && +f[1] <= 12) k = "F" + f[1]; }
+  if (!k) { $("capMsg").textContent = "The mod can't use " + (e.key || e.code) + ". Try another key."; return; }
+  take(k);
+}, true);
+$("capture").addEventListener("mousedown", e => {
+  if (!capturing || e.target.id === "capCancel") return;
+  if (!e.target.closest(".box")) return;
+  e.preventDefault();
+  const k = ["Mouse1", "Mouse3", "Mouse2", "Mouse4", "Mouse5"][e.button];
+  if (k) take(k);
+});
+for (const t of ["contextmenu", "auxclick", "mouseup"]) $("capture").addEventListener(t, e => { if (capturing || !$("capture").hidden) e.preventDefault(); });
+$("capCancel").addEventListener("click", e => { e.stopPropagation(); stopCapture(); });
+
+// ---------------------------------------------------------------- save / load
+function save() { try { localStorage.setItem("d2kb-ini", iniText()); } catch (e) {} }
+function changed() { save(); render(); }
+function load(text) { state = stateFromIni(text); render(); save(); }
+
+$("resetBtn").addEventListener("click", () => { load(DEFAULT_INI); $("saveStatus").textContent = "Back to the default layout."; });
+$("importToggle").addEventListener("click", () => { $("importCard").hidden = !$("importCard").hidden; });
+function importText(t, from) {
+  if (!/\[(Move|Buttons|Keys)\]/i.test(t)) { $("importStatus").textContent = "That doesn't look like a WASD mod settings file."; return; }
+  load(t); $("importStatus").textContent = "Loaded " + from + "."; $("saveStatus").textContent = "Loaded " + from + ".";
+}
+$("importBtn").addEventListener("click", () => importText($("importText").value, "pasted settings"));
+$("fileInput").addEventListener("change", e => { const f = e.target.files[0]; if (f) f.text().then(t => importText(t, f.name)); });
+const drop = $("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => importText(t, f.name)); });
+
+async function copy(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); $("saveStatus").textContent = okMsg; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($("iniOut")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("saveStatus").textContent = "Copy isn't allowed here. The text is selected: press ⌘C."; }
+}
+$("copyBtn").addEventListener("click", () => copy(iniText(), "Copied. Paste it into wasd-mod.ini in the game folder."));
+$("copyPath").addEventListener("click", () => copy($("gamePath").textContent, "Folder path copied."));
+
+// Saving: inside Claude the viewer's download prompt (.txt is the allowed type);
+// opened as a local file, a normal download of wasd-mod.ini.
+let downloads = null;
+$("saveBtn").addEventListener("click", async () => {
+  const text = iniText();
+  if (downloads) {
+    try { await downloads.save({ filename: "wasd-mod.txt", data: text }); $("saveStatus").textContent = "Saved wasd-mod.txt. Move it into the game's Win64 folder, then restart the game."; }
+    catch (e) { $("saveStatus").textContent = e && e.code === "declined" ? "Not saved." : "Saving isn't available here. Use Copy text instead."; }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  a.download = "wasd-mod.ini"; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  $("saveStatus").textContent = "Downloaded wasd-mod.ini. Move it into the game's Win64 folder, then restart the game. If nothing downloaded, use Copy text.";
+});
+if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
+
+let saved = null;
+try { saved = localStorage.getItem("d2kb-ini"); } catch (e) {}
+load(saved || DEFAULT_INI);
+</script>

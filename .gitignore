@@ -1,0 +1,5 @@
+build/
+Keybinder.html
+personal-wasd-mod.txt
+*.log
+.DS_Store
