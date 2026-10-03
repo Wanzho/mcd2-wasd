@@ -1,6 +1,6 @@
-; Recommended setup for the Minecraft Dungeons II controller mod.
+; Recommended layout for the Minecraft Dungeons II controller mod.
 ; Bow on side button 5; inventory (E), quests (V), social (/) and teleport (X) on
-; the controller so you can keep moving; Tab opens the map; Shift forward dodge.
+; the controller so you can keep moving; Tab opens the menu wheel; Shift forward dodge.
 ; Only the keys you press change; the game's own keys stay at their defaults.
 ; Put this file in the game's Win64 folder (Windows setup: Load layout file) and
 ; restart the game. The newest of default.txt, author.txt and wasdmod*.txt is used.
@@ -10,7 +10,6 @@ Up=W
 Left=A
 Down=S
 Right=D
-Dodge=None
 DodgeMouse=Mouse2
 DodgeDragPx=40
 DodgeFlickMs=80
@@ -28,7 +27,7 @@ Y=Q
 LB=Shift
 RB=3
 LT=R
-RT=Mouse5
+RT=Mouse4
 Back=None
 Start=None
 LS=Mouse3
@@ -57,18 +56,12 @@ DLeft=Teleport to player
 DRight=Track quest / quest log
 
 [Mouse]
-Crosshair=0
 KeepCursorInWindow=1
-MouseModeOnMovePx=40
+MouseModeOnMovePx=50
 MouseMoveSwitches=1
-FreezeCursorForGame=0
+CursorFromMiddle=1
 BumpNudgePct=30
 BowAimsWithMouse=1
-AimStick=None
-AimButtons=X, RT
-AimStrength=45
-AimLeadMs=35
-AimHoldMs=120
 
 [Keys]
 MenuKeys=M, G, K, Escape
@@ -77,33 +70,31 @@ MouseAfter=DUp, DDown
 MenuTapMs=300
 TypeKey=T
 PassKeys=Z, F1, F2, F3, F4
-DisabledKeys=1, I, J, U
+DisabledKeys=Mouse5, 1, I, J, U
 InstantKeys=
 Cursor=Alt
 CursorMode=Hold
-BowAim=None
-BowAimSends=Mouse2
 Toggle=Backtick
 Legend=F9
 
 [Remap]
-Tab=M
+Tab=S
 B=U
-Mouse5=Mouse2
+Mouse4=Mouse2
 
 ; Keybinder only (the mod ignores these): keyboard or controller for each menu,
 ; and the game's own keyboard keys (Settings > Controls > Keyboard).
 [Modes]
+tpplayer=Controller
 inventory=Controller
 map=Keyboard
 wheel=Keyboard
 quest=Controller
 social=Controller
-tpplayer=Controller
 emotes=Keyboard
 
 [GameKeys]
-dodge=R
+dodge=R, Mouse4
 fdodge=Mouse5
 jump=Space
 melee=Mouse1
@@ -113,20 +104,22 @@ art2=2
 art3=3
 potion=E
 trail=Mouse3
+tpplayer=X
 statue=Z
 tp1=F1
 tp2=F2
 tp3=F3
 tp4=F4
-inventory=I
+inventory=I, Tab
 map=M
 wheel=S
 quest=J
 social=F
-tpplayer=X
 emotes=G
 collect=U
 events=K
+heavy=Q, Mouse4
+root=Shift
 
 [Options]
 HideMouse=1

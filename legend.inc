@@ -33,16 +33,12 @@ IMP int SetBkMode(HANDLE, int);
 IMP BOOL TextOutA(HANDLE, int, int, const char *, int);
 IMP HANDLE CreateSolidBrush(DWORD);
 IMP BOOL GetTextExtentPoint32A(HANDLE, const char *, int, SIZE *);
-IMP HANDLE CreatePen(int, int, DWORD);
-IMP BOOL Ellipse(HANDLE, int, int, int, int);
-IMP BOOL Polygon(HANDLE, const POINT *, int);
 IMP BOOL SetCursorPos(int, int);
 IMP BOOL ClipCursor(const RECT *);
-IMP HANDLE GetStockObject(int);
 IMP BOOL DeleteObject(HANDLE);
 
 #define RGB(r, g, b) ((DWORD)(r) | ((DWORD)(g) << 8) | ((DWORD)(b) << 16))
-#define LEGEND_LINES 24
+#define LEGEND_LINES 32
 static char legendText[LEGEND_LINES][96];
 static int legendCount, legendW, legendH, lineH = 18;
 static HANDLE legendWnd, legendFont, legendBrush;
@@ -55,6 +51,42 @@ static void addLine(const char *key, const char *what) {
     append(l, 96, what);
 }
 
+// The game action a converted key presses, from the layout's [GameKeys] (the
+// game's own keyboard keys, written by the key layout editor): S -> "Menu wheel".
+static const char *gameActionFor(BYTE vk) {
+    static const char *names[][2] = {
+        {"wheel", "Menu wheel"}, {"inventory", "Inventory"}, {"map", "World map"}, {"quest", "Quests"},
+        {"social", "Social menu"}, {"emotes", "Emotes"}, {"collect", "Collectibles"}, {"events", "Event log"},
+        {"tpplayer", "Teleport to player"}, {"statue", "Teleport statue"}, {"tp1", "Teleport to player 1"},
+        {"tp2", "Teleport to player 2"}, {"tp3", "Teleport to player 3"}, {"tp4", "Teleport to player 4"},
+        {"ranged", "Bow"}, {"potion", "Health potion"}, {"jump", "Jump"}, {"melee", "Melee"},
+        {"dodge", "Directional dodge"}, {"fdodge", "Forward dodge"}, {"art1", "Artifact 1"}, {"art2", "Artifact 2"},
+        {"art3", "Artifact 3"}, {"trail", "Guidance trail"}, {"heavy", "Heavy jump attack"}, {"root", "Root"},
+    };
+    static char sec[2048];
+    if (!GetPrivateProfileSectionA("GameKeys", sec, sizeof(sec), ini)) return 0;
+    for (const char *p = sec; *p; p += len(p) + 1) { // "wheel=S", "quest=V, J"
+        const char *eq = p; while (*eq && *eq != '=') eq++;
+        if (!*eq) continue;
+        char keys[64] = {0}; append(keys, sizeof(keys), eq + 1);
+        for (char *k = keys; *k; ) {
+            while (*k == ' ' || *k == ',') k++;
+            char *e = k; while (*e && *e != ',') e++;
+            char *end = e; while (end > k && end[-1] == ' ') end--;
+            char save = *end; *end = 0;
+            int hit = keyCode(k) == vk;
+            *end = save; k = e;
+            if (!hit) continue;
+            for (unsigned i = 0; i < sizeof(names) / sizeof(*names); i++) {
+                const char *a = p, *n = names[i][0];
+                while (a < eq && *n && lower(*a) == *n) a++, n++;
+                if (a == eq && !*n) return names[i][1];
+            }
+        }
+    }
+    return 0;
+}
+
 static void buildLegend(void) {
     legendCount = 0;
     char move[64] = {0};
@@ -63,7 +95,6 @@ static void buildLegend(void) {
     append(move, sizeof(move), moveDown.text); append(move, sizeof(move), " ");
     append(move, sizeof(move), moveRight.text);
     addLine(move, "Move");
-    if (dodge.text[0]) addLine(dodge.text, "Dodge the way you move");
     if (dodgeMouse.text[0]) addLine(dodgeMouse.text, "Click: dodge. Click + drag: roll that way");
     for (int i = 0; i < NBTN; i++) {
         if (!btn[i].text[0]) continue;
@@ -71,7 +102,15 @@ static void buildLegend(void) {
         append(what, sizeof(what), "  ["); append(what, sizeof(what), btnName[i]); append(what, sizeof(what), "]");
         addLine(btn[i].text, what);
     }
-    if (remapText[0]) addLine(remapText, "(sends the game's own key)");
+    // Converted keys, named after what they do: "Tab  Menu wheel (sends the game's S)".
+    for (int i = 0; i < remapCount; i++) {
+        char what[96] = {0}; const char *name = gameActionFor(remapList[i].toVk);
+        if (name) { append(what, sizeof(what), name); append(what, sizeof(what), " (sends the game's "); }
+        else append(what, sizeof(what), "Sends the game's ");
+        append(what, sizeof(what), remapList[i].to);
+        if (name) append(what, sizeof(what), ")");
+        addLine(remapList[i].from, what);
+    }
     if (typeText[0]) addLine(typeText, "Type (Esc to stop)");
     if (cursorKey.text[0]) addLine(cursorKey.text, "Hold: mouse cursor");
     if (menuText[0]) addLine(menuText, "Game menus (mouse mode; move or fight to leave)");
@@ -128,11 +167,9 @@ static LRESULT legendProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, msg, wp, lp);
 }
 
-// Pointer: in controller mode the game hides its cursor, so the mod draws a normal
-// arrow pointer where the mouse is (a small click-through window whose tip sits
-// on the mouse; magenta is the transparent colour). With aiming on it's a ring.
-#define CROSS 30
-static HANDLE crossWnd; static int crossShown; static LONG crossX = -1, crossY = -1;
+// A hidden 1x1 window whose 30 ms timer keeps the cursor in the game window, shows
+// the typing banner and does the cursor-key nudge.
+static HANDLE tickWnd;
 
 // Typing-mode banner: a small bar at the top of the game window while typing mode
 // is on. Placed once when typing starts and hidden when it ends (a window moving
@@ -164,38 +201,10 @@ static void showTyping(int want) {
     typeShown = 1;
 }
 
-static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
-    if (msg == 0x0F) {
-        PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
-        HANDLE key = CreateSolidBrush(RGB(255, 0, 255)); RECT r = {0, 0, CROSS, CROSS}; FillRect(dc, &r, key);
-        if (cfg.aimStick) { // aiming: a ring centred on the mouse
-            SelectObject(dc, GetStockObject(5 /*NULL_BRUSH*/));
-            HANDLE dark = CreatePen(0, 4, RGB(10, 10, 10)), light = CreatePen(0, 2, RGB(255, 236, 160));
-            SelectObject(dc, dark); Ellipse(dc, 4, 4, CROSS - 4, CROSS - 4);
-            SelectObject(dc, light); Ellipse(dc, 4, 4, CROSS - 4, CROSS - 4);
-            DeleteObject(dark); DeleteObject(light);
-        } else { // a normal arrow pointer, tip at the top-left corner
-            static const POINT arrow[7] = {{1, 1}, {1, 20}, {6, 15}, {10, 23}, {13, 22}, {9, 14}, {16, 14}};
-            HANDLE fill = CreateSolidBrush(RGB(250, 250, 250)), edge = CreatePen(0, 1, RGB(15, 15, 15));
-            SelectObject(dc, fill); SelectObject(dc, edge); Polygon(dc, arrow, 7);
-            DeleteObject(fill); DeleteObject(edge);
-        }
-        EndPaint(w, &ps);
-        DeleteObject(key);
-        return 0;
-    }
-    if (msg == 0x113) { // WM_TIMER: follow the mouse, keep it inside the game while aiming
+static LRESULT tickProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x113) { // WM_TIMER, every 30 ms
         showTyping(typingManual && !paused);
         int inControl = gameWnd && active();
-        int want = cfg.crosshair && inControl;
-        if (want) {
-            POINT p; GetCursorPos(&p);
-            if (!crossShown || p.x != crossX || p.y != crossY) {
-                int off = cfg.aimStick ? CROSS / 2 : 1; // ring: centred; arrow: tip on the mouse
-                SetWindowPos(crossWnd, (HANDLE)-1, p.x - off, p.y - off, CROSS, CROSS, 0x10 | 0x40);
-                crossX = p.x; crossY = p.y; crossShown = 1;
-            }
-        } else if (crossShown) { ShowWindow(crossWnd, 0); crossShown = 0; }
         // Keep the mouse inside the game while playing. The game hides its cursor in
         // controller mode, so while you move with the keys the invisible cursor is
         // quietly moved back to the middle once it has drifted far (a third of the
@@ -211,8 +220,8 @@ static LRESULT crossProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
             LONG dx = p.x - cx, dy = p.y - cy, lim = (gameWidth < gameHeight ? gameWidth : gameHeight) / 3;
             if (dx > lim || dx < -lim || dy > lim || dy < -lim) SetCursorPos(cx, cy);
         }
-        // A menu opened from a key or button: cursor to the middle. (Switching to
-        // mouse mode by moving the mouse leaves the cursor where it is.)
+        // A menu opened from a key or button, or the cursor key: cursor to the middle.
+        // (Moving the mouse into mouse mode leaves it where it is, unless CursorFromMiddle=1.)
         if (centerCursor) { centerCursor = 0; if (sane) SetCursorPos(gameLeft + gameWidth / 2, gameTop + gameHeight / 2); }
         // Cursor key pressed: a one-pixel real mouse move there and back, so the game
         // notices the mouse and shows its cursor.
@@ -259,11 +268,11 @@ static DWORD legendThread(void *unused) {
         if (typeWnd) SetLayeredWindowAttributes(typeWnd, 0, 230, 2 /*LWA_ALPHA*/);
     }
     WNDCLASSA cc; memset(&cc, 0, sizeof(cc));
-    cc.proc = crossProc; cc.instance = self; cc.className = "WasdModCrosshair";
+    cc.proc = tickProc; cc.instance = self; cc.className = "WasdModTick";
     RegisterClassA(&cc);
-    crossWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000, "WasdModCrosshair", "Crosshair", 0x80000000, 0, 0, CROSS, CROSS, 0, 0, self, 0);
-    if (crossWnd) { SetLayeredWindowAttributes(crossWnd, RGB(255, 0, 255), 0, 1 /*LWA_COLORKEY*/); SetTimer(crossWnd, 2, 30, 0); }
-    else logline("Could not create the crosshair");
+    tickWnd = CreateWindowExA(0x80 | 0x8000000 /*TOOLWINDOW|NOACTIVATE*/, "WasdModTick", "WASD mod timer", 0x80000000 /*WS_POPUP, hidden*/, 0, 0, 1, 1, 0, 0, self, 0);
+    if (tickWnd) SetTimer(tickWnd, 2, 30, 0);
+    else logline("Could not create the timer window");
     MSG m;
     while (GetMessageA(&m, 0, 0, 0) > 0) DispatchMessageA(&m);
     return 0;

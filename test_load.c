@@ -147,22 +147,25 @@ void mainCRTStartup(void) {
         num("text box: W keydown arrives as message (256 = passes through) ", t);
         if (t != 0x100 || s.ly) fail = 1;
         ImmAssociateContext(wnd, 0);
-        get(0, &s);
+        Sleep(120); get(0, &s); // text box checks are reused for 50 ms
     }
-    // Opt-in: injects real key events, so only run with the game closed.
-    // Needs RequireFocus=0 in default.txt, since this console test has no window.
+    // Opt-in: injects real key events, so only run with the game closed (in a test
+    // bottle: a bottle shares its key state). Needs RequireFocus=0 in default.txt,
+    // since this console test has no window, and MouseMoveSwitches=0, since the
+    // real mouse moving meanwhile switches to mouse mode. Each step waits for the
+    // movement smoothing (AccelMs, TurnMs, DecelMs) to settle.
     const char *cmd = GetCommandLineA(); int keys = 0;
     for (const char *p = cmd; *p; p++) if (p[0] == '-' && p[1] == '-' && p[2] == 'k' && p[3] == 'e' && p[4] == 'y' && p[5] == 's') keys = 1;
     if (!keys) { out(fail ? "RESULT FAIL\r\n" : "RESULT PASS (basic; run with --keys for the key test)\r\n"); ExitProcess(fail); }
     DWORD before = s.packet;
     keybd_event(0x57, 0, 0, 0);                  // W down
-    get(0, &s); num("W held: stick X ", s.lx); num("W held: stick Y ", s.ly);
+    get(0, &s); Sleep(200); get(0, &s); num("W held: stick X ", s.lx); num("W held: stick Y ", s.ly);
     if (s.lx != 0 || s.ly != 32767) fail = 1;
     keybd_event(0x44, 0, 0, 0);                  // D down as well
-    get(0, &s); num("W+D held: stick X ", s.lx); num("W+D held: stick Y ", s.ly);
-    if (s.lx != 23170 || s.ly != 23170) fail = 1;
+    get(0, &s); Sleep(200); get(0, &s); num("W+D held: stick X ", s.lx); num("W+D held: stick Y ", s.ly);
+    if (s.lx < 23168 || s.lx > 23172 || s.ly < 23168 || s.ly > 23172) fail = 1; // 0.7071 of full, give or take rounding
     keybd_event(0x57, 0, 2, 0); keybd_event(0x44, 0, 2, 0); // release both
-    get(0, &s); num("released: stick X ", s.lx); num("released: stick Y ", s.ly);
+    get(0, &s); Sleep(200); get(0, &s); num("released: stick X ", s.lx); num("released: stick Y ", s.ly);
     if (s.lx || s.ly) fail = 1;
     num("packet number advanced ", s.packet != before); if (s.packet == before) fail = 1;
     out(fail ? "RESULT FAIL\r\n" : "RESULT PASS\r\n");
