@@ -201,6 +201,8 @@ No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` i
 
 [MIT](LICENSE).
 
+Headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain).
+
 Unofficial project. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with CodeWeavers or Valve.
 
 ## References
