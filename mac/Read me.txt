@@ -23,6 +23,10 @@ now), F9 shows the key list (fn + F9 on most Mac keyboards), hold Option for
 the cursor, T starts typing (Esc ends it), and the backtick key (`) turns the
 mod off and on.
 
+Something not working? Click Record Logs in wasdmod, play until it happens,
+then click Stop & Save Logs: attach the file from your Desktop to a report on
+https://github.com/Wanzho/mcd2-wasd/issues
+
 To play without it for a while, click Turn Off in wasdmod (the game then starts
 without it; Turn On brings it back, with your layouts). Uninstall removes it.
 

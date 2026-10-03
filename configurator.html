@@ -11,7 +11,7 @@
   --accent: #d9801a; --accent-fg: #ffffff;
   --cap: #e4e8e8; --cap-edge: #a9b3b4; --cap-fg: #1a2226; --cap-empty: #f4f6f6;
   --move: #2f8fbf; --action: #d9801a; --menu: #3f9a55; --mod: #7d62d6; --danger: #cc3b33; --danger-bg: #fbe9e7;
-  --ok: #2f8a4a; --warn-bg: #fff4e0;
+  --ok: #2f8a4a; --ok-fg: #ffffff; --warn-bg: #fff4e0;
   --xa: #3f9a3f; --xb: #c7382f; --xx: #2f6fc0; --xy: #c9960e;
   --display: "Pixelify Sans", "Menlo", monospace; --body: "Chivo", "Helvetica Neue", Arial, sans-serif; --mono: "JetBrains Mono", "Menlo", monospace;
   color-scheme: light;
@@ -21,14 +21,14 @@
   --accent: #f19a2e; --accent-fg: #1a1206;
   --cap: #d4d9d9; --cap-edge: #7f8c8e; --cap-fg: #1a2226; --cap-empty: #1d3f49;
   --move: #5bb5e0; --action: #f19a2e; --menu: #6cc27f; --mod: #a68cf0; --danger: #f06a5f; --danger-bg: #3a1d1d;
-  --ok: #6cc27f; --warn-bg: #3a2e14;
+  --ok: #6cc27f; --ok-fg: #0f2414; --warn-bg: #3a2e14;
   --xa: #5cbf5c; --xb: #e0584f; --xx: #4f8fe0; --xy: #e8b83a; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0d2027; --panel: #122c35; --panel-2: #17363f; --line: #22505c; --fg: #e6f0f1; --muted: #8fb0b7;
   --accent: #f19a2e; --accent-fg: #1a1206;
   --cap: #d4d9d9; --cap-edge: #7f8c8e; --cap-fg: #1a2226; --cap-empty: #1d3f49;
   --move: #5bb5e0; --action: #f19a2e; --menu: #6cc27f; --mod: #a68cf0; --danger: #f06a5f; --danger-bg: #3a1d1d;
-  --ok: #6cc27f; --warn-bg: #3a2e14;
+  --ok: #6cc27f; --ok-fg: #0f2414; --warn-bg: #3a2e14;
   --xa: #5cbf5c; --xb: #e0584f; --xx: #4f8fe0; --xy: #e8b83a; color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -42,6 +42,7 @@ button, .btn { font: 600 13px/1 var(--body); border-radius: 4px; border: 1px sol
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.primary.save { background: var(--ok); color: var(--ok-fg); border-color: var(--ok); }
 /* layouts: pick, create, save, reset, download */
 .layoutbar { display: grid; gap: 6px; justify-items: start; }
 .layoutbar .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
@@ -97,14 +98,18 @@ h3.group { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spaci
 /* the game's own keyboard key for this action */
 .ingame { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; margin-left: 10px; padding-left: 12px; border-left: 1px solid var(--line); }
 .ingame button { font: 600 12px/1 var(--body); padding: 5px 8px; border-style: dashed; background: transparent; color: var(--fg); }
-.ingame button.unknown { color: var(--danger); border-color: var(--danger); }
+.ingame button.unknown { color: var(--accent); border-color: var(--accent); }
 .ingame button.match { border-style: solid; }
 .ingame .fixed { font: 600 12px/1 var(--body); color: var(--fg); padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; }
 .note { font-size: 12px; color: var(--muted); }
-.wheel-note { margin: 0 0 12px; padding: 9px 12px; border-left: 3px solid var(--menu); border-radius: 4px; background: rgba(127, 127, 127, .09); font-size: 13.5px; max-width: 74ch; }
-.conflicts { margin-top: 16px; border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 6px; padding: 10px 14px; }
-.conflicts strong { color: var(--danger); }
-.conflicts ul { margin: 4px 0 0; padding-left: 18px; }
+.wheel-note { margin: 0 0 12px; padding: 9px 12px; border-left: 3px solid var(--accent); border-radius: 4px; background: rgba(127, 127, 127, .09); font-size: 13.5px; max-width: 74ch; }
+.conflicts { margin-top: 16px; border: 2px solid var(--danger); background: var(--danger-bg); border-radius: 8px; padding: 14px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; align-items: start; }
+.conflicts .icon { font: 700 30px/1 var(--display); color: var(--danger); grid-row: span 3; }
+.conflicts h2 { margin: 0; color: var(--danger); font-size: 21px; }
+.conflicts p { margin: 0; font-size: 14px; max-width: 90ch; }
+.conflicts ul { margin: 2px 0 0; padding-left: 18px; font-size: 14px; }
+.conflicts li { margin: 3px 0; }
+.conflicts li button { margin-left: 8px; font-size: 12.5px; padding: 3px 9px; }
 /* keyboard map */
 .kbd { display: grid; gap: 3px; overflow-x: auto; padding-bottom: 4px; }
 .krow { display: flex; gap: 3px; }
@@ -126,17 +131,18 @@ ul.recs .was { display: block; font-size: 12px; color: var(--muted); }
 ul.recs button { padding: 5px 9px; }
 .allset { color: var(--ok); font-weight: 600; font-size: 13.5px; margin: 6px 0 0; }
 /* the "your game doesn't match" notice at the top */
-.mismatch { margin-top: 16px; border: 2px solid var(--danger); background: var(--danger-bg); border-radius: 8px; padding: 14px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; }
-.mismatch .icon { font: 700 30px/1 var(--display); color: var(--danger); grid-row: span 2; }
-.mismatch h2 { margin: 0; color: var(--danger); font-size: 21px; }
+.mismatch { margin-top: 16px; border: 2px solid var(--accent); background: var(--warn-bg); border-radius: 8px; padding: 14px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; }
+.mismatch .icon { font: 700 30px/1 var(--display); color: var(--accent); grid-row: span 2; }
+.mismatch h2 { margin: 0; color: var(--accent); font-size: 21px; }
 .mismatch p { margin: 0; font-size: 14px; max-width: 90ch; }
-.mismatch button { grid-row: span 2; background: var(--danger); color: #fff; border-color: var(--danger); font-size: 14px; padding: 11px 16px; }
+.mismatch button { grid-row: span 2; background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-size: 14px; padding: 11px 16px; }
 @media (max-width: 720px) { .mismatch { grid-template-columns: minmax(0, 1fr); } .mismatch .icon, .mismatch button { grid-row: auto; } }
-.ingame button.stray { color: var(--danger); border-color: var(--danger); text-decoration: line-through; }
+.ingame button.stray { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
 .ingame .clear2, .ingame .add2 { padding: 4px 6px; border: 1px dashed var(--line); background: transparent; color: var(--muted); }
 .ingame .none { color: var(--muted); }
 .recs .note { display: block; font-size: 12px; color: var(--muted); }
 #recsCard.flash { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow .3s; }
+.row.flash { outline: 3px solid var(--danger); outline-offset: 3px; border-radius: 6px; }
 /* output */
 pre.ini { margin: 10px 0 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font: 12px/1.45 var(--mono); max-height: 300px; overflow: auto; white-space: pre; }
 .out-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -173,7 +179,7 @@ code { font-family: var(--mono); font-size: .92em; }
         <select id="layoutSel"></select>
         <button type="button" id="createBtn" title="A new layout of your own, starting from what's on screen">+ Create</button>
         <button type="button" id="resetBtn" title="Back to this layout's saved version">Reset</button>
-        <button type="button" class="primary" id="downloadTop" title="Download the settings file for the game folder">Download file</button>
+        <button type="button" class="primary save" id="downloadTop" title="Download the settings file for the game folder">Download file</button>
       </div>
       <div class="layout-status" id="layoutStatus" aria-live="polite"></div>
     </div>
@@ -187,9 +193,9 @@ code { font-family: var(--mono); font-size: .92em; }
     <div class="out-actions"><button class="primary" id="importBtn" type="button">Load pasted text</button><span class="status" id="importStatus"></span></div>
   </section>
 
-  <div id="mismatch"></div>
-
   <div id="conflicts"></div>
+
+  <div id="mismatch"></div>
 
   <div class="grid">
     <main>
@@ -213,7 +219,7 @@ code { font-family: var(--mono); font-size: .92em; }
       <section class="card">
         <h2>Settings file</h2>
         <div class="out-actions">
-          <button class="primary" id="saveBtn" type="button">Download settings file</button>
+          <button class="primary save" id="saveBtn" type="button">Download settings file</button>
           <button id="copyBtn" type="button">Copy text</button>
         </div>
         <div class="status" id="saveStatus"></div>
@@ -868,12 +874,25 @@ function renderMap(uses) {
   $("mouseMap").replaceChildren(...["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k))));
 }
 
+// Your own keys bound twice: separate from the red "change these in the game"
+// notice, because this one misbehaves right away (one press does both jobs).
 function renderConflicts(uses) {
   const bad = [...uses.entries()].filter(([, u]) => u.length > 1);
   const box = $("conflicts");
   if (!bad.length) { box.replaceChildren(); return; }
-  box.replaceChildren(el("div", { class: "conflicts" }, el("strong", { text: bad.length === 1 ? "1 key does two things" : bad.length + " keys do two things" }),
-    el("ul", {}, ...bad.map(([k, u]) => el("li", { text: pretty(k) + " — " + u.map(r => r.name).join(" and ") })))));
+  const show = k => {
+    const cap = [...document.querySelectorAll(".cap.conflict")].find(c => c.textContent.includes(pretty(k)));
+    if (!cap) return;
+    cap.scrollIntoView({ behavior: "smooth", block: "center" });
+    const row = cap.closest(".row") || cap; row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1500);
+  };
+  const n = bad.length;
+  box.replaceChildren(el("div", { class: "conflicts", role: "alert" },
+    el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
+    el("h2", { text: n === 1 ? "1 key does two things" : n + " keys do two things" }),
+    el("p", { text: "Pressing " + (n === 1 ? "this key" : "one of these keys") + " does both jobs at once. Give each job its own key: the clashing keys have a red outline below." }),
+    el("ul", {}, ...bad.map(([k, u]) => el("li", {}, el("b", { text: pretty(k) }), " — " + u.map(r => r.name).join(" and "),
+      el("button", { type: "button", text: "Show", onclick: () => show(k) }))))));
 }
 
 function renderLayoutBar() {
@@ -891,7 +910,7 @@ function renderLayoutBar() {
     const ok = () => { const n = input.value.trim(); if (n) newLayout(n); };
     input.addEventListener("keydown", e => { if (e.key === "Enter") ok(); if (e.key === "Escape") { naming = null; renderLayoutBar(); } });
     s.append(naming === "create" ? "New layout from what's on screen:" : "Save as a new layout:", input,
-      el("button", { type: "button", class: "primary", text: "Save", onclick: ok }),
+      el("button", { type: "button", class: "primary save", text: "Save", onclick: ok }),
       el("button", { type: "button", text: "Cancel", onclick: () => { naming = null; renderLayoutBar(); } }));
     setTimeout(() => { input.focus(); input.select(); }, 0);
     return;
@@ -905,7 +924,7 @@ function renderLayoutBar() {
   if (switchWarn) s.append(el("span", { class: "warn", text: "Save or discard your changes first." }));
   if (dirty()) {
     s.append(el("span", { class: "changed", text: BUILTIN[cur] ? "You changed " + layoutName(cur) + ". Save changes?" : "Unsaved changes" }),
-      el("button", { type: "button", class: "primary", text: BUILTIN[cur] ? "Save as new layout…" : "Save changes", onclick: saveChanges }),
+      el("button", { type: "button", class: "primary save", text: BUILTIN[cur] ? "Save as new layout…" : "Save changes", onclick: saveChanges }),
       el("button", { type: "button", text: "Discard", onclick: askReset }));
   } else if (!switchWarn) {
     s.append(BUILTIN[cur] ? "Built-in layout. Change anything and you can save it as your own." : "Your layout, kept in this browser.");

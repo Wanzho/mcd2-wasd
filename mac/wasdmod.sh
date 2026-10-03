@@ -7,6 +7,8 @@
 #   wasdmod.sh install            FORCE=1 replaces another mod's xinput1_4.dll (kept as .other)
 #   wasdmod.sh uninstall          ALL=1 also deletes the saved layouts
 #   wasdmod.sh off | on           the game starts without the mod (xinput1_4.dll.off) / with it again
+#   wasdmod.sh record start|stop  Record Logs: the mod also logs every key it handles
+#   wasdmod.sh report [FILE]      one text file for a bug report (default: on the Desktop)
 #   wasdmod.sh use default|recommended|own
 #   wasdmod.sh load FILE          a layout file the key layout editor downloaded
 #   wasdmod.sh editor | folder    opens the key layout editor / the game folder
@@ -67,6 +69,7 @@ status)
     else echo "state=older"; fi
     echo "layout=$(active)"
     echo "own=$(own)"
+    [ -f "$GAME/wasdmod-record.flag" ] && echo "recording=yes" || echo "recording=no"
     ;;
 install)
     needGame; needQuit
@@ -109,7 +112,7 @@ uninstall)
     if [ -f "$GAME/xinput1_4.dll" ] && ours "$GAME/xinput1_4.dll"; then rm "$GAME/xinput1_4.dll"; fi
     if [ -f "$GAME/xinput1_4.dll.off" ] && ours "$GAME/xinput1_4.dll.off"; then rm "$GAME/xinput1_4.dll.off"; fi
     [ -f "$GAME/xinput1_4.dll.other" ] && [ ! -f "$GAME/xinput1_4.dll" ] && mv "$GAME/xinput1_4.dll.other" "$GAME/xinput1_4.dll"
-    (cd "$GAME" && rm -f default.txt default.txt.bak "Key Layout Editor.html" wasdmod.log wasdmod.ini wasdmod.ini.bak wasd-mod.ini wasd-mod.ini.bak wasd-mod.log)
+    (cd "$GAME" && rm -f default.txt default.txt.bak "Key Layout Editor.html" wasdmod.log wasdmod.old.log wasdmod-record.flag wasdmod.ini wasdmod.ini.bak wasd-mod.ini wasd-mod.ini.bak wasd-mod.log)
     [ "$ALL" = 1 ] && (cd "$GAME" && rm -f author.txt author.txt.bak wasdmod*.txt wasd-mod*.txt)
     wine reg delete 'HKCU\Software\Wine\AppDefaults\Dungeons-Win64-Shipping.exe\DllOverrides' /v xinput1_4 /f >/dev/null 2>&1
     wine reg delete 'HKCU\Software\Wine\Mac Driver' /v UseConfinementCursorClipping /f >/dev/null 2>&1
@@ -160,6 +163,41 @@ editor)
     cmp -s "$EDITOR" "$GAME/Key Layout Editor.html" || cp "$EDITOR" "$GAME/Key Layout Editor.html"
     open "$GAME/Key Layout Editor.html"
     ;;
+record)
+    # While wasdmod-record.flag is there, the mod logs each key and button it handles.
+    needGame
+    case "$2" in
+    start) : > "$GAME/wasdmod-record.flag" || fail "Couldn't write to the game folder." ;;
+    stop) rm -f "$GAME/wasdmod-record.flag" ;;
+    *) fail "record start or stop" ;;
+    esac
+    ;;
+report)
+    # One text file to attach to a bug report: the system, the mod's state, the
+    # layout in use and the log. The home folder shows as ~.
+    needGame
+    OUT="${2:-$HOME/Desktop/wasdmod-logs-$(date +%Y%m%d-%H%M).txt}"
+    L=$(active)
+    if [ -f "$GAME/xinput1_4.dll" ]; then ours "$GAME/xinput1_4.dll" && { cmp -s "$DLL" "$GAME/xinput1_4.dll" && ST="installed, up to date" || ST="installed, older version"; } || ST="a different xinput1_4.dll"
+    elif [ -f "$GAME/xinput1_4.dll.off" ]; then ST="turned off"; else ST="not installed"; fi
+    {
+        echo "wasdmod logs, $(date '+%Y-%m-%d %H:%M')"
+        echo "App: wasdmod for Mac ${WASDMOD_VERSION:-dev}"
+        echo "System: macOS $(sw_vers -productVersion) ($(uname -m))"
+        for c in /Applications/CrossOver.app "$HOME/Applications/CrossOver.app"; do
+            [ -d "$c" ] && { echo "CrossOver: $(defaults read "$c/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null)"; break; }
+        done
+        echo "Bottle: $(basename "$BOTTLE")"
+        echo "Game folder: $GAME"
+        echo "Mod: $ST"
+        echo "Layout in use: ${L:-none}"
+        if [ -n "$L" ]; then echo; echo "===== $L ====="; grep -v -e '^;' -e '^[[:space:]]*$' "$GAME/$L"; fi
+        if [ -f "$GAME/wasdmod.old.log" ]; then echo; echo "===== wasdmod.old.log (end) ====="; tail -n 300 "$GAME/wasdmod.old.log"; fi
+        echo; echo "===== wasdmod.log ====="
+        if [ -f "$GAME/wasdmod.log" ]; then tail -n 6000 "$GAME/wasdmod.log"; else echo "(no log yet: start the game once with wasdmod installed)"; fi
+    } | tr -d '\r' | sed "s|$HOME|~|g" > "$OUT" || fail "Couldn't write $OUT"
+    echo "report=$OUT"
+    ;;
 folder) needGame; open "$GAME" ;;
-*) fail "usage: wasdmod.sh status|install|uninstall|off|on|use default|recommended|own|load FILE|editor|folder" ;;
+*) fail "usage: wasdmod.sh status|install|uninstall|off|on|record start|stop|report [FILE]|use default|recommended|own|load FILE|editor|folder" ;;
 esac

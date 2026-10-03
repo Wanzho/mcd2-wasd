@@ -39,6 +39,12 @@ own, and click "Download file". Put the file in the same Win64 folder and
 restart the game. The mod uses the newest of default.txt, author.txt and
 wasdmod*.txt.
 
+Problems
+--------
+Attach wasdmod.log (in the same Win64 folder) to a report on
+https://github.com/Wanzho/mcd2-wasd/issues. For a detailed log, put an empty
+file named wasdmod-record.flag in that folder while you play, then remove it.
+
 Turn off
 --------
 Rename xinput1_4.dll to xinput1_4.dll.off: the game starts without the mod and

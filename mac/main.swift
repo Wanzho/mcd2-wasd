@@ -15,6 +15,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     lazy var installButton = button("Install", #selector(install))
     lazy var uninstallButton = button("Uninstall", #selector(uninstall))
     lazy var onOffButton = button("Turn Off", #selector(turnOnOff))
+    lazy var recordButton = button("Record Logs", #selector(recordLogs))
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
     lazy var folderButton = button("Game Folder", #selector(showFolder))
     lazy var bottleButton = button("Choose Bottle…", #selector(chooseBottle))
     lazy var setupButton = button("Get MCD2 Crossover", #selector(openSetupHelp))
@@ -97,6 +99,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
         installButton.title = state == "current" || state == "off" ? "Reinstall" : state == "older" ? "Update" : "Install"
         onOffButton.title = state == "off" ? "Turn On" : "Turn Off"
         onOffButton.isHidden = !installed
+        recordButton.title = info["recording"] == "yes" ? "Stop & Save Logs" : "Record Logs"
+        recordButton.isHidden = !found
         installButton.isHidden = !found
         installButton.isEnabled = !busy
         uninstallButton.isHidden = !installed
@@ -150,6 +154,29 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     }
 
     @objc func showFolder() { _ = sh(["folder"]) }
+
+    // Record Logs: while on, the mod logs every key and button it handles; Stop &
+    // Save Logs puts one report file on the Desktop for a bug report.
+    @objc func recordLogs() {
+        if info["recording"] == "yes" {
+            _ = sh(["record", "stop"])
+            let r = sh(["report"], ["WASDMOD_VERSION": version])
+            refresh()
+            guard r.ok, let path = fields(r.out)["report"] else { _ = alert("Couldn't save the logs", r.out, style: .warning); return }
+            let url = URL(fileURLWithPath: path)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            if alert("Saved \(url.lastPathComponent) on your Desktop.",
+                     "It has the mod's log, your key layout, and your Mac and CrossOver versions. Nothing you type is recorded. Attach it to a report on GitHub.",
+                     buttons: ["Report on GitHub", "Done"]) == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(string: "https://github.com/Wanzho/mcd2-wasd/issues/new")!)
+            }
+        } else {
+            let r = sh(["record", "start"])
+            refresh()
+            if !r.ok { _ = alert("Couldn't start recording", r.out, style: .warning); return }
+            _ = alert("Recording logs.", "Play until the problem happens, then come back here and click Stop & Save Logs.\n\nIf the game is running, recording starts within a second; otherwise it starts with the game. Nothing you type is recorded.")
+        }
+    }
 
     // Off: the game starts without the mod (its file is renamed); layouts stay.
     @objc func turnOnOff() {
@@ -269,7 +296,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
 
         status.font = .systemFont(ofSize: 13)
         status.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let bar = NSStackView(views: [status, setupButton, bottleButton, folderButton, onOffButton, uninstallButton, installButton])
+        let bar = NSStackView(views: [status, setupButton, bottleButton, folderButton, recordButton, onOffButton, uninstallButton, installButton])
         bar.orientation = .horizontal
         bar.spacing = 8
         bar.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)

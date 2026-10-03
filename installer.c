@@ -16,6 +16,7 @@
 //   /uninstall "<folder>" uninstall without the window (keeps saved layouts)
 //   /default, /recommended, /own "<folder>"   switch the key layout
 //   /off, /on "<folder>"  turn the mod off (the game starts without it) or back on
+//   /recordon, /recordoff, /report "<folder>"   Record Logs, and the report file
 //   /serve "<folder>"     run the key layout editor's server and print its address
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
@@ -55,6 +56,9 @@ IMP const char *GetCommandLineA(void);
 IMP HANDLE GetStdHandle(DWORD);
 IMP void ExitProcess(UINT);
 IMP HANDLE GetModuleHandleA(const char *);
+IMP void *GetProcAddress(HANDLE, const char *);
+typedef struct { WORD year, month, weekday, day, hour, minute, second, ms; } SYSTEMTIME;
+IMP void GetLocalTime(SYSTEMTIME *);
 IMP DWORD GetEnvironmentVariableA(const char *, char *, DWORD);
 IMP HANDLE CreateToolhelp32Snapshot(DWORD, DWORD);
 typedef struct { DWORD size, usage, pid; U64 heap; DWORD module, threads, parent; LONG priority; DWORD flags; char exe[260]; } PROCESSENTRY;
@@ -102,6 +106,7 @@ IMP int SetBkMode(HANDLE, int);
 IMP HANDLE GetSysColorBrush(int);
 // shell32 / comdlg32
 IMP HANDLE ShellExecuteA(HANDLE, const char *, const char *, const char *, const char *, int);
+IMP LONG SHGetFolderPathA(HANDLE, int, HANDLE, DWORD, char *);
 typedef struct {
     DWORD size; HANDLE owner, instance; const char *filter; char *customFilter; DWORD maxCustomFilter, filterIndex;
     char *file; DWORD maxFile; char *fileTitle; DWORD maxFileTitle; const char *initialDir, *title; DWORD flags;
@@ -363,7 +368,7 @@ static int uninstall(const char *dir, int removeLayout) {
     char p[PATHLEN];
     join(p, dir, "xinput1_4.dll"); if (exists(p) && isOurDll(p) && !DeleteFileA(p)) return ERR_WRITE;
     join(p, dir, "xinput1_4.dll.off"); if (exists(p) && isOurDll(p)) DeleteFileA(p);
-    const char *files[] = {"default.txt", "default.txt.bak", "wasdmod.log", "Key Layout Editor.html", "wasdmod.ini", "wasdmod.ini.bak", "wasd-mod.ini", "wasd-mod.ini.bak", "wasd-mod.log"};
+    const char *files[] = {"default.txt", "default.txt.bak", "wasdmod.log", "wasdmod.old.log", "wasdmod-record.flag", "Key Layout Editor.html", "wasdmod.ini", "wasdmod.ini.bak", "wasd-mod.ini", "wasd-mod.ini.bak", "wasd-mod.log"};
     for (unsigned i = 0; i < sizeof(files) / sizeof(*files); i++) { join(p, dir, files[i]); DeleteFileA(p); }
     if (removeLayout) { findLayouts(dir, 0, deleteFile); findFiles(dir, "wasd-mod*.txt", 0, deleteFile); join(p, dir, "author.txt.bak"); DeleteFileA(p); }
     return OK;
@@ -402,8 +407,8 @@ static int useLayout(const char *dir, int which) {
 
 // ---------------------------------------------------------------- window
 
-enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF };
-static HANDLE onOffBtn;
+enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF, ID_RECORD };
+static HANDLE onOffBtn, recordBtn;
 static HANDLE mainWnd, fontNormal, fontTitle, fontSmall, statusWnd, pathWnd, installBtn, uninstallBtn, editorBtn, loadBtn, settingsBtn, layoutBtn[3];
 static char ownName[PATHLEN];
 static char gameDir[PATHLEN];
@@ -584,6 +589,74 @@ static int findAppBrowser(char *out) {
     for (unsigned i = 0; i < 2; i++) if (exists(guesses[i])) { scpy(out, PATHLEN, guesses[i]); return 1; }
     return 0;
 }
+// ---------------------------------------------------------------- Record Logs
+//
+// While wasdmod-record.flag is in the game folder, the mod logs each key and mouse
+// button it handles. Stop and save logs writes one text file to the Desktop for a
+// bug report: the system, the mod's state, the layout in use and the log.
+static int recordingOn(const char *dir) { char p[PATHLEN]; join(p, dir, "wasdmod-record.flag"); return exists(p); }
+static int setRecording(const char *dir, int on) {
+    char p[PATHLEN]; join(p, dir, "wasdmod-record.flag");
+    if (!on) { DeleteFileA(p); return OK; }
+    return writeAll(p, "", 0) ? OK : ERR_WRITE;
+}
+typedef struct { char *b; DWORD n, cap; } TEXT;
+static void put(TEXT *t, const char *s, DWORD n) { while (n-- && t->n + 1 < t->cap) t->b[t->n++] = *s++; t->b[t->n] = 0; }
+static void puts_(TEXT *t, const char *s) { put(t, s, slen(s)); }
+static void putNum(TEXT *t, unsigned v) { char b[12]; num10(v, b); puts_(t, b); }
+// The end of a file: at most `keep` bytes, starting at a line; with `settingsOnly`,
+// without the comment lines (a layout's explanations).
+static void putTail(TEXT *t, const char *path, DWORD keep, int settingsOnly) {
+    DWORD n; char *b = readAll(path, &n); if (!b) return;
+    DWORD from = n > keep ? n - keep : 0;
+    if (from) while (from < n && b[from - 1] != '\n') from++;
+    int skip = 0;
+    for (DWORD i = from; i < n; i++) {
+        if (i == from || b[i - 1] == '\n') skip = settingsOnly && (b[i] == ';' || b[i] == '\r' || b[i] == '\n');
+        if (!skip && b[i] != '\r') put(t, b + i, 1);
+    }
+    HeapFree(GetProcessHeap(), 0, b);
+}
+static int writeReport(const char *dir, char *out) {
+    char desk[PATHLEN] = "", p[PATHLEN], active[PATHLEN], name[64] = "wasdmod-logs-";
+    if (SHGetFolderPathA(0, 0x10 /*CSIDL_DESKTOPDIRECTORY*/, 0, 0, desk) != 0 && !GetEnvironmentVariableA("USERPROFILE", desk, 300)) return ERR_WRITE;
+    SYSTEMTIME t; GetLocalTime(&t);
+    char d[16]; num10(t.year, d); cat(name, sizeof(name), d);
+    char two[3] = {0, 0, 0};
+    WORD parts[4] = {t.month, t.day, t.hour, t.minute};
+    for (int i = 0; i < 4; i++) { if (i == 2) cat(name, sizeof(name), "-"); two[0] = (char)('0' + parts[i] / 10); two[1] = (char)('0' + parts[i] % 10); cat(name, sizeof(name), two); }
+    cat(name, sizeof(name), ".txt");
+    join(out, desk, name);
+    TEXT r; r.cap = 2u << 20; r.n = 0; r.b = HeapAlloc(GetProcessHeap(), 0, r.cap); if (!r.b) return ERR_WRITE; r.b[0] = 0;
+    puts_(&r, "wasdmod logs, "); putNum(&r, t.year); puts_(&r, "-"); put(&r, name + 17, 2); puts_(&r, "-"); put(&r, name + 19, 2);
+    puts_(&r, " "); put(&r, name + 22, 2); puts_(&r, ":"); put(&r, name + 24, 2); puts_(&r, "\n");
+    puts_(&r, "App: wasdmod setup for Windows " VERSION "\n");
+    HANDLE nt = GetModuleHandleA("ntdll.dll");
+    const char *(*wine)(void) = nt ? GetProcAddress(nt, "wine_get_version") : 0;
+    typedef struct { DWORD size, major, minor, build, platform; WORD csd[128]; } OSVER;
+    LONG (*rtlVer)(OSVER *) = nt ? GetProcAddress(nt, "RtlGetVersion") : 0;
+    OSVER v; memset(&v, 0, sizeof(v)); v.size = sizeof(v);
+    puts_(&r, "System: Windows ");
+    if (rtlVer && !rtlVer(&v)) { putNum(&r, v.major); puts_(&r, "."); putNum(&r, v.minor); puts_(&r, "."); putNum(&r, v.build); }
+    if (wine) { puts_(&r, " (Wine "); puts_(&r, wine()); puts_(&r, ")"); }
+    puts_(&r, "\nGame folder: ");
+    char home[PATHLEN] = ""; unsigned hl = GetEnvironmentVariableA("USERPROFILE", home, 300) ? slen(home) : 0;
+    if (hl && sameTextN(dir, home, hl)) { puts_(&r, "%USERPROFILE%"); puts_(&r, dir + hl); } else puts_(&r, dir); // no user name in the report
+    const char *states[] = {"not installed", "installed, up to date", "installed, older version", "a different xinput1_4.dll", "turned off"};
+    puts_(&r, "\nMod: "); puts_(&r, states[installState(dir)]);
+    activeSettings(dir, active);
+    puts_(&r, "\nLayout in use: "); puts_(&r, exists(active) ? baseName(active) : "none"); puts_(&r, "\n");
+    if (exists(active)) { puts_(&r, "\n===== "); puts_(&r, baseName(active)); puts_(&r, " =====\n"); putTail(&r, active, 64 << 10, 1); }
+    join(p, dir, "wasdmod.old.log");
+    if (exists(p)) { puts_(&r, "\n===== wasdmod.old.log (end) =====\n"); putTail(&r, p, 32 << 10, 0); }
+    puts_(&r, "\n===== wasdmod.log =====\n");
+    join(p, dir, "wasdmod.log");
+    if (exists(p)) putTail(&r, p, 1200 << 10, 0); else puts_(&r, "(no log yet: start the game once with wasdmod installed)\n");
+    int ok = writeAll(out, r.b, r.n);
+    HeapFree(GetProcessHeap(), 0, r.b);
+    return ok ? OK : ERR_WRITE;
+}
+
 static int openEditor(void) {
     char url[120], exe[PATHLEN], args[220] = "--app=";
     if (!startServer()) return 0;
@@ -612,6 +685,8 @@ static void refresh(void) {
     EnableWindow(uninstallBtn, installed);
     SetWindowTextA(onOffBtn, state == TURNED_OFF ? "Turn on" : "Turn off");
     EnableWindow(onOffBtn, installed);
+    SetWindowTextA(recordBtn, have && recordingOn(gameDir) ? "Stop and save logs" : "Record logs");
+    EnableWindow(recordBtn, have);
     EnableWindow(editorBtn, have);
     EnableWindow(loadBtn, installed);
     EnableWindow(settingsBtn, installed);
@@ -656,6 +731,21 @@ static void onCommand(int id) {
         if (r != OK) MessageBoxA(mainWnd, "Couldn't rename xinput1_4.dll in the game folder. Close the game, or run this setup as administrator.", TITLE, 0x30);
         else MessageBoxA(mainWnd, on ? "Turned on. Start (or restart) the game to use wasdmod again."
                                      : "Turned off. From the next game start, the game runs without wasdmod; your layouts are kept.\n\n(In a running game, the backtick key (`) turns it off right away.)", TITLE, 0x40);
+    } else if (id == ID_RECORD) {
+        if (!recordingOn(gameDir)) {
+            if (setRecording(gameDir, 1) != OK) MessageBoxA(mainWnd, errorText[ERR_WRITE], TITLE, 0x30);
+            else MessageBoxA(mainWnd, "Recording logs. Play until the problem happens, then come back here and click Stop and save logs.\n\nIf the game is running, recording starts within a second; otherwise it starts with the game. Nothing you type is recorded.", TITLE, 0x40);
+        } else {
+            setRecording(gameDir, 0);
+            if (writeReport(gameDir, p) != OK) MessageBoxA(mainWnd, "Couldn't save the logs on the Desktop.", TITLE, 0x30);
+            else {
+                char args[PATHLEN + 16] = "/select,\""; cat(args, sizeof(args), p); cat(args, sizeof(args), "\"");
+                ShellExecuteA(mainWnd, "open", "explorer.exe", args, 0, 1);
+                char msg[PATHLEN + 300] = "Saved "; cat(msg, sizeof(msg), baseName(p));
+                cat(msg, sizeof(msg), " on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?");
+                if (MessageBoxA(mainWnd, msg, TITLE, 0x4 | 0x40) == 6) ShellExecuteA(mainWnd, "open", "https://github.com/Wanzho/mcd2-wasd/issues/new", 0, 0, 1);
+            }
+        }
     } else if (id == ID_UNINSTALL) {
         int removeLayout = findLayouts(gameDir, 0, 0) && MessageBoxA(mainWnd, "Also delete your saved key layouts (author.txt, wasdmod*.txt)?", TITLE, 0x4 | 0x20) == 6;
         int r = uninstall(gameDir, removeLayout);
@@ -723,7 +813,9 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         editorBtn = control("BUTTON", "Edit key layout...", 0x10000, 20, 348, 156, 30, ID_EDITOR, fontNormal);
         loadBtn = control("BUTTON", "Load layout file...", 0x10000, 184, 348, 156, 30, ID_LOAD, fontNormal);
         settingsBtn = control("BUTTON", "Open settings file", 0x10000, 348, 348, 152, 30, ID_SETTINGS, fontNormal);
-        control("STATIC", "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.", 0, 20, 392, 480, 36, 0, fontSmall);
+        recordBtn = control("BUTTON", "Record logs", 0x10000, 20, 392, 156, 30, ID_RECORD, fontNormal);
+        control("STATIC", "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.", 0, 184, 390, 316, 36, 0, fontSmall);
+        control("STATIC", "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.", 0, 20, 436, 480, 36, 0, fontSmall);
         refresh();
         return 0;
     }
@@ -755,7 +847,7 @@ static HANDLE createMain(void) {
     wc.background = (HANDLE)(15 + 1); // COLOR_BTNFACE
     RegisterClassA(&wc);
     DWORD style = 0x00CA0000; // caption, system menu, minimize box
-    RECT r = {0, 0, S(520), S(436)}; AdjustWindowRect(&r, style, 0);
+    RECT r = {0, 0, S(520), S(480)}; AdjustWindowRect(&r, style, 0);
     HANDLE w = CreateWindowExA(0, wc.className, "wasdmod - Minecraft Dungeons II controller mod", style, (int)0x80000000 /*CW_USEDEFAULT*/, (int)0x80000000,
                                r.right - r.left, r.bottom - r.top, 0, 0, inst, 0);
     ShowWindow(w, 1);
@@ -787,6 +879,8 @@ void start(void) {
             if (!isGameDir(val)) { say("Not the game's Win64 folder: "); say(val); say("\r\n"); ExitProcess(1); }
             if (sameText(cmd, "install")) { code = install(val, 0); say(code ? errorText[code] : "Installed."); say("\r\n"); }
             else if (sameText(cmd, "uninstall")) { code = uninstall(val, 0); say(code ? errorText[code] : "Uninstalled."); say("\r\n"); }
+            else if (sameText(cmd, "recordon") || sameText(cmd, "recordoff")) { code = setRecording(val, sameText(cmd, "recordon")); say(code ? "Couldn't write the flag file." : "OK."); say("\r\n"); }
+            else if (sameText(cmd, "report")) { char outp[PATHLEN]; code = writeReport(val, outp); say(code ? "Couldn't write the report." : outp); say("\r\n"); }
             else if (sameText(cmd, "off") || sameText(cmd, "on")) {
                 int on = sameText(cmd, "on");
                 code = installState(val) == NOT_INSTALLED ? 1 : turnOn(val, on);

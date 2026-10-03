@@ -46,6 +46,10 @@ IMP HANDLE CreateThread(void *, U64, DWORD (*)(void *), void *, DWORD, DWORD *);
 IMP BOOL QueryPerformanceCounter(long long *);
 IMP BOOL QueryPerformanceFrequency(long long *);
 IMP HANDLE GetModuleHandleA(const char *);
+IMP DWORD GetFileAttributesA(const char *);
+IMP BOOL MoveFileExA(const char *, const char *, DWORD);
+typedef struct { WORD year, month, weekday, day, hour, minute, second, ms; } SYSTEMTIME;
+IMP void GetLocalTime(SYSTEMTIME *);
 // user32
 IMP SHORT GetAsyncKeyState(int);
 IMP HANDLE GetForegroundWindow(void);
@@ -135,12 +139,23 @@ static struct {
     int clipCursor, cursorFromMiddle;
 } cfg;
 
+#ifndef VERSION
+#define VERSION "dev"
+#endif
+static volatile unsigned logBytes; // written this session (Record Logs stops at a limit)
+static void two(char *o, unsigned v) { o[0] = (char)('0' + v / 10 % 10); o[1] = (char)('0' + v % 10); }
+// Each line starts with the time: "12:34:56.789 Mouse mode (menu key)".
 static void logline(const char *s) {
     if (!cfg.log) return;
     char path[1100] = {0}; append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
     HANDLE h = CreateFileA(path, 4 /*FILE_APPEND_DATA*/, 3, 0, 4 /*OPEN_ALWAYS*/, 128, 0);
     if (h == (HANDLE)-1) return;
-    DWORD w; WriteFile(h, s, len(s), &w, 0); WriteFile(h, "\r\n", 2, &w, 0); CloseHandle(h);
+    SYSTEMTIME t; GetLocalTime(&t);
+    char stamp[16] = "00:00:00.000 ";
+    two(stamp, t.hour); two(stamp + 3, t.minute); two(stamp + 6, t.second);
+    stamp[9] = (char)('0' + t.ms / 100 % 10); two(stamp + 10, t.ms % 100);
+    DWORD w; WriteFile(h, stamp, 13, &w, 0); WriteFile(h, s, len(s), &w, 0); WriteFile(h, "\r\n", 2, &w, 0); CloseHandle(h);
+    logBytes += 15 + len(s);
 }
 
 // A letter/digit ("W"), a key name ("Space", "Mouse1", "F5"), "None", or a
@@ -395,6 +410,28 @@ static void init(void) {
     if (tf) tfGetThreadMgr = GetProcAddress(tf, "TF_GetThreadMgr");
     if (imm) { immGetContext = GetProcAddress(imm, "ImmGetContext"); immReleaseContext = GetProcAddress(imm, "ImmReleaseContext"); }
     if (!immReleaseContext) immGetContext = 0;
+    {   // A log over 1 MB starts over; the previous one is kept as wasdmod.old.log.
+        char path[1100] = {0}, old[1100] = {0}; FILEINFO fi;
+        append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
+        append(old, sizeof(old), dir); append(old, sizeof(old), "wasdmod.old.log");
+        if (GetFileAttributesExA(path, 0, &fi) && (fi.sizeHigh || fi.sizeLow > (1u << 20))) MoveFileExA(path, old, 1 /*REPLACE_EXISTING*/);
+    }
+    {   // Which build, on what: "=== 2026-10-03 wasdmod 1.0.0, Wine 9.0 ===".
+        SYSTEMTIME t; GetLocalTime(&t);
+        char head[200] = "=== ", d[11] = "0000-00-00";
+        two(d, t.year / 100); two(d + 2, t.year); two(d + 5, t.month); two(d + 8, t.day);
+        append(head, sizeof(head), d); append(head, sizeof(head), " wasdmod " VERSION ", ");
+        HANDLE nt = GetModuleHandleA("ntdll.dll");
+        const char *(*wine)(void) = nt ? GetProcAddress(nt, "wine_get_version") : 0;
+        typedef struct { DWORD size, major, minor, build, platform; unsigned short csd[128]; } OSVER;
+        long (*rtlVer)(OSVER *) = nt ? GetProcAddress(nt, "RtlGetVersion") : 0;
+        OSVER v; memset(&v, 0, sizeof(v)); v.size = sizeof(v);
+        if (wine) { append(head, sizeof(head), "Wine "); append(head, sizeof(head), wine()); }
+        else if (rtlVer && !rtlVer(&v)) { append(head, sizeof(head), "Windows "); appendNum(head, sizeof(head), v.major); append(head, sizeof(head), "."); appendNum(head, sizeof(head), v.minor); append(head, sizeof(head), "."); appendNum(head, sizeof(head), v.build); }
+        else append(head, sizeof(head), "Windows");
+        append(head, sizeof(head), " ===");
+        logline(head);
+    }
     char line[160] = "Controller mod loaded; real controllers via ";
     append(line, sizeof(line), real ? which : "nothing (virtual pad only)");
     logline(line);
@@ -519,6 +556,69 @@ static void menuKeyPress(int isMenu, int isBack, const char *toController, const
 }
 static int mouseMode(void) { return mouseMenu || cursorHeld; }
 
+// ---------------------------------------------------------------- Record Logs
+// The apps' Record Logs button puts wasdmod-record.flag next to the mod. While it's
+// there, the log also records each key and mouse button the mod handles (and what
+// it did with it) and the controller buttons it presses. Nothing is recorded while
+// typing, and keys the layout doesn't use show only as "other key".
+static volatile int recording;
+static int commandHeld(void);
+static void checkRecording(void) {
+    static U64 checkedAt; U64 now = GetTickCount64();
+    if (checkedAt && now - checkedAt < 1000) return;
+    checkedAt = now;
+    char flag[1100] = {0}; append(flag, sizeof(flag), dir); append(flag, sizeof(flag), "wasdmod-record.flag");
+    int on = GetFileAttributesA(flag) != 0xFFFFFFFF;
+    if (on && logBytes > (8u << 20)) { // a forgotten recording stops at 8 MB
+        if (recording) logline("=== Recording stopped: the log is full. Click Stop & Save Logs. ===");
+        recording = 0; return;
+    }
+    if (on == recording) return;
+    recording = on;
+    if (!on) { logline("=== Recording stopped ==="); return; }
+    char l[200] = "=== Recording started (keys, buttons and modes below; nothing is recorded while typing) ===";
+    logline(l);
+    l[0] = 0; append(l, sizeof(l), "Now: ");
+    append(l, sizeof(l), paused ? "wasdmod off (toggle key)" : typing || typingManual ? "typing" : mouseMode() ? "mouse mode" : "controller mode");
+    { unsigned n = len(ini); const char *f = ini + n; while (f > ini && f[-1] != '\\') f--; append(l, sizeof(l), "; settings file "); append(l, sizeof(l), f); }
+    logline(l);
+}
+// "W", "Tab", "Side 4 (back)"...
+static void vkName(unsigned vk, char *out, unsigned cap) {
+    static const struct { BYTE vk; const char *name; } names[] = {
+        {0x01, "Left click"}, {0x02, "Right click"}, {0x04, "Middle click"}, {0x05, "Side 4 (back)"}, {0x06, "Side 5 (front)"},
+        {0x08, "Backspace"}, {0x09, "Tab"}, {0x0D, "Enter"}, {0x10, "Shift"}, {0xA0, "Shift"}, {0xA1, "Right Shift"},
+        {0x11, "Ctrl"}, {0xA2, "Ctrl"}, {0xA3, "Right Ctrl"}, {0x12, "Alt"}, {0xA4, "Alt"}, {0xA5, "Right Alt"},
+        {0x14, "Caps Lock"}, {0x1B, "Esc"}, {0x20, "Space"}, {0x25, "Left"}, {0x26, "Up"}, {0x27, "Right"}, {0x28, "Down"},
+        {0xC0, "`"}, {0xBD, "-"}, {0xBB, "="}, {0xDB, "["}, {0xDD, "]"}, {0xBA, ";"}, {0xDE, "'"}, {0xBC, ","}, {0xBE, "."},
+        {0xBF, "/"}, {0x5B, "Cmd/Windows"}, {0x5C, "Cmd/Windows"},
+    };
+    out[0] = 0;
+    if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9')) { char c[2] = {(char)vk, 0}; append(out, cap, c); return; }
+    if (vk >= 0x70 && vk <= 0x7B) { append(out, cap, "F"); appendNum(out, cap, vk - 0x6F); return; }
+    for (unsigned i = 0; i < sizeof(names) / sizeof(*names); i++) if (names[i].vk == vk) { append(out, cap, names[i].name); return; }
+    append(out, cap, "key "); appendNum(out, cap, vk);
+}
+// Controller buttons, when they change: "Controller: A (Jump / interact), moving".
+static void recordPad(const XINPUT_GAMEPAD *g) {
+    static WORD lastButtons; static int lastLT, lastRT, lastMoving, lastRight, started;
+    if (!recording) { started = 0; return; }
+    int lt = g->bLeftTrigger > 30, rt = g->bRightTrigger > 30, moving = g->sThumbLX || g->sThumbLY, right = g->sThumbRX || g->sThumbRY;
+    if (started && g->wButtons == lastButtons && lt == lastLT && rt == lastRT && moving == lastMoving && right == lastRight) return;
+    started = 1; lastButtons = g->wButtons; lastLT = lt; lastRT = rt; lastMoving = moving; lastRight = right;
+    char l[400] = "Controller: "; int any = 0;
+    for (int i = 0; i < NBTN; i++) {
+        int on = i == B_LT ? lt : i == B_RT ? rt : btnBit[i] && (g->wButtons & btnBit[i]);
+        if (!on) continue;
+        if (any++) append(l, sizeof(l), ", ");
+        append(l, sizeof(l), btnName[i]); append(l, sizeof(l), " ("); append(l, sizeof(l), btnLabel[i]); append(l, sizeof(l), ")");
+    }
+    if (moving) { append(l, sizeof(l), any++ ? ", " : ""); append(l, sizeof(l), "moving (left stick)"); }
+    if (right) { append(l, sizeof(l), any++ ? ", " : ""); append(l, sizeof(l), "right stick (dodge or nudge)"); }
+    if (!any) append(l, sizeof(l), "nothing pressed");
+    logline(l);
+}
+
 
 // The game window's client area in screen coordinates, kept current by the overlay thread.
 static volatile LONG gameLeft, gameTop, gameWidth, gameHeight;
@@ -527,9 +627,9 @@ static void releaseRemaps(void) {
 }
 static int movementHeld(void) { return held(&moveUp) || held(&moveDown) || held(&moveLeft) || held(&moveRight); }
 
-static int commandHeld(void);
 static void updateModes(void) {
     static int toggleWas, legendWas; static U64 checkedAt;
+    checkRecording();
     int t = held(&toggleKey), l = held(&legendKey);
     if (focused()) {
         if (t && !toggleWas && !commandHeld()) { releaseRemaps(); paused = !paused; logline(paused ? "Controller keys off (toggle key)" : "Controller keys on (toggle key)"); }
@@ -779,7 +879,7 @@ static int isFightVk(unsigned vk) {
     return 1;
 }
 
-static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
+static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
     MSG *m = (MSG *)lParam;
     if (code != 0 || !m) return 0;
     UINT msg = m->message;
@@ -912,6 +1012,43 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
+// Record Logs: what the filter did with a key or mouse button press.
+static int layoutKey(unsigned vk) {
+    if (vk <= 0x06 || owned[vk] || menuVk[vk] || passVk[vk] || disabledVk[vk] || remapTo[vk] || backVk[vk] || typeVk[vk]) return 1;
+    for (int k = 0; k < 256; k++) if (remapTo[k] == vk) return 1;
+    return 0;
+}
+static void recordInput(UINT msg, WPARAM wp, LPARAM lp, UINT after, WPARAM afterWp) {
+    int key = msg == 0x100 || msg == 0x101 || msg == 0x104 || msg == 0x105;
+    int btn = msg == 0x201 || msg == 0x202 || msg == 0x204 || msg == 0x205 || msg == 0x207 || msg == 0x208 || msg == 0x20B || msg == 0x20C;
+    if ((!key && !btn) || typing || typingManual) return;
+    int down = key ? msg == 0x100 || msg == 0x104 : msg == 0x201 || msg == 0x204 || msg == 0x207 || msg == 0x20B;
+    if (key && down && ((lp >> 30) & 1)) return; // auto-repeat
+    unsigned vk = key ? (unsigned)(wp & 0xFF) : (unsigned)mouseVk(msg, wp);
+    char l[200] = {0}, name[32];
+    if (layoutKey(vk)) vkName(vk, name, sizeof(name)); else { name[0] = 0; append(name, sizeof(name), "other key"); }
+    append(l, sizeof(l), name); append(l, sizeof(l), down ? " down: " : " up: ");
+    if (paused) append(l, sizeof(l), "passed to the game (wasdmod is off)");
+    else if (key && sentUntil[vk] && GetTickCount64() < sentUntil[vk]) append(l, sizeof(l), "passed to the game (sent by wasdmod for a conversion)");
+    else if (!after) {
+        if (key && remapTo[vk]) { append(l, sizeof(l), "converted: the game gets "); vkName(remapTo[vk], name, sizeof(name)); append(l, sizeof(l), name); }
+        else if (disabledVk[vk]) append(l, sizeof(l), "blocked (the game's own key for an action you moved)");
+        else if (commandHeld()) append(l, sizeof(l), "ignored (Cmd/Windows key held)");
+        else append(l, sizeof(l), "kept from the game (wasdmod uses it)");
+    } else if (btn && (after != msg || afterWp != wp)) { append(l, sizeof(l), "passed to the game as "); vkName(mouseVk(after, afterWp), name, sizeof(name)); append(l, sizeof(l), name); }
+    else append(l, sizeof(l), "passed to the game");
+    append(l, sizeof(l), bowAiming ? " [aiming the bow]" : mouseMode() ? " [mouse mode]" : " [controller mode]");
+    logline(l);
+}
+static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
+    MSG *m = (MSG *)lParam;
+    if (!recording || code != 0 || !m || wParam != 1 /*PM_REMOVE*/) return filterInput(code, wParam, lParam);
+    UINT msg = m->message; WPARAM wp = m->wParam; LPARAM lp = m->lParam;
+    LRESULT r = filterInput(code, wParam, lParam);
+    recordInput(msg, wp, lp, m->message, m->wParam);
+    return r;
+}
+
 static DWORD hooked[16];
 static int hookedCount;
 static BOOL hookWindowThread(HANDLE w, LPARAM unused) {
@@ -989,6 +1126,7 @@ static DWORD getState(const char *name, DWORD index, XINPUT_STATE *state) {
     for (unsigned i = 0; i < sizeof(*g); i++) if (a[i] != b[i]) changed = 1;
     if (changed) { packet++; lastPad = *g; }
     if (r == ERROR_SUCCESS && state->dwPacketNumber < packet) state->dwPacketNumber = packet;
+    if (r == ERROR_SUCCESS) recordPad(&state->Gamepad);
     if (start) recordTime(start);
     return r;
 }

@@ -121,9 +121,16 @@ Change the game's keyboard settings to match your layout (the red notice in the 
 
 Hold **Alt** for the cursor, press **Esc** to leave typing mode, or press **backtick (`)** to turn wasdmod off.
 
-### Still broken?
+### Still broken? Record logs
 
-[Open an issue](https://github.com/Wanzho/mcd2-wasd/issues/new) with what happened, your system (Windows / macOS and CrossOver versions), and `wasdmod.log` from the game's `Dungeons/Binaries/Win64` folder.
+1. In the wasdmod app (Mac) or `wasdmod-Windows.exe`, click **Record Logs**.
+2. Play until the problem happens.
+3. Come back and click **Stop & Save Logs**. A `wasdmod-logs-….txt` file appears on your Desktop.
+4. [Open an issue](https://github.com/Wanzho/mcd2-wasd/issues/new), describe what happened and attach the file.
+
+The file has the mod's log (every key and mouse button wasdmod handled while recording, and what it did with it), your key layout, and your system versions. Nothing you type is recorded, and keys your layout doesn't use show only as "other key".
+
+Manual install: attach `wasdmod.log` from the game's `Dungeons/Binaries/Win64` folder. For the detailed log, put an empty file named `wasdmod-record.flag` there while you play.
 
 ## Turn off or uninstall
 
