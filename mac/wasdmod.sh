@@ -55,6 +55,21 @@ wine() {
     done
     return 1
 }
+# CrossOver settings for this game only: Wine reads AppDefaults\<exe>\... before the
+# bottle-wide keys, so other games in the bottle (CS2...) keep their defaults.
+APPKEY='HKCU\Software\Wine\AppDefaults\Dungeons-Win64-Shipping.exe'
+MACSET="UseConfinementCursorClipping=n LeftOptionIsAlt=y RightOptionIsAlt=y"
+# Versions before 1.0 set the Mac Driver options for the whole bottle, which threw
+# the mouse around in other games there. Removes them, but only with the values
+# wasdmod set (a player's own setting stays).
+unbottle() {
+    for kv in $MACSET; do
+        k=${kv%=*}; v=${kv#*=}
+        wine reg query 'HKCU\Software\Wine\Mac Driver' /v "$k" 2>/dev/null | tr -d '\r' | grep -q "$k[[:space:]]*REG_SZ[[:space:]]*$v\$" &&
+            wine reg delete 'HKCU\Software\Wine\Mac Driver' /v "$k" /f >/dev/null 2>&1
+    done
+    return 0
+}
 # Replaces a file; a different (edited) one is kept as NAME.bak.
 put() { [ "$1" -ef "$GAME/$2" ] && { touch "$1"; return; }; [ -f "$GAME/$2" ] && ! cmp -s "$1" "$GAME/$2" && cp "$GAME/$2" "$GAME/$2.bak"; cp "$1" "$GAME/$2"; }
 
@@ -96,15 +111,14 @@ install)
     # the newest saved one: a player who picked Default stays on Default.)
     [ -n "$KEEP" ] && [ "$KEEP" != default.txt ] && [ -f "$GAME/$KEEP" ] && touch "$GAME/$KEEP"
     # Wine prefers its own XInput; use the game folder's copy, for this game only.
-    wine reg add 'HKCU\Software\Wine\AppDefaults\Dungeons-Win64-Shipping.exe\DllOverrides' \
-        /v xinput1_4 /t REG_SZ /d native,builtin /f >/dev/null
-    # Option is sent as Alt (hold it for the cursor), and the cursor is confined to
-    # the screen area the game asks for rather than one window (CrossOver can pick
-    # the mod's small key list instead of the game).
-    wine reg add 'HKCU\Software\Wine\Mac Driver' /v UseConfinementCursorClipping /t REG_SZ /d n /f >/dev/null
-    for side in Left Right; do
-        wine reg add 'HKCU\Software\Wine\Mac Driver' /v ${side}OptionIsAlt /t REG_SZ /d y /f >/dev/null
+    wine reg add "$APPKEY\\DllOverrides" /v xinput1_4 /t REG_SZ /d native,builtin /f >/dev/null
+    # For this game only: Option is sent as Alt (hold it for the cursor), and the
+    # cursor is confined to the screen area the game asks for rather than one window
+    # (CrossOver can pick the mod's small key list instead of the game).
+    for kv in $MACSET; do
+        wine reg add "$APPKEY\\Mac Driver" /v "${kv%=*}" /t REG_SZ /d "${kv#*=}" /f >/dev/null
     done
+    unbottle
     echo "layout=$(active)"
     ;;
 uninstall)
@@ -114,11 +128,9 @@ uninstall)
     [ -f "$GAME/xinput1_4.dll.other" ] && [ ! -f "$GAME/xinput1_4.dll" ] && mv "$GAME/xinput1_4.dll.other" "$GAME/xinput1_4.dll"
     (cd "$GAME" && rm -f default.txt default.txt.bak "Key Layout Editor.html" wasdmod.log wasdmod.old.log wasdmod-record.flag wasdmod.ini wasdmod.ini.bak wasd-mod.ini wasd-mod.ini.bak wasd-mod.log)
     [ "$ALL" = 1 ] && (cd "$GAME" && rm -f author.txt author.txt.bak wasdmod*.txt wasd-mod*.txt)
-    wine reg delete 'HKCU\Software\Wine\AppDefaults\Dungeons-Win64-Shipping.exe\DllOverrides' /v xinput1_4 /f >/dev/null 2>&1
-    wine reg delete 'HKCU\Software\Wine\Mac Driver' /v UseConfinementCursorClipping /f >/dev/null 2>&1
-    for side in Left Right; do
-        wine reg delete 'HKCU\Software\Wine\Mac Driver' /v ${side}OptionIsAlt /f >/dev/null 2>&1
-    done
+    wine reg delete "$APPKEY\\DllOverrides" /v xinput1_4 /f >/dev/null 2>&1
+    wine reg delete "$APPKEY\\Mac Driver" /f >/dev/null 2>&1
+    unbottle
     exit 0
     ;;
 off)

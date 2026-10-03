@@ -33,7 +33,7 @@ Windows: the Steam version, or the game from Minecraft.net (Minecraft Launcher) 
 2. Open wasdmod. If macOS blocks it, approve it in **System Settings → Privacy & Security → Open Anyway**. Keep Gatekeeper enabled.
 3. Quit the game, click **Install** at the top of the window, then start the game.
 
-Install also sets three CrossOver options for the game's bottle: use wasdmod's `xinput1_4.dll` for this game (Wine uses its own otherwise), send **Option** as Alt, and keep the cursor inside the game window. **Uninstall** removes them.
+Install also sets three CrossOver options, for Dungeons II only (other games in the bottle keep their own settings): use wasdmod's `xinput1_4.dll` (Wine uses its own otherwise), send **Option** as Alt, and keep the cursor inside the game window. **Uninstall** removes them. (Versions before 1.0 set the last two for the whole bottle, which could throw the mouse around in other games there, like CS2; installing this version moves them to Dungeons II only.)
 
 ### Linux / Steam Deck (untested)
 

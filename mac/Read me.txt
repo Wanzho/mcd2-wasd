@@ -30,9 +30,9 @@ https://github.com/Wanzho/mcd2-wasd/issues
 To play without it for a while, click Turn Off in wasdmod (the game then starts
 without it; Turn On brings it back, with your layouts). Uninstall removes it.
 
-Install also sets three CrossOver options for the game's bottle: use the mod's
-xinput1_4.dll for this game, send Option as Alt, and keep the cursor inside the
-game window. Uninstall (top of the window) removes them.
+Install also sets three CrossOver options, for Dungeons II only (other games in
+the bottle keep their own settings): use the mod's xinput1_4.dll, send Option as
+Alt, and keep the cursor inside the game window. Uninstall removes them.
 
 Unofficial project. Not an official Minecraft product; not approved by or
 associated with Mojang or Microsoft. MIT license:
