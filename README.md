@@ -1,141 +1,207 @@
-# Minecraft Dungeons II Controller Mod
+# wasdmod — WASD controls for Minecraft Dungeons II
 
-Minecraft Dungeons II on PC moves by clicking. This mod lets you play with
-WASD, the mouse and the keyboard instead, by turning them into a virtual
-controller. The game already supports controllers, so it plays exactly like a
-pad: smooth movement, dodges, artifacts, menus, with the keyboard still
-available for menus and typing.
+Play **Minecraft Dungeons II (Minecraft Dungeons 2)** with **WASD, mouse and keyboard** instead of click-to-move, on Windows, Mac (CrossOver) and Linux.
 
-It is one file, `xinput1_4.dll`, placed next to the game's exe, plus a settings
-file. The game itself is not modified. Tested on a Mac through CrossOver;
-the Windows installer is built and checked but not yet tested on a Windows PC.
+wasdmod turns your keys into a virtual controller, so you get the game's full controller controls: smooth movement, dodges, artifacts and the menu wheel. Menus, the cursor and chat still work with the mouse and keyboard. The game itself isn't modified.
 
-## Default controls
+![The wasdmod app on a Mac: install at the top, the key layout editor below](docs/wasdmod-mac.png)
 
-The default layout is the game's own keyboard layout, played as a controller.
-Only the menu wheel moves from S (a movement key here) to Tab.
-
-| Key | Does |
-|---|---|
-| W A S D | Move |
-| Space | Jump / interact |
-| Left click | Melee (in the air: heavy jump attack) |
-| Right click | Bow (hold it to aim with the mouse) |
-| R or side button 4 | Directional dodge: the way you're moving; hold and drag the mouse to roll that way |
-| Side button 5 | Forward dodge |
-| 1 / 2 / 3 | Artifacts 1 / 2 / 3 |
-| E | Health potion |
-| Middle click | Guidance trail |
-| I | Inventory (tap: full inventory, hold: mini inventory) |
-| M | World map |
-| Tab | Menu wheel |
-| J | Quest log / track quest |
-| F | Social menu |
-| G | Emotes |
-| U | Collectibles |
-| K | Event log |
-| X, F1–F4 | Teleport to player |
-| Z | Teleport statue |
-| Esc | Game menu |
-| T | Typing mode: every key goes to the game until Esc; a banner shows while it's on |
-| Alt (Option on a Mac) or Ctrl | Hold for the mouse cursor |
-| F9 | Show or hide the on-screen key list |
-| Backtick (`) | Turn the mod off and on |
-
-`author.txt` is the recommended setup instead (Q/2/3 artifacts, R potion, Shift
-forward dodge, right-click dodge, bow on side button 5, E inventory, Tab map).
-
-Opening a menu switches to **mouse mode**: the cursor and keyboard work
-normally, and clicks never leave it. Any fight key (WASD, Space, Shift...)
-switches back. Holding ⌘ (the Windows key on a PC) blocks every key, so system
-shortcuts never fire an ability.
+**Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Windows.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-manual.zip)
 
 ## Install
 
-Download this repository (Code › Download ZIP) and open the `dist` folder.
+Pick the file for your computer:
 
-**Windows:** run `dist/Windows/Dungeons II Controller Mod Setup.exe`. It finds
-the game through Steam (or use Browse), installs, updates and uninstalls, loads
-a saved key layout and opens the key layout editor. The file isn't signed, so
-Windows may say "Windows protected your PC": click More info, then Run anyway.
-Command line: `/find`, `/status`, `/install`, `/uninstall` (optionally followed
-by the game's Win64 folder).
+| Your computer | Download |
+|---|---|
+| Windows | [**wasdmod-Windows.exe**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Windows.exe) |
+| Mac (CrossOver) | [**wasdmod-Mac.dmg**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) |
+| Linux / Steam Deck, or Windows without the installer | [**wasdmod-manual.zip**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-manual.zip) |
 
-**Mac (CrossOver):** quit the game and double-click `dist/Mac/install.command`.
-It finds the game in your CrossOver bottles. If macOS won't open it, right-click
-it › Open (or System Settings › Privacy & Security › Open Anyway). The game must
-already run in CrossOver. The installer also sets three CrossOver options for
-that bottle: prefer the game folder's `xinput1_4.dll` for this game (Wine uses
-its own otherwise), send Option as Alt, and confine the cursor to a screen area
-rather than one window. `uninstall.command` undoes all of it.
+Windows: the Steam version, or the game from Minecraft.net (Minecraft Launcher) or the Xbox app. Mac and Linux: the Steam version.
 
-**Linux / Steam Deck (Proton):** copy `xinput1_4.dll` and `default.txt` from
-`dist/Mac` into `Dungeons/Binaries/Win64` and set the launch option
-`WINEDLLOVERRIDES=xinput1_4=n,b %command%` (untested).
+### Windows
 
-## Changing keys
+1. Close the game and run **wasdmod-Windows.exe**.
+2. If Windows says "Windows protected your PC", click **More info → Run anyway**. (The file isn't signed; that costs money every year.)
+3. It finds the game in Steam, or in `XboxGames` for the Minecraft Launcher and Xbox app. If it doesn't, click **Browse…** and pick `Dungeons-Win64-Shipping.exe`.
+4. Click **Install**, pick **Default** or **Recommended** under Key layout, and start the game.
 
-The key layout editor (`configurator.html`; `Key Layout Editor.html` in the Mac
-package and next to the game after a Windows install) has:
+### Mac
 
-- **Layouts:** Default, Recommended setup, or import a saved file.
-- **Movement & Actions:** always the controller. Each action shows the game's
-  own keyboard key ("in game") next to yours.
-- **Menus:** the ones the game has both ways (inventory, map, menu wheel,
-  quests, social, teleport, emotes) switch between **Keyboard** (default: your
-  keys send the game's shortcut) and **Controller** (your keys press the pad
-  button: tap for the inventory, hold for the mini inventory while moving).
-  Only one is active. A key that isn't the game's own is converted ("E as I").
-- **Match the game's keyboard keys:** the in-game keyboard settings to change so
-  keyboard mode uses the same keys as the mod. Controller settings stay at the
-  game's defaults.
+**The game has to run in CrossOver first.** If it doesn't yet, set it up with **[MCD2 Crossover](https://github.com/Wanzho/mcd2-crossover)**, which fixes Steam startup and Microsoft sign-in. Then:
 
-Saving downloads `default.txt` or `author.txt` for an unchanged built-in
-layout, otherwise `wasdmod-MMDDYY.txt`. Put it in the game's Win64 folder (or
-use the Windows setup's Load layout file) and restart the game. The mod uses the
-newest of `default.txt`, `author.txt` and any `wasdmod*.txt`; the installers
-keep a saved layout in charge after updates. Files from older versions
-(`wasdmod.ini`, `wasd-mod...`) are still read, and get renamed on install.
+1. Open **wasdmod-Mac.dmg** and drag **wasdmod** into **Applications**.
+2. Open wasdmod. If macOS blocks it, approve it in **System Settings → Privacy & Security → Open Anyway**. Keep Gatekeeper enabled.
+3. Quit the game, click **Install** at the top of the window, then start the game.
 
-`author.txt` (in both packages) is the recommended setup. It only changes which
-keys you press; the game's own keyboard settings stay at their defaults.
+Install also sets three CrossOver options for the game's bottle: use wasdmod's `xinput1_4.dll` for this game (Wine uses its own otherwise), send **Option** as Alt, and keep the cursor inside the game window. **Uninstall** removes them.
 
-You can also edit `default.txt` directly; every option is explained in it. A few
-worth knowing:
+### Linux / Steam Deck (untested)
 
-- `MouseMoveSwitches=0`: moving the mouse never leaves controller mode; only
-  Alt, the menu keys or backtick give you the mouse.
-- `CursorMode=Toggle`: Alt shows the cursor on one press and locks it on the next.
-- `BowAimsWithMouse=1`: holding the bow's mouse button switches to keyboard mode
-  so the game aims the bow at the cursor.
-- `BumpNudgePct`: after a small mouse bump the game shows keyboard prompts; the
-  mod flips it back with a tiny right-stick nudge. Lower it if you ever dodge by accident.
-- `DisabledKeys` (filled in by the key layout editor): the game's own keys for
-  actions you moved to other keys. They never reach the game, in any mode, so a
-  key only ever does what your layout says. Left click is never disabled.
+The game must already run under Proton. Then:
 
-`wasdmod.log` next to the DLL records what the mod does (mode switches, text
-boxes, timing).
+1. Unzip **wasdmod-manual.zip**.
+2. In Steam, right-click the game → **Manage → Browse local files**, and open `Dungeons/Binaries/Win64`.
+3. Copy `xinput1_4.dll` and `default.txt` there (and `author.txt` for the Recommended layout).
+4. Right-click the game → **Properties → Launch Options**: `WINEDLLOVERRIDES="xinput1_4=n,b" %command%`
 
-## How it works
+The same files work on Windows without the installer: skip step 4. For the Minecraft Launcher or Xbox app version, the folder is `C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\Win64` (or `XboxGames` on the drive you installed to).
 
-The DLL stands in for XInput: it reports controller 0 built from the keyboard
-and mouse, and forwards real controllers to the system's XInput. A message hook
-on the game's window threads hides the mapped keys and mouse (including the
-raw-input copies the game also reads), so the game sees only the controller and
-doesn't flicker between keyboard and controller mode. Text boxes are detected
-through Text Services (IMM as a fallback) and get the keyboard back.
+## Controls
 
-Things that were tried and don't work: patching the game's `GetCursorPos`
-import (the game quits 20-30 s later), a moving overlay window (lag under
-CrossOver), and `ClipCursor` (confined the mouse to the wrong area).
+Two layouts are built in. **Default** is the game's own keyboard keys, played as a controller; only the menu wheel moves from S (now a movement key) to Tab. **Recommended** is the author's layout.
 
-## Build and test
+| Action | Default | Recommended |
+|---|---|---|
+| Move | W A S D | W A S D |
+| Jump / interact | Space | Space or F |
+| Melee (in the air: heavy jump attack) | Left click | Left click |
+| Bow (hold it to aim with the mouse) | Right click | Side button 4 (back) |
+| Directional dodge (hold and drag the mouse to roll that way) | R or side button 4 | Right click |
+| Forward dodge | Side button 5 | Shift |
+| Artifacts 1 / 2 / 3 | 1 / 2 / 3 | Q / 2 / 3 |
+| Health potion | E | R |
+| Guidance trail | Middle click | Middle click |
+| Inventory | I | E |
+| World map | M | M |
+| Menu wheel | Tab | Tab |
+| Quests | J | V |
+| Social menu | F | / |
+| Emotes | G | G |
+| Collectibles | U | B |
+| Event log | K | K |
+| Teleport to player | X, F1–F4 | X, F1–F4 |
+| Teleport statue | Z | Z |
 
-`./build.sh` (Apple clang + the lld-link from a Rust toolchain) builds
-`build/xinput1_4.dll`, `build/test_load.exe`, `Keybinder.html`, the Windows
-installer, and the ready-to-use `dist/Windows` and `dist/Mac` packages. No Windows SDK or C runtime is
-needed. `build/test_load.exe` runs inside a Wine bottle and checks the exports
-and the input filtering (gameplay, typing, menus, remaps, bow, text boxes);
-`smooth_test.c` and `dodge_test.c` test the movement smoothing and drag dodge on
-the host.
+**The menu wheel is on Tab.** The game's own key for it is S, which is "move down" here, so pressing Tab sends the game its S. Set **Menu Wheel** to Tab in the game (Settings → Controls → Keyboard) so keyboard mode matches.
+
+In both layouts:
+
+| Key | Does |
+|---|---|
+| Esc | Game menu |
+| T | Typing mode: every key goes to the game until Esc; a banner shows while it's on |
+| Alt (Option on a Mac) | Hold for the mouse cursor |
+| F9 | Show or hide the on-screen key list (on a Mac keyboard: fn + F9, unless the F-keys are set as standard function keys) |
+| Backtick (`) | Turn wasdmod off and on |
+
+Opening a menu or moving the mouse switches to **mouse mode**: the cursor and keyboard work normally. Any fight key (WASD, Space…) switches back to the controller. Holding ⌘ (the Windows key on a PC) blocks every key, so system shortcuts never fire an ability.
+
+## Change keys
+
+The key layout editor is the main window of the Mac app. On Windows, click **Edit key layout…** in the installer; the editor opens in its own window, and the installer has to stay open while you edit.
+
+- Pick **Default** or **Recommended** under Layout, or click **+ Create** for your own. Click a key to change it.
+- Click **Save to game**, then restart the game.
+- Changing a built-in layout asks to save it as a new layout of yours. **Reset** goes back to the saved version.
+
+**Match the game's own keyboard settings.** The game reads its own keyboard settings in menus, with the cursor and while aiming the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The red notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
+
+## Troubleshooting
+
+### Nothing changes in game
+
+Restart the game after installing. Press **F9**: if no key list appears, the mod isn't loaded.
+
+- **Windows:** check that `xinput1_4.dll` is next to `Dungeons-Win64-Shipping.exe`. Antivirus may have removed it (see below).
+- **Mac:** click **Install** again (it also sets the CrossOver options), then restart the game.
+
+### Antivirus flags wasdmod
+
+wasdmod reads the keyboard and presses controller buttons, and it isn't signed, so it looks like other input tools. Restore the file and allow it, or build it yourself from this repository.
+
+### Holding Option doesn't show the cursor (Mac)
+
+Click **Install** again: it sets CrossOver to send Option as Alt. Restart the game afterwards.
+
+### Keys do their old thing in menus
+
+Change the game's keyboard settings to match your layout (the red notice in the editor lists them).
+
+### Mouse side buttons do something strange
+
+Mouse software (Razer Synapse, Logitech G Hub…) can remap the side buttons. Use a profile with normal side buttons for the game.
+
+### Stuck without a cursor, or stuck typing
+
+Hold **Alt** for the cursor, press **Esc** to leave typing mode, or press **backtick (`)** to turn wasdmod off.
+
+### Still broken?
+
+[Open an issue](https://github.com/Wanzho/mcd2-wasd/issues/new) with what happened, your system (Windows / macOS and CrossOver versions), and `wasdmod.log` from the game's `Dungeons/Binaries/Win64` folder.
+
+## Turn off or uninstall
+
+**In a running game:** press **backtick (`)**. wasdmod is back on when you press it again or restart the game.
+
+**Turn it off** (your layouts are kept): the game starts without wasdmod until you turn it back on.
+
+- **Windows:** run **wasdmod-Windows.exe** and click **Turn off** (later **Turn on**).
+- **Mac:** open **wasdmod** and click **Turn Off** (later **Turn On**).
+- **Manual install:** rename `xinput1_4.dll` to `xinput1_4.dll.off` (and back).
+
+**Remove it for good:**
+
+- **Windows:** run **wasdmod-Windows.exe** and click **Uninstall**.
+- **Mac:** open **wasdmod** and click **Uninstall**.
+- **Manual install:** delete `xinput1_4.dll`, `default.txt`, `author.txt` and any `wasdmod*.txt` from `Dungeons/Binaries/Win64`, and remove the launch option.
+
+Steam's "Verify integrity of game files" doesn't remove wasdmod.
+
+## Tested
+
+Tested on an **M5 Pro with CrossOver 26.3**, with the game set up by MCD2 Crossover.
+
+## Limitations
+
+The Windows installer and mod are built and checked under Wine, but not yet tested on a Windows PC, and the Minecraft Launcher / Xbox app version of the game hasn't been tried. Linux / Steam Deck is untested. Online co-op hasn't been tested yet.
+
+The game loads wasdmod as its controller driver; it doesn't edit the game's files or memory. It's still a third-party file inside the game folder, so use it at your own risk.
+
+## For developers
+
+### Advanced settings
+
+Every option is explained in `default.txt`. A few worth knowing:
+
+- `MouseMoveSwitches=0`: moving the mouse never leaves controller mode; only Alt, the menu keys or backtick give you the mouse.
+- `CursorMode=Toggle`: Alt shows the cursor on one press and hides it on the next.
+- `BowAimsWithMouse=1`: holding the bow button switches to mouse mode, so the game aims the bow at the cursor.
+- `BumpNudgePct`: after a small mouse bump the game shows keyboard prompts; wasdmod flips it back with a tiny right-stick nudge. Lower it if you ever dodge by accident.
+- `DisabledKeys` (filled in by the editor): the game's own keys for actions you moved to other keys. They never reach the game, in any mode. Left click is never disabled.
+
+wasdmod uses the newest of `default.txt`, `author.txt` and any `wasdmod*.txt` in the game folder. The editor saves `default.txt` or `author.txt` for an unchanged built-in layout, otherwise `wasdmod-MMDDYY.txt`.
+
+The Windows installer also has a command line: `/find`, `/status`, `/install`, `/uninstall`, `/default`, `/recommended`, `/own`, `/off`, `/on` (optionally followed by the game's Win64 folder).
+
+### How it works
+
+The DLL stands in for XInput: it reports controller 0 built from the keyboard and mouse, and forwards real controllers to the system's XInput. A message hook on the game's window threads hides the mapped keys and mouse (including the raw-input copies the game also reads), so the game sees only the controller and doesn't flicker between keyboard and controller mode. Text boxes are detected through Text Services (IMM as a fallback) and get the keyboard back.
+
+Tried and dropped: patching the game's `GetCursorPos` import (the game quits 20–30 s later), a moving overlay window (lag under CrossOver) and `ClipCursor` (confined the mouse to the wrong area).
+
+### Build and test
+
+`./build.sh` (Apple clang, the lld-link from a Rust toolchain, and Xcode's Swift for the Mac app) builds:
+
+- `build/xinput1_4.dll` and `build/test_load.exe`;
+- `Keybinder.html` (from `configurator.html`);
+- the downloads in `dist/`:
+  - `wasdmod-Windows.exe` (`installer.c`);
+  - `wasdmod-Mac.dmg` (`mac/main.swift` over `mac/wasdmod.sh`);
+  - `wasdmod-manual.zip`.
+
+No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` install from the source folder.
+
+`build/test_load.exe` runs inside a Wine bottle and checks the exports and the input filtering (gameplay, typing, menus, remaps, bow, text boxes). `smooth_test.c` and `dodge_test.c` test the movement smoothing and the drag dodge on the host.
+
+## License
+
+[MIT](LICENSE).
+
+Unofficial project. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with CodeWeavers or Valve.
+
+## References
+
+Coded with Claude Opus 5.5.

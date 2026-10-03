@@ -42,13 +42,18 @@ button, .btn { font: 600 13px/1 var(--body); border-radius: 4px; border: 1px sol
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-/* layout profiles */
-.profiles { display: grid; gap: 6px; justify-items: start; }
-.profiles .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
-.profiles .btns { display: flex; flex-wrap: wrap; gap: 6px; }
-.profiles button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.profile-status { font-size: 13px; color: var(--muted); min-height: 1.4em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.profile-status button { padding: 4px 8px; }
+/* layouts: pick, create, save, reset, download */
+.layoutbar { display: grid; gap: 6px; justify-items: start; }
+.layoutbar .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+.layoutbar .btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.layoutbar select { font: 600 14px/1 var(--body); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-width: 13rem; }
+.layoutbar select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.layoutbar button:disabled { opacity: .45; cursor: default; }
+.layout-status { font-size: 13px; color: var(--muted); min-height: 1.6em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.layout-status button { padding: 5px 9px; }
+.layout-status .changed { color: var(--accent); font-weight: 600; }
+.layout-status .warn { color: var(--danger); font-weight: 600; }
+.namebox { font: 600 13px var(--body); color: var(--fg); background: var(--panel-2); border: 1px solid var(--accent); border-radius: 4px; padding: 5px 8px; width: 13rem; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 20px; margin-top: 18px; align-items: start; }
 @media (max-width: 1020px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-height: calc(100vh - 24px); overflow: auto; }
@@ -96,6 +101,7 @@ h3.group { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spaci
 .ingame button.match { border-style: solid; }
 .ingame .fixed { font: 600 12px/1 var(--body); color: var(--fg); padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; }
 .note { font-size: 12px; color: var(--muted); }
+.wheel-note { margin: 0 0 12px; padding: 9px 12px; border-left: 3px solid var(--menu); border-radius: 4px; background: rgba(127, 127, 127, .09); font-size: 13.5px; max-width: 74ch; }
 .conflicts { margin-top: 16px; border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 6px; padding: 10px 14px; }
 .conflicts strong { color: var(--danger); }
 .conflicts ul { margin: 4px 0 0; padding-left: 18px; }
@@ -119,6 +125,18 @@ ul.recs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px
 ul.recs .was { display: block; font-size: 12px; color: var(--muted); }
 ul.recs button { padding: 5px 9px; }
 .allset { color: var(--ok); font-weight: 600; font-size: 13.5px; margin: 6px 0 0; }
+/* the "your game doesn't match" notice at the top */
+.mismatch { margin-top: 16px; border: 2px solid var(--danger); background: var(--danger-bg); border-radius: 8px; padding: 14px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; }
+.mismatch .icon { font: 700 30px/1 var(--display); color: var(--danger); grid-row: span 2; }
+.mismatch h2 { margin: 0; color: var(--danger); font-size: 21px; }
+.mismatch p { margin: 0; font-size: 14px; max-width: 90ch; }
+.mismatch button { grid-row: span 2; background: var(--danger); color: #fff; border-color: var(--danger); font-size: 14px; padding: 11px 16px; }
+@media (max-width: 720px) { .mismatch { grid-template-columns: minmax(0, 1fr); } .mismatch .icon, .mismatch button { grid-row: auto; } }
+.ingame button.stray { color: var(--danger); border-color: var(--danger); text-decoration: line-through; }
+.ingame .clear2, .ingame .add2 { padding: 4px 6px; border: 1px dashed var(--line); background: transparent; color: var(--muted); }
+.ingame .none { color: var(--muted); }
+.recs .note { display: block; font-size: 12px; color: var(--muted); }
+#recsCard.flash { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow .3s; }
 /* output */
 pre.ini { margin: 10px 0 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font: 12px/1.45 var(--mono); max-height: 300px; overflow: auto; white-space: pre; }
 .out-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -149,14 +167,15 @@ code { font-family: var(--mono); font-size: .92em; }
       <h1>Dungeons II Keybinder</h1>
       <p>Choose which keys and mouse buttons do what in the WASD controller mod for Minecraft Dungeons II. Fights always go through the mod's virtual controller; menus can use the game's own keyboard shortcuts or the controller. Save the settings file into the game folder and restart the game.</p>
     </div>
-    <div class="profiles">
-      <span class="label">Layout</span>
+    <div class="layoutbar">
+      <span class="label"><label for="layoutSel">Layout</label></span>
       <div class="btns">
-        <button type="button" data-profile="default" aria-pressed="false">Default</button>
-        <button type="button" data-profile="author" aria-pressed="false" title="Bow on side button 5, menus you can use while moving">Recommended setup</button>
-        <button type="button" id="importToggle">Import file…</button>
+        <select id="layoutSel"></select>
+        <button type="button" id="createBtn" title="A new layout of your own, starting from what's on screen">+ Create</button>
+        <button type="button" id="resetBtn" title="Back to this layout's saved version">Reset</button>
+        <button type="button" class="primary" id="downloadTop" title="Download the settings file for the game folder">Download file</button>
       </div>
-      <div class="profile-status" id="profileStatus"></div>
+      <div class="layout-status" id="layoutStatus" aria-live="polite"></div>
     </div>
   </header>
 
@@ -167,6 +186,8 @@ code { font-family: var(--mono); font-size: .92em; }
     <textarea id="importText" placeholder="…or paste the file's text here"></textarea>
     <div class="out-actions"><button class="primary" id="importBtn" type="button">Load pasted text</button><span class="status" id="importStatus"></span></div>
   </section>
+
+  <div id="mismatch"></div>
 
   <div id="conflicts"></div>
 
@@ -192,15 +213,15 @@ code { font-family: var(--mono); font-size: .92em; }
       <section class="card">
         <h2>Settings file</h2>
         <div class="out-actions">
-          <button class="primary" id="saveBtn" type="button">Save settings file</button>
+          <button class="primary" id="saveBtn" type="button">Download settings file</button>
           <button id="copyBtn" type="button">Copy text</button>
         </div>
         <div class="status" id="saveStatus"></div>
-        <details>
+        <details id="whereItGoes">
           <summary>Where it goes</summary>
           <ol class="steps">
-            <li>Windows: run the mod's setup and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself.</li>
-            <li>Mac (CrossOver, default Steam bottle): put it in
+            <li>Windows: run <code>wasdmod-Windows.exe</code> and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself.</li>
+            <li>Mac: open the <b>wasdmod</b> app and choose <b>Load a layout file</b>. Or put it yourself in (CrossOver, default Steam bottle)
               <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
               <button id="copyPath" type="button">Copy folder path</button> <span class="note">In Finder: Go › Go to Folder (⇧⌘G), paste.</span></li>
             <li>The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins. Restart the game.</li>
@@ -248,7 +269,8 @@ const ACTIONS = [
   { id: "art3", sec: "act", cat: "action", label: "Artifact 3", pad: "RB", game: "Artifact 3" },
   { id: "potion", sec: "act", cat: "action", label: "Health potion", pad: "LT", game: "Health Potion" },
   { id: "trail", sec: "act", cat: "action", label: "Guidance trail", pad: "LS", game: "Guidance Trail" },
-  { id: "statue", sec: "act", cat: "action", label: "Teleport statue", kb: "pass", game: "Teleport Statue", group: "Keyboard-only actions" },
+  { id: "tpplayer", sec: "act", cat: "action", label: "Teleport to player", pad: "DLeft", kb: "pass", game: "Teleport To Player", group: "Teleports" },
+  { id: "statue", sec: "act", cat: "action", label: "Teleport statue", kb: "pass", game: "Teleport Statue" },
   { id: "tp1", sec: "act", cat: "action", label: "Teleport to player 1", kb: "pass", game: "Teleport To Player 1" },
   { id: "tp2", sec: "act", cat: "action", label: "Teleport to player 2", kb: "pass", game: "Teleport To Player 2" },
   { id: "tp3", sec: "act", cat: "action", label: "Teleport to player 3", kb: "pass", game: "Teleport To Player 3" },
@@ -258,14 +280,20 @@ const ACTIONS = [
   { id: "wheel", sec: "menu", cat: "menu", label: "Menu wheel", pad: "Start", kb: "menu", opens: true, game: "Menu Wheel" },
   { id: "quest", sec: "menu", cat: "menu", label: "Quest log / track quest", sub: "tap: track · hold: quest log", pad: "DRight", kb: "menu", game: "Quest Log, Track Quest" },
   { id: "social", sec: "menu", cat: "menu", label: "Social menu", pad: "DDown", kb: "menu", opens: true, game: "Social Menu" },
-  { id: "tpplayer", sec: "menu", cat: "menu", label: "Teleport to player", pad: "DLeft", kb: "pass", game: "Teleport To Player" },
   { id: "emotes", sec: "menu", cat: "menu", label: "Emotes", sub: "hold for the wheel", pad: "RS", kb: "menu", game: "Emotes" },
   { id: "collect", sec: "menu", cat: "menu", label: "Collectibles", sub: "capes, pets, books", kb: "menu", game: "Collectibles", group: "Keyboard only" },
   { id: "events", sec: "menu", cat: "menu", label: "Event log", kb: "menu", game: "Event Log" },
   { id: "esc", sec: "menu", cat: "menu", label: "Game menu / back", sub: "in a menu: back to the controller", kb: "back", fixedGame: "Escape" },
+  // In the game's keyboard settings only: no row, no keys of yours.
+  { id: "heavy", hidden: true, game: "Heavy Jump Attack", note: "the mod does it with jump, then melee in the air" },
+  { id: "root", hidden: true, game: "Root", note: "no controller equivalent" },
 ];
 const ACT = Object.fromEntries(ACTIONS.map(a => [a.id, a]));
 const both = a => !!(a.pad && a.kb);
+// The game's keys for an action: up to two (its two columns); null = empty column.
+const knownGame = arr => (arr || []).filter(k => k && k !== "?");
+const firstGame = (a, st) => a.fixedGame || knownGame(st.game[a.id])[0] || null;
+const gameSlots = (a, st) => a.fixedGame ? [a.fixedGame] : knownGame(st.game[a.id]);
 // The mod's row labels for the on-screen key list, per controller button.
 const PAD_LABEL = { A: "Jump / interact", X: "Melee (in the air: heavy jump attack)", RT: "Ranged (bow)", Y: "Artifact 1", B: "Artifact 2", RB: "Artifact 3",
   LT: "Health potion", LB: "Forward dodge", LS: "Guidance trail", RS: "Emotes", DUp: "Inventory (tap: full, hold: mini)", DDown: "Social menu",
@@ -273,10 +301,12 @@ const PAD_LABEL = { A: "Jump / interact", X: "Melee (in the air: heavy jump atta
 const PAD_ORDER = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Back", "Start", "LS", "RS", "DUp", "DDown", "DLeft", "DRight"];
 
 // =================================================================== layouts
-// The game's own keyboard defaults (Settings › Controls › Keyboard). "?" = not known.
-const GAME_DEFAULTS = { dodge: "R", fdodge: "Mouse5", jump: "Space", melee: "Mouse1", ranged: "Mouse2", art1: "1", art2: "2", art3: "3", potion: "E", trail: "Mouse3",
-  statue: "Z", tp1: "F1", tp2: "F2", tp3: "F3", tp4: "F4", inventory: "I", map: "M", wheel: "S", quest: "J", social: "F", tpplayer: "X", emotes: "G",
-  collect: "U", events: "K", esc: "Escape" };
+// The game's own keyboard defaults (Settings › Controls › Keyboard): both columns,
+// first and second key. Heavy jump attack and root have no key of their own in
+// the mod, but their game keys count for disabling and the checklist.
+const GAME_DEFAULTS = { dodge: ["R", "Mouse4"], fdodge: ["Mouse5"], jump: ["Space"], melee: ["Mouse1"], ranged: ["Mouse2"], art1: ["1"], art2: ["2"], art3: ["3"],
+  potion: ["E"], trail: ["Mouse3"], statue: ["Z"], tp1: ["F1"], tp2: ["F2"], tp3: ["F3"], tp4: ["F4"], inventory: ["I", "Tab"], map: ["M"], wheel: ["S"], quest: ["J"],
+  social: ["F"], tpplayer: ["X"], emotes: ["G"], collect: ["U"], events: ["K"], heavy: ["Q", "Mouse4"], root: ["Shift"] };
 // Default layout: the game's own keyboard keys, as a controller. The menu wheel
 // moves from S (a movement key here) to Tab, so the inventory is I only.
 const DEFAULT_INI = `[Move]
@@ -284,7 +314,6 @@ Up=W
 Left=A
 Down=S
 Right=D
-Dodge=None
 DodgeMouse=R, Mouse4
 DodgeDragPx=40
 DodgeFlickMs=80
@@ -310,18 +339,12 @@ DDown=None
 DLeft=None
 DRight=None
 [Mouse]
-Crosshair=0
 KeepCursorInWindow=1
 MouseModeOnMovePx=40
 MouseMoveSwitches=1
-FreezeCursorForGame=0
+CursorFromMiddle=0
 BumpNudgePct=30
 BowAimsWithMouse=1
-AimStick=None
-AimButtons=X, RT
-AimStrength=45
-AimLeadMs=35
-AimHoldMs=120
 [Keys]
 MenuKeys=I, M, J, F, G, U, K, Escape
 BackKeys=Escape
@@ -329,10 +352,8 @@ MouseAfter=None
 MenuTapMs=300
 TypeKey=T
 PassKeys=Z, F1, F2, F3, F4, X
-Cursor=Alt, Ctrl
+Cursor=Alt
 CursorMode=Hold
-BowAim=None
-BowAimSends=Mouse2
 Toggle=Backtick
 Legend=F9
 [Remap]
@@ -351,20 +372,19 @@ BlockOtherKeys=1
 DetectTextBoxes=1
 TypedCharacters=0
 Legend=1
-LegendSeconds=0
+LegendSeconds=15
 RequireFocus=1
 AlwaysConnected=1
 Log=1`;
-// The recommended setup: bow on side button 5, inventory (E), quests (V), social
-// (/) and teleport (X) on the controller so you can keep moving, Tab for the map,
-// everything else on the game's own keys. It only sets the keys you press:
-// switching to it keeps your game's own keys, and the mod converts where needed.
+// The Recommended layout: bow on side button 5, inventory (E), quests (V), social
+// (/) and teleport (X) on the controller so you can keep moving, Tab for the menu wheel,
+// everything else on the game's own keys. It assumes the game's default keyboard
+// keys ("in game"), and the mod converts your keys onto them.
 const AUTHOR_INI = `[Move]
 Up=W
 Left=A
 Down=S
 Right=D
-Dodge=None
 DodgeMouse=Mouse2
 DodgeDragPx=40
 DodgeFlickMs=80
@@ -380,7 +400,7 @@ Y=Q
 LB=Shift
 RB=3
 LT=R
-RT=Mouse5
+RT=Mouse4
 Back=None
 Start=None
 LS=Mouse3
@@ -391,18 +411,12 @@ DLeft=X
 DRight=V
 
 [Mouse]
-Crosshair=0
 KeepCursorInWindow=1
-MouseModeOnMovePx=40
+MouseModeOnMovePx=50
 MouseMoveSwitches=1
-FreezeCursorForGame=0
+CursorFromMiddle=1
 BumpNudgePct=30
 BowAimsWithMouse=1
-AimStick=None
-AimButtons=X, RT
-AimStrength=45
-AimLeadMs=35
-AimHoldMs=120
 [Keys]
 MenuKeys=M, G, K, Escape
 BackKeys=Escape
@@ -410,16 +424,16 @@ MouseAfter=DUp, DDown
 MenuTapMs=300
 TypeKey=T
 PassKeys=Z, F1, F2, F3, F4
+DisabledKeys=1, I, J, U
+InstantKeys=
 Cursor=Alt
 CursorMode=Hold
-BowAim=None
-BowAimSends=Mouse2
 Toggle=Backtick
 Legend=F9
 [Remap]
-Tab=M
+Tab=S
 B=U
-Mouse5=Mouse2
+Mouse4=Mouse2
 [Modes]
 inventory=Controller
 map=Keyboard
@@ -438,7 +452,7 @@ LegendSeconds=15
 RequireFocus=1
 AlwaysConnected=1
 Log=1`;
-const PROFILES = { default: { name: "Default", text: DEFAULT_INI }, author: { name: "Recommended setup", text: AUTHOR_INI } };
+const BUILTIN = { default: { name: "Default", text: DEFAULT_INI, file: "default.txt" }, author: { name: "Recommended", text: AUTHOR_INI, file: "author.txt" } };
 
 // =================================================================== key names
 const CODE_NAMES = { Space: "Space", Enter: "Enter", NumpadEnter: "Enter", Escape: "Escape", Tab: "Tab", ShiftLeft: "Shift", ShiftRight: "Shift",
@@ -500,15 +514,14 @@ const TUNE = [
   { sec: "Mouse", key: "MouseModeOnMovePx", label: "Mouse wakes the cursor", sub: "mouse travel (after letting go of WASD) that switches to mouse mode", min: 0, max: 150, step: 5, unit: "px" },
   { sec: "Mouse", key: "BumpNudgePct", label: "Bump correction", sub: "light right-stick nudge that undoes a small mouse bump; lower it if it ever makes you dodge, 0 = off", min: 0, max: 60, step: 5, unit: "%" },
   { sec: "Keys", key: "MenuTapMs", label: "Tap vs hold", sub: "shorter = tap (full menu), longer = hold (quick overlay)", min: 100, max: 600, step: 25, unit: "ms" },
-  { sec: "Options", key: "LegendSeconds", label: "Key list at start", sub: "seconds the on-screen list shows when the game starts (0 = only on its key); it can make the game stutter under CrossOver while it's up", min: 0, max: 60, step: 5, unit: "s" },
+  { sec: "Options", key: "LegendSeconds", label: "Key list at start", sub: "seconds the on-screen list shows when the game starts (0 = only on its key)", min: 0, max: 60, step: 5, unit: "s" },
 ];
 const flag = { read: v => v === "1", write: b => b ? "1" : "0" };
 const TOGGLES = [
   { sec: "Mouse", key: "MouseMoveSwitches", label: "Moving the mouse switches to mouse mode", sub: "off: only the cursor key (Alt), menus or the toggle key give you the mouse", read: v => v !== "0", write: flag.write },
-  { sec: "Keys", key: "CursorMode", label: "Cursor key toggles the cursor", sub: "on: press once to show the cursor, again to lock it; off: shows only while held", read: v => /^toggle$/i.test(String(v).trim()), write: b => b ? "Toggle" : "Hold" },
+  { sec: "Keys", key: "CursorMode", label: "Cursor key toggles the cursor", sub: "on: press once to show the cursor, again to hide it; off: shows only while held, like Genshin", read: v => /^toggle$/i.test(String(v).trim()), write: b => b ? "Toggle" : "Hold" },
+  { sec: "Mouse", key: "CursorFromMiddle", label: "Cursor comes back in the middle", sub: "when moving the mouse brings the cursor back, it starts from the middle of the window; off: where the mouse moved it", ...flag },
   { sec: "Mouse", key: "BowAimsWithMouse", label: "Aim the bow with the mouse", sub: "holding a mouse button bound to the bow switches to keyboard mode until you let go", ...flag },
-  { sec: "Mouse", key: "AimStick", label: "Turn toward the mouse before attacking", sub: "old Dungeons style, for the melee and bow buttons", read: v => /^left$/i.test(String(v)), write: b => b ? "Left" : "None" },
-  { sec: "Mouse", key: "Crosshair", label: "Show a mouse pointer while playing", sub: "the game hides its cursor in controller mode; costs performance under CrossOver", ...flag },
   { sec: "Mouse", key: "KeepCursorInWindow", label: "Keep the mouse inside the game window while playing", sub: "so a click can't land in another app", ...flag },
   { sec: "Options", key: "BlockOtherKeys", label: "Block keys that aren't used", sub: "a stray key can't flip the game into keyboard mode", ...flag },
   { sec: "Options", key: "HideMouse", label: "Hide mouse movement from the game while playing", sub: "keeps the game in controller mode", ...flag },
@@ -523,32 +536,34 @@ function stateFromIni(text) {
   const val = (sec, key) => { const v = get(ini, sec, key); return v !== undefined ? v : get(def, sec, key); };
   const st = { keys: {}, mode: {}, game: {}, mod: {}, num: {}, opt: {}, extraRemaps: [], extraMenuKeys: [], extraPass: [] };
   // The game's own keys: from the file, else the game's defaults.
-  for (const a of ACTIONS) if (a.game) st.game[a.id] = normKey(get(ini, "GameKeys", a.id)) || GAME_DEFAULTS[a.id] || "?";
+  const parseGame = v => v === undefined ? null : String(v).split(",").slice(0, 2).map(x => x.trim()).map(x => !x || x === "-" || /^none$/i.test(x) ? null : x === "?" ? "?" : normKey(x));
+  for (const a of ACTIONS) if (a.game) st.game[a.id] = parseGame(get(ini, "GameKeys", a.id)) || [...(GAME_DEFAULTS[a.id] || ["?"])];
   const buttons = Object.fromEntries(PAD_ORDER.map(b => [b, splitKeys(val("Buttons", b))]));
   const menuKeys = splitKeys(val("Keys", "MenuKeys")), passKeys = splitKeys(val("Keys", "PassKeys")), backKeys = splitKeys(val("Keys", "BackKeys"));
   const usedDirect = new Set();
   let remaps = (ini.Remap ? ini.Remap : def.Remap || []).map(([f, t]) => [normKey(f), normKey(t)]).filter(([f, t]) => f && t);
   const takeRemaps = test => { const hit = remaps.filter(test); remaps = remaps.filter(r => !test(r)); return hit.map(([f]) => f); };
-  const gameOf = a => a.fixedGame || st.game[a.id];
+
 
   // Bow: its game key can also be told by a side-button remap (Mouse5=Mouse4).
   if (!get(ini, "GameKeys", "ranged")) {
     const r = remaps.find(([f, t]) => buttons.RT.includes(f) && isMouse(f) && isMouse(t));
-    if (r) st.game.ranged = r[1];
+    if (r) st.game.ranged = [r[1]];
   }
   for (const a of ACTIONS) {
+    if (a.hidden) { st.keys[a.id] = []; continue; }
     if (a.move) { st.keys[a.id] = splitKeys(val("Move", a.move)); continue; }
     const padKeys = a.pad ? buttons[a.pad] : [];
     if (!a.kb) {
       st.keys[a.id] = a.id === "fdodge" ? uniq([...padKeys, ...splitKeys(val("Move", "Dodge"))]) : padKeys; // the old "quick dodge" is the forward dodge
       continue;
     }
-    const g = gameOf(a);
+    const slots = gameSlots(a, st);
     let kbKeys = [];
-    if (g && g !== "?") {
-      const direct = [...menuKeys, ...passKeys, ...backKeys].filter(k => k === g);
-      if (direct.length) usedDirect.add(g);
-      kbKeys = uniq([...direct, ...takeRemaps(([, t]) => t === g)]);
+    if (slots.length) {
+      const direct = [...menuKeys, ...passKeys, ...backKeys].filter(k => slots.includes(k));
+      for (const k of direct) usedDirect.add(k);
+      kbKeys = uniq([...direct, ...takeRemaps(([, t]) => slots.includes(t))]);
     }
     const saved = get(ini, "Modes", a.id);
     const mode = !both(a) ? (a.pad ? "pad" : "kb") : saved ? (/^c/i.test(saved) ? "pad" : "kb") : padKeys.length ? "pad" : "kb";
@@ -556,7 +571,7 @@ function stateFromIni(text) {
     st.keys[a.id] = uniq(mode === "pad" ? [...padKeys, ...kbKeys] : [...kbKeys, ...padKeys]);
   }
   // The bow's side-button remap is written from the bow row; drop it from the leftovers.
-  takeRemaps(([f, t]) => st.keys.ranged.includes(f) && isMouse(f) && t === st.game.ranged);
+  takeRemaps(([f, t]) => st.keys.ranged.includes(f) && isMouse(f) && t === firstGame(ACT.ranged, st));
   st.extraMenuKeys = menuKeys.filter(k => !usedDirect.has(k));
   st.extraPass = passKeys.filter(k => !usedDirect.has(k));
   st.extraRemaps = remaps;
@@ -564,17 +579,14 @@ function stateFromIni(text) {
   st.mod.Cursor = splitKeys(val("Keys", "Cursor"));
   st.mod.Toggle = splitKeys(val("Keys", "Toggle"));
   st.mod.Legend = splitKeys(val("Keys", "Legend"));
-  st.bowAim = (val("Keys", "BowAim") || "None").trim();
   for (const t of TUNE) st.num[t.key] = Number(val(t.sec, t.key));
   for (const t of TOGGLES) st.opt[t.key] = t.read(val(t.sec, t.key));
-  st.aimButtons = val("Mouse", "AimButtons") || "X, RT";
   st.optionsRaw = def.Options.map(([k]) => [k, val("Options", k)]);
-  st.mouseRaw = { AimStrength: val("Mouse", "AimStrength"), AimLeadMs: val("Mouse", "AimLeadMs"), AimHoldMs: val("Mouse", "AimHoldMs") };
   return st;
 }
 
 // How a row reaches the game right now: "move", "pad" or "kb".
-function route(a, st) { return a.move ? "move" : both(a) ? st.mode[a.id] : a.pad ? "pad" : "kb"; }
+function route(a, st) { return a.hidden ? "none" : a.move ? "move" : both(a) ? st.mode[a.id] : a.pad ? "pad" : "kb"; }
 
 // =================================================================== settings file from state
 function iniText(st) {
@@ -584,7 +596,7 @@ function iniText(st) {
     "; Made with Dungeons II Keybinder. Put this file in the game's Win64 folder and",
     "; restart the game. The mod uses the newest of default.txt, author.txt and wasdmod*.txt.", "");
   const moveKeys = m => st.keys[ACTIONS.find(a => a.move === m).id];
-  L.push("[Move]", ...["Up", "Left", "Down", "Right"].map(k => k + "=" + j(moveKeys(k))), "Dodge=None", "DodgeMouse=" + j(moveKeys("DodgeMouse")),
+  L.push("[Move]", ...["Up", "Left", "Down", "Right"].map(k => k + "=" + j(moveKeys(k))), "DodgeMouse=" + j(moveKeys("DodgeMouse")),
     "DodgeDragPx=" + st.num.DodgeDragPx, "DodgeFlickMs=" + st.num.DodgeFlickMs, "");
   L.push("[Movement]", "AccelMs=" + st.num.AccelMs, "DecelMs=" + st.num.DecelMs, "TurnMs=" + st.num.TurnMs, "");
   const padKeys = b => { const a = ACTIONS.find(x => x.pad === b); return a && route(a, st) === "pad" ? st.keys[a.id] : []; };
@@ -598,8 +610,8 @@ function iniText(st) {
   const inputKeys = new Set([...ACTIONS.flatMap(a => st.keys[a.id]), ...MOD_ROWS.flatMap(r => r.get(st)), ...st.extraRemaps.map(([f]) => f)]);
   for (const a of ACTIONS) {
     if (route(a, st) !== "kb") continue;
-    const g = a.fixedGame || st.game[a.id];
-    if (!g || g === "?") continue; // unknown game key: nothing to send
+    const g = firstGame(a, st);
+    if (!g) continue; // unknown game key: nothing to send
     for (const k of st.keys[a.id]) {
       if (k === g) (a.kb === "pass" ? passKeys : menuKeys).push(k);
       else remaps.push([k, g]);
@@ -609,29 +621,29 @@ function iniText(st) {
   }
   // The bow in keyboard mode: a side button the game doesn't use for it is sent as the
   // mouse button it does use (e.g. side 4 as right click).
-  const bowGame = st.game.ranged;
+  const bowGame = firstGame(ACT.ranged, st);
   if (st.opt.BowAimsWithMouse && isMouse(bowGame) && bowGame !== "Mouse3")
     for (const k of st.keys.ranged) if ((k === "Mouse4" || k === "Mouse5") && k !== bowGame) remaps.push([k, bowGame]);
   const mouseAfter = ACTIONS.filter(a => a.opens && route(a, st) === "pad" && st.keys[a.id].length).map(a => a.pad);
   // The game's own key for an action you put on other keys stays off, in every mode.
   // Left click stays: it clicks in menus.
-  const disabled = uniq(ACTIONS.map(a => a.fixedGame || st.game[a.id]).filter(g => g && g !== "?" && g !== "Mouse1" && !inputKeys.has(g)));
-  L.push("[Mouse]", "Crosshair=" + TG("Crosshair").write(st.opt.Crosshair), "KeepCursorInWindow=" + TG("KeepCursorInWindow").write(st.opt.KeepCursorInWindow),
-    "MouseModeOnMovePx=" + st.num.MouseModeOnMovePx, "MouseMoveSwitches=" + TG("MouseMoveSwitches").write(st.opt.MouseMoveSwitches), "FreezeCursorForGame=0",
-    "BumpNudgePct=" + st.num.BumpNudgePct, "BowAimsWithMouse=" + TG("BowAimsWithMouse").write(st.opt.BowAimsWithMouse), "AimStick=" + TG("AimStick").write(st.opt.AimStick),
-    "AimButtons=" + st.aimButtons, "AimStrength=" + st.mouseRaw.AimStrength, "AimLeadMs=" + st.mouseRaw.AimLeadMs, "AimHoldMs=" + st.mouseRaw.AimHoldMs, "");
+  const disabled = uniq(ACTIONS.flatMap(a => gameSlots(a, st)).filter(g => g !== "Mouse1" && !inputKeys.has(g)));
+  L.push("[Mouse]", "KeepCursorInWindow=" + TG("KeepCursorInWindow").write(st.opt.KeepCursorInWindow),
+    "MouseModeOnMovePx=" + st.num.MouseModeOnMovePx, "MouseMoveSwitches=" + TG("MouseMoveSwitches").write(st.opt.MouseMoveSwitches),
+    "CursorFromMiddle=" + TG("CursorFromMiddle").write(st.opt.CursorFromMiddle),
+    "BumpNudgePct=" + st.num.BumpNudgePct, "BowAimsWithMouse=" + TG("BowAimsWithMouse").write(st.opt.BowAimsWithMouse), "");
   L.push("[Keys]", "MenuKeys=" + j(uniq([...menuKeys, ...st.extraMenuKeys])), "BackKeys=Escape", "MouseAfter=" + j(mouseAfter),
     "MenuTapMs=" + st.num.MenuTapMs, "TypeKey=" + j(st.mod.TypeKey), "PassKeys=" + uniq([...passKeys, ...st.extraPass]).join(", "),
     "DisabledKeys=" + disabled.join(", "), "InstantKeys=" + uniq(instant).join(", "),
-    "Cursor=" + j(st.mod.Cursor), "CursorMode=" + TG("CursorMode").write(st.opt.CursorMode), "BowAim=" + st.bowAim,
-    "BowAimSends=" + (bowGame && bowGame !== "?" ? bowGame : "Mouse2"), "Toggle=" + j(st.mod.Toggle), "Legend=" + j(st.mod.Legend), "");
+    "Cursor=" + j(st.mod.Cursor), "CursorMode=" + TG("CursorMode").write(st.opt.CursorMode), "Toggle=" + j(st.mod.Toggle), "Legend=" + j(st.mod.Legend), "");
   const remapLines = [...remaps, ...st.extraRemaps].map(([f, t]) => f + "=" + t);
   // An empty section would bring back the mod's built-in remaps; "None=None" keeps it empty.
   L.push("[Remap]", ...(remapLines.length ? remapLines : ["None=None"]), "");
-  L.push("; Keybinder only (the mod ignores these): keyboard or controller for each menu,",
-    "; and the game's own keyboard keys (Settings > Controls > Keyboard).",
+  L.push("; Keyboard or controller for each menu (for the key layout editor), and the game's",
+    "; own keyboard keys (Settings > Controls > Keyboard); the key list names converted keys from them.",
     "[Modes]", ...ACTIONS.filter(both).map(a => a.id + "=" + (st.mode[a.id] === "pad" ? "Controller" : "Keyboard")), "");
-  L.push("[GameKeys]", ...ACTIONS.filter(a => a.game).map(a => a.id + "=" + (st.game[a.id] || "?")), "");
+  const slotText = arr => { const a = (arr || []).slice(0, 2); while (a.length && !a[a.length - 1]) a.pop(); return a.length ? a.map(k => k || "-").join(", ") : "None"; };
+  L.push("[GameKeys]", ...ACTIONS.filter(a => a.game).map(a => a.id + "=" + slotText(st.game[a.id])), "");
   L.push("[Options]", ...st.optionsRaw.map(([k, v]) => {
     if (k === "HideMouse") return k + "=" + TG("HideMouse").write(st.opt.HideMouse);
     if (k === "BlockOtherKeys") return k + "=" + TG("BlockOtherKeys").write(st.opt.BlockOtherKeys);
@@ -643,17 +655,19 @@ function iniText(st) {
 }
 
 // =================================================================== the game's keyboard settings to change
-// So keyboard mode (menus, aiming the bow) uses the same keys: for every action whose
-// game key isn't one of your keys, suggest your first non-arrow key. Keyboard only;
+// For keyboard mode to match your layout, each action's keys in the game's keyboard
+// settings should be yours: the first column one of your keys, and anything else
+// cleared (an action you have no key for loses its game keys too). Keyboard only;
 // the controller layout stays the game's default, which the mod relies on.
+// Each item: { a, slot (0 first column, 1 second), want (key, or null = clear it), was }.
 function recommendations(st) {
   const out = [];
   for (const a of ACTIONS) {
     if (!a.game) continue;
-    const keys = st.keys[a.id], g = st.game[a.id];
-    if (!keys.length || keys.includes(g)) continue;
-    const rec = keys.find(k => !isArrow(k)) || keys[0];
-    out.push({ a, rec, was: g });
+    const keys = st.keys[a.id], g = st.game[a.id] || [];
+    if (!keys.length) { g.forEach((k, i) => { if (k && k !== "?") out.push({ a, slot: i, want: null, was: k }); }); continue; }
+    if (!keys.includes(g[0])) out.push({ a, slot: 0, want: keys.find(k => !isArrow(k)) || keys[0], was: g[0] || null });
+    if (g[1] && g[1] !== "?" && !keys.includes(g[1])) out.push({ a, slot: 1, want: null, was: g[1] });
   }
   return out;
 }
@@ -680,7 +694,7 @@ if (typeof globalThis !== "undefined") globalThis.Keybinder = { ACTIONS, DEFAULT
 
 // =================================================================== page
 if (typeof document !== "undefined") {
-let state, profile = null, undoText = null;
+let state;
 const $ = id => document.getElementById(id);
 const el = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -730,24 +744,32 @@ function gameCell(a) {
   // On the controller, the game gets its controller button.
   if (both(a) && state.mode[a.id] === "pad") { cell.append(el("span", { class: "fixed", text: PAD_NAMES[a.pad], title: "The controller button the mod presses" })); return cell; }
   if (!a.game) return el("div", { class: "ingame" });
-  const g = state.game[a.id], keys = state.keys[a.id];
-  const b = el("button", { type: "button", class: g === "?" ? "unknown" : keys.includes(g) ? "match" : "",
-    title: "The game's own keyboard key for " + a.game + " (Settings › Controls › Keyboard). Click to change.", "aria-label": "Game key for " + a.game + ": " + pretty(g) + ". Change",
-    text: pretty(g), onclick: e => startCapture({ kind: "game", a, rowName: a.game }, e.currentTarget) });
-  cell.append(b);
+  const g = state.game[a.id] || [], keys = state.keys[a.id];
+  // Both columns of the game's keyboard settings. A key that isn't one of yours is
+  // struck through: the checklist asks to change it in the game.
+  [0, 1].forEach(i => {
+    const k = g[i];
+    if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", text: "+", title: "The game has a second key for " + a.game + ": add it", onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: a.game + " (second key)" }, e.currentTarget) })); return; }
+    const cls = !k ? "none" : k === "?" ? "unknown" : keys.includes(k) ? "match" : "stray";
+    cell.append(el("button", { type: "button", class: cls, text: k ? pretty(k) : "–",
+      title: (i ? "Second" : "First") + " key the game has for " + a.game + " (Settings › Controls › Keyboard). Click to change.",
+      "aria-label": (i ? "Second" : "First") + " game key for " + a.game + ": " + (k ? pretty(k) : "none") + ". Change",
+      onclick: e => startCapture({ kind: "game", a, slot: i, rowName: a.game + (i ? " (second key)" : "") }, e.currentTarget) }));
+    if (i === 1) cell.append(el("button", { type: "button", class: "clear2", text: "×", title: "The game has no second key for this", "aria-label": "Clear the second game key for " + a.game, onclick: () => { state.game[a.id][1] = null; changed(); } }));
+  });
   return cell;
 }
 
 function rowEl(a, uses, first) {
   const r = route(a, state), keys = state.keys[a.id];
-  const g = a.fixedGame || state.game[a.id];
+  const g = firstGame(a, state);
   const kbRoute = r === "kb";
   let note = null;
-  if (kbRoute && (!g || g === "?") && keys.length) note = "set the game's key →";
+  if (kbRoute && !g && keys.length) note = "set the game's key →";
   return el("div", { class: "row" + (first ? " first" : "") },
     el("div", { class: "name" }, a.label, a.sub ? el("span", { class: "sub", text: a.sub }) : null),
     routeCell(a),
-    keysCell(keys, v => state.keys[a.id] = v, a.label, uses, { kbRoute, sendsAs: kbRoute && g && g !== "?" ? g : null, note, after: a.game || a.fixedGame ? gameCell(a) : null }));
+    keysCell(keys, v => state.keys[a.id] = v, a.label, uses, { kbRoute, sendsAs: kbRoute && g ? g : null, note, after: a.game || a.fixedGame ? gameCell(a) : null }));
 }
 
 function renderSection(id, color, title, lede, list, uses) {
@@ -789,16 +811,31 @@ function renderTune() {
   s.append(tg);
 }
 
+const recText = r => r.a.game + ": " + (r.slot ? "second key" : "first key") + " → " + (r.want ? pretty(r.want) : "clear it");
+const applyRec = r => { const arr = state.game[r.a.id] = state.game[r.a.id] || []; arr[r.slot] = r.want; };
 function renderRecs() {
   const recs = recommendations(state), card = $("recsCard");
-  card.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--accent)" }), "Match the game's keyboard keys"),
-    el("p", { class: "lede", text: "Set these in the game (Settings › Controls › Keyboard) so keyboard mode uses the same keys as the mod. Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Until you change them, the mod converts your keys for menus." }));
-  if (!recs.length) { card.append(el("p", { class: "allset", text: "All set: the game's keyboard keys match yours." })); return; }
+  card.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--accent)" }), "Make the game's keyboard keys match yours"),
+    el("p", { class: "lede", text: "Change these in the game: Settings › Controls › Keyboard (both columns). Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Tick each one off here once it's done." }));
+  if (!recs.length) { card.append(el("p", { class: "allset", text: "All set: the game's keyboard keys match yours, in both columns." })); return; }
   const ul = el("ul", { class: "recs" });
   for (const r of recs) ul.append(el("li", {},
-    el("span", {}, el("b", { text: r.a.game }), " → " + pretty(r.rec), el("span", { class: "was", text: r.was === "?" ? "now: not sure (check the game)" : "now: " + pretty(r.was) })),
-    el("button", { type: "button", text: "Done", title: "I changed it in the game", onclick: () => { state.game[r.a.id] = r.rec; changed(); } })));
-  card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: "Mark all as done", onclick: () => { for (const r of recs) state.game[r.a.id] = r.rec; changed(); } })));
+    el("span", {}, el("b", { text: r.a.game }), ": " + (r.slot ? "second key" : "first key") + " → ", el("b", { text: r.want ? pretty(r.want) : "clear it" }),
+      el("span", { class: "was", text: r.was ? "now: " + pretty(r.was) : "now: empty" }), r.a.note ? el("span", { class: "note", text: r.a.note }) : null),
+    el("button", { type: "button", text: "Done", title: "I changed it in the game", onclick: () => { applyRec(r); changed(); } })));
+  card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: "Mark all as done", onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
+}
+// The notice at the top: while the game's own keyboard settings differ from the
+// layout, keyboard mode and controller mode are two different layouts.
+function renderMismatch() {
+  const recs = recommendations(state), box = $("mismatch");
+  if (!recs.length) { box.replaceChildren(); return; }
+  const n = recs.length;
+  box.replaceChildren(el("div", { class: "mismatch", role: "alert" },
+    el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
+    el("h2", { text: "Change " + n + " setting" + (n === 1 ? "" : "s") + " in the game, or you're playing with two layouts" }),
+    el("button", { type: "button", text: "Show what to change", onclick: () => { const c = $("recsCard"); c.scrollIntoView({ behavior: "smooth", block: "start" }); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1500); } }),
+    el("p", { text: "The mod turns your keys into the controller only while you fight. In menus, with the cursor, and when aiming the bow, the game reads its own keyboard settings, so its old keys still work there and yours may not; its on-screen button prompts show its keys too. The mod blocks the leftover keys in the meantime, but only changing them in the game (Settings › Controls › Keyboard) makes both modes one layout." })));
 }
 
 // Keyboard map: Mac layout; Command can't be bound (it's for Mac shortcuts).
@@ -839,15 +876,57 @@ function renderConflicts(uses) {
     el("ul", {}, ...bad.map(([k, u]) => el("li", { text: pretty(k) + " — " + u.map(r => r.name).join(" and ") })))));
 }
 
-function renderProfile() {
-  for (const b of document.querySelectorAll("[data-profile]")) b.setAttribute("aria-pressed", String(profile && profile.id === b.dataset.profile));
-  const s = $("profileStatus"); s.replaceChildren();
-  if (profile) s.append(profile.name + (profile.edited ? " (edited)" : ""));
-  else s.append("Your own layout");
-  if (undoText) s.append(el("button", { type: "button", text: "Undo", onclick: () => { const t = undoText; undoText = null; load(t, null); } }));
+function renderLayoutBar() {
+  const sel = $("layoutSel");
+  sel.replaceChildren(
+    el("optgroup", { label: "Built in" }, ...Object.entries(BUILTIN).map(([id, b]) => el("option", { value: id, selected: cur === id }, b.name))),
+    layouts.length ? el("optgroup", { label: "Yours" }, ...layouts.map(l => el("option", { value: l.id, selected: cur === l.id }, l.name))) : null,
+    el("option", { value: "__import" }, "Import a file…"));
+  sel.value = cur;
+  $("resetBtn").disabled = !dirty();
+  const s = $("layoutStatus"); s.replaceChildren();
+  if (naming) {
+    const input = el("input", { type: "text", class: "namebox", maxlength: "40", "aria-label": "Name for the new layout",
+      value: naming === "create" ? "My layout " + (layouts.length + 1) : layoutName(cur) + " (mine)" });
+    const ok = () => { const n = input.value.trim(); if (n) newLayout(n); };
+    input.addEventListener("keydown", e => { if (e.key === "Enter") ok(); if (e.key === "Escape") { naming = null; renderLayoutBar(); } });
+    s.append(naming === "create" ? "New layout from what's on screen:" : "Save as a new layout:", input,
+      el("button", { type: "button", class: "primary", text: "Save", onclick: ok }),
+      el("button", { type: "button", text: "Cancel", onclick: () => { naming = null; renderLayoutBar(); } }));
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+    return;
+  }
+  if (confirmReset) {
+    s.append(el("span", { class: "warn", text: "Reset " + layoutName(cur) + " to its saved version? Your changes will be lost." }),
+      el("button", { type: "button", class: "primary", text: "Reset", onclick: resetLayout }),
+      el("button", { type: "button", text: "Cancel", onclick: () => { confirmReset = false; renderLayoutBar(); } }));
+    return;
+  }
+  if (switchWarn) s.append(el("span", { class: "warn", text: "Save or discard your changes first." }));
+  if (dirty()) {
+    s.append(el("span", { class: "changed", text: BUILTIN[cur] ? "You changed " + layoutName(cur) + ". Save changes?" : "Unsaved changes" }),
+      el("button", { type: "button", class: "primary", text: BUILTIN[cur] ? "Save as new layout…" : "Save changes", onclick: saveChanges }),
+      el("button", { type: "button", text: "Discard", onclick: askReset }));
+  } else if (!switchWarn) {
+    s.append(BUILTIN[cur] ? "Built-in layout. Change anything and you can save it as your own." : "Your layout, kept in this browser.");
+    if (!BUILTIN[cur]) s.append(el("button", { type: "button", text: "Delete", title: "Delete this layout", onclick: deleteLayout }));
+  }
 }
 
 function renderOut() { $("iniOut").textContent = iniText(state); }
+// Says plainly where the menu wheel went while the game still has it on another
+// key (S by default, which is "move down" here). Gone once the game's key matches.
+function renderWheelNote() {
+  const mine = (state.keys.wheel || []).filter(Boolean), game = (state.game.wheel || []).filter(k => k && k !== "?");
+  if (state.mode.wheel === "pad" || !mine.length || !game.length || game.some(k => mine.includes(k))) return;
+  const moves = ["up", "left", "down", "right"].find(d => (state.keys[d] || []).includes(game[0]));
+  const lede = $("sec-menu").querySelector(".lede");
+  lede.after(el("p", { class: "wheel-note" },
+    el("b", { text: "The menu wheel is on " + pretty(mine[0]) + "." }),
+    " The game's own key for it is " + pretty(game[0]) + (moves ? ", which is \"move " + moves + "\" here" : "") +
+    ", so pressing " + pretty(mine[0]) + " sends the game its " + pretty(game[0]) + ". Set Menu Wheel to " + pretty(mine[0]) +
+    " in the game (Settings › Controls › Keyboard) and tick it off in the checklist; this note then goes away."));
+}
 function render() {
   const uses = usage(state);
   renderSection("sec-act", "var(--action)", "Movement & Actions",
@@ -856,7 +935,8 @@ function render() {
   renderSection("sec-menu", "var(--menu)", "Menus",
     "For menus the game has both ways, pick one. Keyboard (default): your keys send the game's own shortcut and switch to mouse mode. Controller: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the chosen way is active; the other stays off.",
     ACTIONS.filter(a => a.sec === "menu"), uses);
-  renderMod(uses); renderTune(); renderRecs(); renderMap(uses); renderConflicts(uses); renderProfile(); renderOut();
+  renderWheelNote();
+  renderMod(uses); renderTune(); renderRecs(); renderMismatch(); renderMap(uses); renderConflicts(uses); renderLayoutBar(); renderOut();
 }
 
 // ---------------------------------------------------------------- key capture
@@ -876,7 +956,7 @@ function stopCapture() {
 }
 function take(key) {
   const t = capturing.target;
-  if (t.kind === "game") { state.game[t.a.id] = key; stopCapture(); changed(); return; }
+  if (t.kind === "game") { const arr = state.game[t.a.id] = state.game[t.a.id] || []; arr[t.slot || 0] = key; stopCapture(); changed(); return; }
   if (t.keys.includes(key)) { $("capMsg").textContent = pretty(key) + " is already on this row."; return; }
   if (t.kbRoute && isMouse(key)) { $("capMsg").textContent = "A mouse button can't send a keyboard shortcut. Pick a key, or switch this row to the controller."; return; }
   if (t.kbRoute && (key === "=" || key === ";")) { $("capMsg").textContent = "That key can't be sent to the game. Pick another."; return; }
@@ -903,30 +983,64 @@ $("capture").addEventListener("mousedown", e => {
 for (const t of ["contextmenu", "auxclick", "mouseup"]) $("capture").addEventListener(t, e => { if (capturing || !$("capture").hidden) e.preventDefault(); });
 $("capCancel").addEventListener("click", e => { e.stopPropagation(); stopCapture(); });
 
-// ---------------------------------------------------------------- save / load / layouts
-function save() { try { localStorage.setItem("d2kb-ini", iniText(state)); localStorage.setItem("d2kb-profile", JSON.stringify(profile)); } catch (e) {} }
-function edited() { if (profile && !profile.edited) { profile.edited = true; renderProfile(); } }
-function changed() { edited(); save(); render(); }
-function load(text, prof, keepGame) {
-  const game = keepGame && state ? { ...state.game } : null;
-  state = stateFromIni(text);
-  if (game) state.game = game; // your game's keyboard keys stay yours
-  profile = prof; render(); save();
+// ---------------------------------------------------------------- layouts
+// Built-in layouts (Default, Recommended) and your own, kept in this browser.
+// A changed built-in layout can be saved as a new one of yours; Reset goes back to
+// the selected layout's saved version. The page also keeps what's on screen.
+let layouts = [];               // your layouts: [{ id, name, text }]
+let cur = "default", base = ""; // the selected layout, and its saved settings text
+let naming = null, switchWarn = false, confirmReset = false;
+// In the wasdmod app (Mac) and the Windows setup's editor window, window.wasdmodHost
+// keeps the layouts and saves straight into the game folder.
+const host = window.wasdmodHost || null;
+const store = host
+  ? { get: k => k in host.store ? host.store[k] : null, set: (k, v) => host.set(k, String(v)) }
+  : { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const layoutName = id => BUILTIN[id] ? BUILTIN[id].name : (layouts.find(l => l.id === id) || {}).name || "Layout";
+const layoutText = id => BUILTIN[id] ? BUILTIN[id].text : (layouts.find(l => l.id === id) || {}).text;
+const dirty = () => iniText(state) !== base;
+function persist() { store.set("d2kb-ini", iniText(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur); }
+function save() { persist(); }
+function edited() { switchWarn = false; confirmReset = false; renderLayoutBar(); }
+function changed() { switchWarn = false; confirmReset = false; save(); render(); }
+function selectLayout(id) {
+  const text = layoutText(id); if (!text) return;
+  state = stateFromIni(text); cur = id; base = iniText(state); naming = null; switchWarn = false;
+  render(); persist();
 }
-for (const b of document.querySelectorAll("[data-profile]")) b.addEventListener("click", () => {
-  const p = PROFILES[b.dataset.profile];
-  undoText = iniText(state);
-  load(p.text, { id: b.dataset.profile, name: p.name, edited: false }, true);
-  $("saveStatus").textContent = "Switched to " + p.name + ". Save the settings file to use it.";
+function newLayout(name) {
+  const id = "l" + Date.now().toString(36);
+  const text = iniText(state);
+  layouts.push({ id, name, text });
+  cur = id; base = text; naming = null; switchWarn = false;
+  render(); persist();
+  $("saveStatus").textContent = "Saved \"" + name + "\". " + (host ? "Save it to the game to use it." : "Download the file to use it in the game.");
+}
+function saveChanges() {
+  if (BUILTIN[cur]) { naming = "save"; renderLayoutBar(); return; } // built-in layouts stay as they are
+  const l = layouts.find(x => x.id === cur); if (!l) return;
+  l.text = iniText(state); base = l.text; switchWarn = false; render(); persist();
+}
+function resetLayout() { state = stateFromIni(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); }
+function askReset() { if (!dirty()) return; confirmReset = true; naming = null; switchWarn = false; renderLayoutBar(); }
+function deleteLayout() { layouts = layouts.filter(l => l.id !== cur); selectLayout("default"); }
+$("layoutSel").addEventListener("change", e => {
+  const v = e.target.value;
+  if (v === "__import") { $("importCard").hidden = false; $("importCard").scrollIntoView({ behavior: "smooth", block: "start" }); renderLayoutBar(); return; }
+  if (dirty()) { switchWarn = true; renderLayoutBar(); return; }
+  selectLayout(v);
 });
-$("importToggle").addEventListener("click", () => { $("importCard").hidden = !$("importCard").hidden; });
+$("createBtn").addEventListener("click", () => { naming = "create"; switchWarn = false; confirmReset = false; renderLayoutBar(); });
+$("resetBtn").addEventListener("click", askReset);
 function importText(t, from) {
   if (!/\[(Move|Buttons|Keys)\]/i.test(t)) { $("importStatus").textContent = "That doesn't look like a WASD mod settings file."; return; }
-  undoText = iniText(state);
-  load(t, null, !/\[GameKeys\]/i.test(t));
-  $("importStatus").textContent = "Loaded " + from + "."; $("saveStatus").textContent = "Loaded " + from + ".";
+  if (dirty() && !BUILTIN[cur]) saveChanges(); // keep unsaved edits to your layout before switching
+  state = stateFromIni(t);
+  newLayout(String(from).replace(/\.(txt|ini)$/i, "") || "Imported layout");
+  $("importCard").hidden = true;
+  $("importStatus").textContent = ""; $("saveStatus").textContent = "Imported " + from + " as a layout of yours.";
 }
-$("importBtn").addEventListener("click", () => importText($("importText").value, "pasted settings"));
+$("importBtn").addEventListener("click", () => importText($("importText").value, "Pasted layout"));
 $("fileInput").addEventListener("change", e => { const f = e.target.files[0]; if (f) f.text().then(t => importText(t, f.name)); });
 const drop = $("drop");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
@@ -945,14 +1059,22 @@ $("copyPath").addEventListener("click", () => copy($("gamePath").textContent, "F
 // wasdmod-MMDDYY.txt. The mod uses the newest of them.
 let downloads = null;
 const fileName = () => {
-  if (profile && !profile.edited) return profile.id === "author" ? "author.txt" : "default.txt";
+  if (BUILTIN[cur] && !dirty()) return BUILTIN[cur].file;
   const d = new Date(), p = n => String(n).padStart(2, "0");
   return "wasdmod-" + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getFullYear() % 100) + ".txt";
 };
-$("saveBtn").addEventListener("click", async () => {
+async function downloadFile() {
   const text = iniText(state), name = fileName();
+  if (host) {
+    $("saveStatus").textContent = "Saving…";
+    try {
+      const used = await host.save(name, text);
+      $("saveStatus").textContent = "Saved to the game as " + name + ". " + (used && used !== name ? "The game still uses " + used + " (it's newer)." : "Restart the game to use it.");
+    } catch (e) { const m = String(e && e.message || e); $("saveStatus").textContent = /^Saved/.test(m) ? m : "Not saved: " + m; }
+    return;
+  }
   if (downloads) {
-    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = "Saved " + name + ". Move it into the game's Win64 folder (or load it in the Windows setup), then restart the game."; }
+    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = "Saved " + name + ". Load it with the wasdmod app (Windows: wasdmod-Windows.exe) or move it into the game's Win64 folder, then restart the game."; }
     catch (e) { $("saveStatus").textContent = e && e.code === "declined" ? "Not saved." : "Saving isn't available here. Use Copy text instead."; }
     return;
   }
@@ -960,12 +1082,29 @@ $("saveBtn").addEventListener("click", async () => {
   a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
   a.download = name; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  $("saveStatus").textContent = "Downloaded " + name + ". Move it into the game's Win64 folder (or load it in the Windows setup), then restart the game.";
-});
+  $("saveStatus").textContent = "Downloaded " + name + ". Load it with the wasdmod app (Windows: wasdmod-Windows.exe) or move it into the game's Win64 folder, then restart the game.";
+}
+$("saveBtn").addEventListener("click", downloadFile);
+$("downloadTop").addEventListener("click", () => { downloadFile(); $("saveStatus").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
 if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
+if (host) {
+  $("downloadTop").textContent = $("saveBtn").textContent = "Save to game";
+  $("downloadTop").title = "Save this layout into the game folder";
+  $("whereItGoes").hidden = true;
+}
 
-let saved = null, savedProfile = null;
-try { saved = localStorage.getItem("d2kb-ini"); savedProfile = JSON.parse(localStorage.getItem("d2kb-profile") || "null"); } catch (e) {}
-load(saved || DEFAULT_INI, saved ? savedProfile : { id: "default", name: "Default", edited: false });
+try { layouts = JSON.parse(store.get("d2kb-layouts") || "[]"); } catch (e) { layouts = []; }
+cur = store.get("d2kb-current") || "default";
+const working = store.get("d2kb-ini");
+if (!store.get("d2kb-layouts") && working) {
+  // Edits from the previous version of this page become a layout of yours.
+  let old = null; try { old = JSON.parse(store.get("d2kb-profile") || "null"); } catch (e) {}
+  if (old && !old.edited && BUILTIN[old.id]) cur = old.id;
+  else { layouts.push({ id: "l" + Date.now().toString(36), name: "My layout", text: working }); cur = layouts[0].id; }
+}
+if (!layoutText(cur)) cur = "default";
+base = iniText(stateFromIni(layoutText(cur)));
+state = stateFromIni(working || layoutText(cur));
+render(); persist();
 }
 </script>
