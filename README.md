@@ -10,9 +10,7 @@ wasdmod turns your keys into a virtual controller, so you get the game's full co
 
 ## Install
 
-Pick the file for your computer:
-
-| Your computer | Download |
+| System | Download |
 |---|---|
 | Windows | [**wasdmod-Windows.exe**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Windows.exe) |
 | Mac (CrossOver) | [**wasdmod-Mac.dmg**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) |
