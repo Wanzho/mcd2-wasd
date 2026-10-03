@@ -119,10 +119,6 @@ Click **Install** again: it sets CrossOver to send Option as Alt. Restart the ga
 
 Change the game's keyboard settings to match your layout (the red notice in the editor lists them).
 
-### Mouse side buttons do something strange
-
-Mouse software (Razer Synapse, Logitech G Hub…) can remap the side buttons. Use a profile with normal side buttons for the game.
-
 ### Stuck without a cursor, or stuck typing
 
 Hold **Alt** for the cursor, press **Esc** to leave typing mode, or press **backtick (`)** to turn wasdmod off.
