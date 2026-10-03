@@ -1,0 +1,35 @@
+wasdmod: Minecraft Dungeons II controller mod (Mac, CrossOver)
+==============================================================
+
+Plays the game with WASD, mouse and keys by turning them into a virtual
+controller. The game itself isn't modified. The game must already run in
+CrossOver (installed through Steam in a CrossOver bottle). If it doesn't yet,
+set it up with MCD2 Crossover: https://github.com/Wanzho/mcd2-crossover
+
+1. Drag wasdmod to your Applications folder (or open it from here).
+2. Open it. The first time, macOS says it can't check the app for malware
+   (it isn't from the App Store): click Done, open System Settings > Privacy &
+   Security, scroll down and click "Open Anyway" next to wasdmod.
+3. Quit the game, click Install at the top of the wasdmod window, then start
+   the game.
+
+The window below is the key layout editor: pick Default (the game's own keys),
+Recommended, or "+ Create" your own, and click "Save to game". Restart the game
+to use it. The red notice lists the game's own keyboard settings to change so
+keyboard mode uses the same keys.
+
+In game: Tab opens the menu wheel (the game's own key, S, is "move down"
+now), F9 shows the key list (fn + F9 on most Mac keyboards), hold Option for
+the cursor, T starts typing (Esc ends it), and the backtick key (`) turns the
+mod off and on.
+
+To play without it for a while, click Turn Off in wasdmod (the game then starts
+without it; Turn On brings it back, with your layouts). Uninstall removes it.
+
+Install also sets three CrossOver options for the game's bottle: use the mod's
+xinput1_4.dll for this game, send Option as Alt, and keep the cursor inside the
+game window. Uninstall (top of the window) removes them.
+
+Unofficial project. Not an official Minecraft product; not approved by or
+associated with Mojang or Microsoft. MIT license:
+https://github.com/Wanzho/mcd2-wasd

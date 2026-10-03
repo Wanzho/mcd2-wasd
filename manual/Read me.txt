@@ -1,0 +1,55 @@
+wasdmod: Minecraft Dungeons II controller mod (manual install)
+==============================================================
+
+For Linux and Steam Deck (Proton), or for Windows if you'd rather not run the
+setup. On a Mac, use wasdmod-Mac.dmg instead: CrossOver needs settings that the
+app makes for you (and https://github.com/Wanzho/mcd2-crossover to run the game).
+
+What's inside
+-------------
+xinput1_4.dll            the mod
+default.txt              the Default key layout (the game's own keys)
+author.txt               the Recommended key layout (optional)
+Key Layout Editor.html   edit layouts in your browser
+
+Install
+-------
+1. Find the game folder (the one with Dungeons-Win64-Shipping.exe):
+   - Steam: right-click Minecraft Dungeons II > Manage > Browse local files,
+     then open Dungeons > Binaries > Win64.
+   - Minecraft Launcher (bought from Minecraft.net) or Xbox app:
+     C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\Win64
+     (or XboxGames on the drive you installed the game to).
+2. Copy xinput1_4.dll and default.txt into it. For the Recommended layout,
+   copy author.txt too.
+3. Linux / Steam Deck only: in Steam, right-click the game > Properties >
+   Launch Options, and enter:
+       WINEDLLOVERRIDES="xinput1_4=n,b" %command%
+   (Proton uses its own xinput1_4.dll otherwise.) Not yet tested on Linux.
+4. Start the game.
+
+In game: Tab opens the menu wheel (the game's own key, S, is "move down" now),
+F9 shows the key list, hold Alt for the cursor, T starts typing (Esc
+ends it), and the backtick key (`) turns the mod off and on.
+
+Change keys
+-----------
+Open "Key Layout Editor.html", pick Default or Recommended or "+ Create" your
+own, and click "Download file". Put the file in the same Win64 folder and
+restart the game. The mod uses the newest of default.txt, author.txt and
+wasdmod*.txt.
+
+Turn off
+--------
+Rename xinput1_4.dll to xinput1_4.dll.off: the game starts without the mod and
+your layouts stay. Rename it back to turn it on. (In a running game, the
+backtick key turns it off until you press it again.)
+
+Uninstall
+---------
+Delete xinput1_4.dll, default.txt, author.txt and any wasdmod*.txt from the
+Win64 folder (and remove the launch option on Linux).
+
+Unofficial project. Not an official Minecraft product; not approved by or
+associated with Mojang or Microsoft. MIT license:
+https://github.com/Wanzho/mcd2-wasd
