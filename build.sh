@@ -23,7 +23,7 @@ printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA SHGetFolderPathA > bui
 printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameA > build/comdlg32.def
 printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept getsockname setsockopt recv send closesocket > build/ws2_32.def
 for l in advapi32 shell32 comdlg32 ws2_32; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
-VERSION=1.0.0 # shown in the apps, the log and the release
+VERSION=1.0.1 # shown in the apps, the log and the release
 CFLAGS="-DVERSION=\"$VERSION\" --target=x86_64-pc-windows-msvc -O2 -fno-stack-protector -fno-builtin -Wall -Wno-incompatible-pointer-types -Wno-int-conversion"
 clang $CFLAGS -c xinput_wasd.c -o build/xinput_wasd.obj
 "$LLD" /dll /brepro /nodefaultlib /entry:DllMain /machine:x64 /def:xinput1_4.def /out:build/xinput1_4.dll build/xinput_wasd.obj build/kernel32.lib build/user32.lib build/gdi32.lib
@@ -88,10 +88,10 @@ mkdir "$STAGE/wasdmod"
 cp build/xinput1_4.dll default.txt author.txt "manual/Read me.txt" "$STAGE/wasdmod/"
 cp LICENSE "$STAGE/wasdmod/LICENSE.txt"
 cp Keybinder.html "$STAGE/wasdmod/Key Layout Editor.html"
-rm -f build/wasdmod-manual.zip
-(cd "$STAGE" && zip -q -X -r "$OLDPWD/build/wasdmod-manual.zip" wasdmod)
+rm -f build/wasdmod.zip
+(cd "$STAGE" && zip -q -X -r "$OLDPWD/build/wasdmod.zip" wasdmod)
 rm -rf "$STAGE"
 # Ready-to-use downloads.
 mkdir -p dist
-cp "$SETUP" build/wasdmod-Mac.dmg build/wasdmod-manual.zip dist/
-echo "Built build/xinput1_4.dll, Keybinder.html and dist/ (wasdmod-Windows.exe, wasdmod-Mac.dmg, wasdmod-manual.zip)"
+cp "$SETUP" build/wasdmod-Mac.dmg build/wasdmod.zip dist/
+echo "Built build/xinput1_4.dll, Keybinder.html and dist/ (wasdmod-Windows.exe, wasdmod-Mac.dmg, wasdmod.zip)"

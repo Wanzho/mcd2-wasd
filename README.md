@@ -6,15 +6,15 @@ wasdmod turns your keys into a virtual controller, so you get the game's full co
 
 ![The wasdmod app on a Mac: install at the top, the key layout editor below](docs/wasdmod-mac.png)
 
-**Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Windows.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-manual.zip)
+**Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Windows.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Mac.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
 
 ## Install
 
 | System | Download |
 |---|---|
-| Windows | [**wasdmod-Windows.exe**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Windows.exe) |
-| Mac (CrossOver) | [**wasdmod-Mac.dmg**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) |
-| Linux / Steam Deck, or Windows without the installer | [**wasdmod-manual.zip**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-manual.zip) |
+| Windows | [**wasdmod-Windows.exe**](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Windows.exe) |
+| Mac (CrossOver) | [**wasdmod-Mac.dmg**](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Mac.dmg) |
+| Linux / Steam Deck, or Windows without the installer | [**wasdmod.zip**](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod.zip) |
 
 Works with the Steam version, and with the game from Minecraft.net (Minecraft Launcher) or the Xbox app. On a Mac and Linux, the Launcher version only if you already have it running there; MCD2 Crossover sets up the Steam version.
 
@@ -41,7 +41,7 @@ Install also sets three CrossOver options, for Dungeons II only (other games in 
 
 The game must already run under Proton. Then:
 
-1. Unzip **wasdmod-manual.zip**.
+1. Unzip **wasdmod.zip**.
 2. In Steam, right-click the game → **Manage → Browse local files**, and open `Dungeons/Binaries/Win64`.
 3. Copy `xinput1_4.dll` and `default.txt` there (and `author.txt` for the Recommended layout).
 4. Right-click the game → **Properties → Launch Options**: `WINEDLLOVERRIDES="xinput1_4=n,b" %command%`
@@ -195,7 +195,7 @@ Tried and dropped: patching the game's `GetCursorPos` import (the game quits 20�
 - the downloads in `dist/`:
   - `wasdmod-Windows.exe` (`installer.c`);
   - `wasdmod-Mac.dmg` (`mac/main.swift` over `mac/wasdmod.sh`);
-  - `wasdmod-manual.zip`.
+  - `wasdmod.zip`.
 
 No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` install from the source folder.
 
