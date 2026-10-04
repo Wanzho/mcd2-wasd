@@ -16,7 +16,7 @@ wasdmod turns your keys into a virtual controller, so you get the game's full co
 | Mac (CrossOver) | [**wasdmod-Mac.dmg**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-Mac.dmg) |
 | Linux / Steam Deck, or Windows without the installer | [**wasdmod-manual.zip**](https://github.com/Wanzho/mcd2-wasd/raw/main/dist/wasdmod-manual.zip) |
 
-Windows: the Steam version, or the game from Minecraft.net (Minecraft Launcher) or the Xbox app. Mac and Linux: the Steam version.
+Works with the Steam version, and with the game from Minecraft.net (Minecraft Launcher) or the Xbox app. On a Mac and Linux, the Launcher version only if you already have it running there; MCD2 Crossover sets up the Steam version.
 
 ### Windows
 
@@ -33,6 +33,8 @@ Windows: the Steam version, or the game from Minecraft.net (Minecraft Launcher) 
 2. Open wasdmod. If macOS blocks it, approve it in **System Settings → Privacy & Security → Open Anyway**. Keep Gatekeeper enabled.
 3. Quit the game, click **Install** at the top of the window, then start the game.
 
+If wasdmod doesn't find the game (a Minecraft Launcher copy, or a copy in another folder or bottle), click **Choose Game Folder…** and pick the game's folder, its `Dungeons-Win64-Shipping.exe`, or the CrossOver bottle it's in.
+
 Install also sets three CrossOver options, for Dungeons II only (other games in the bottle keep their own settings): use wasdmod's `xinput1_4.dll` (Wine uses its own otherwise), send **Option** as Alt, and keep the cursor inside the game window. **Uninstall** removes them. (Versions before 1.0 set the last two for the whole bottle, which could throw the mouse around in other games there, like CS2; installing this version moves them to Dungeons II only.)
 
 ### Linux / Steam Deck (untested)
@@ -43,6 +45,8 @@ The game must already run under Proton. Then:
 2. In Steam, right-click the game → **Manage → Browse local files**, and open `Dungeons/Binaries/Win64`.
 3. Copy `xinput1_4.dll` and `default.txt` there (and `author.txt` for the Recommended layout).
 4. Right-click the game → **Properties → Launch Options**: `WINEDLLOVERRIDES="xinput1_4=n,b" %command%`
+
+Playing the Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles…)? Copy the files into its `Content/Dungeons/Binaries/Win64` folder and add the environment variable `WINEDLLOVERRIDES` = `xinput1_4=n,b` in that launcher's settings for the game instead of step 4.
 
 The same files work on Windows without the installer: skip step 4. For the Minecraft Launcher or Xbox app version, the folder is `C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\Win64` (or `XboxGames` on the drive you installed to).
 

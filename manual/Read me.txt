@@ -26,6 +26,9 @@ Install
    Launch Options, and enter:
        WINEDLLOVERRIDES="xinput1_4=n,b" %command%
    (Proton uses its own xinput1_4.dll otherwise.) Not yet tested on Linux.
+   Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles...): add the
+   environment variable WINEDLLOVERRIDES=xinput1_4=n,b in that launcher's
+   settings for the game instead.
 4. Start the game.
 
 In game: Tab opens the menu wheel (the game's own key, S, is "move down" now),

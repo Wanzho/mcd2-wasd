@@ -12,9 +12,12 @@
 #   wasdmod.sh use default|recommended|own
 #   wasdmod.sh load FILE          a layout file the key layout editor downloaded
 #   wasdmod.sh editor | folder    opens the key layout editor / the game folder
+#   wasdmod.sh locate PATH        the game's Win64 folder from what the player picked: the
+#                                 game's folder, Dungeons-Win64-Shipping.exe, or a bottle
 #
-# BOTTLE=/path/to/bottle picks the bottle; otherwise it's the one with the game
-# installed through Steam.
+# GAMEDIR=/path/to/Win64 uses that copy of the game (picked by hand, e.g. a Minecraft
+# Launcher copy); BOTTLE=/path/to/bottle picks the bottle; otherwise it's the bottle
+# with the game installed through Steam.
 HERE=$(cd "$(dirname "$0")" && pwd)
 if [ -f "$HERE/xinput1_4.dll" ]; then # inside wasdmod.app
     DLL="$HERE/xinput1_4.dll"; DEF="$HERE/default.txt"; REC="$HERE/author.txt"; EDITOR="$HERE/Key Layout Editor.html"
@@ -31,7 +34,11 @@ gameIn() {
     return 1
 }
 BOTTLES="$HOME/Library/Application Support/CrossOver/Bottles"
-if [ -n "$BOTTLE" ]; then
+# The bottle a path is in: everything before its drive_c.
+bottleOf() { case "$1" in */drive_c/*) echo "${1%%/drive_c/*}" ;; *) return 1 ;; esac; }
+if [ -n "$GAMEDIR" ] && [ -d "$GAMEDIR" ]; then
+    GAME="${GAMEDIR%/}"; BOTTLE=$(bottleOf "$GAME")
+elif [ -n "$BOTTLE" ]; then
     BOTTLE="${BOTTLE%/}"; GAME=$(gameIn "$BOTTLE")
 elif GAME=$(gameIn "$BOTTLES/Steam"); then
     BOTTLE="$BOTTLES/Steam"
@@ -211,5 +218,26 @@ report)
     echo "report=$OUT"
     ;;
 folder) needGame; open "$GAME" ;;
-*) fail "usage: wasdmod.sh status|install|uninstall|off|on|record start|stop|report [FILE]|use default|recommended|own|load FILE|editor|folder" ;;
+locate)
+    # Whatever the player picked, the folder with Dungeons-Win64-Shipping.exe in it:
+    # the exe itself, that folder, the game's main folder (Steam or XboxGames layout),
+    # or anything above it, like the whole bottle (searched).
+    P="${2%/}"; G=""
+    [ -e "$P" ] || fail "That file or folder doesn't exist."
+    if [ -f "$P" ]; then
+        case "$(basename "$P")" in
+        Dungeons-Win64-Shipping.exe) G=$(dirname "$P") ;;
+        Dungeons.exe) G="$(dirname "$P")/Dungeons/Binaries/Win64" ;;
+        esac
+    else
+        for sub in "" "Dungeons/Binaries/Win64" "Content/Dungeons/Binaries/Win64"; do
+            [ -f "$P/${sub:+$sub/}Dungeons-Win64-Shipping.exe" ] && { G="$P${sub:+/$sub}"; break; }
+        done
+        [ -n "$G" ] || G=$(find "$P" -maxdepth 10 -type f -name Dungeons-Win64-Shipping.exe -path "*/Binaries/Win64/*" 2>/dev/null | head -1 | xargs -I{} dirname "{}")
+    fi
+    [ -n "$G" ] && [ -f "$G/Dungeons-Win64-Shipping.exe" ] || fail "Minecraft Dungeons II isn't in there. Pick the game's folder, its Dungeons-Win64-Shipping.exe, or the CrossOver bottle it's in."
+    bottleOf "$G" >/dev/null || fail "That copy isn't inside a CrossOver bottle. wasdmod needs the copy you play through CrossOver."
+    echo "game=$G"
+    ;;
+*) fail "usage: wasdmod.sh status|install|uninstall|off|on|record start|stop|report [FILE]|use default|recommended|own|load FILE|editor|folder|locate PATH" ;;
 esac

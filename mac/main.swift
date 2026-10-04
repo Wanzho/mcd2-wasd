@@ -18,7 +18,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     lazy var recordButton = button("Record Logs", #selector(recordLogs))
     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
     lazy var folderButton = button("Game Folder", #selector(showFolder))
-    lazy var bottleButton = button("Choose Bottle…", #selector(chooseBottle))
+    lazy var bottleButton = button("Choose Game Folder…", #selector(chooseGame))
     lazy var setupButton = button("Get MCD2 Crossover", #selector(openSetupHelp))
     let res = Bundle.main.resourceURL!
     let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("wasdmod")
@@ -26,7 +26,12 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     var info: [String: String] = [:]
     var busy = false
 
-    // A bottle picked by hand when the game isn't in the usual place.
+    // The game's folder, picked by hand (wins over the automatic search while it exists).
+    var gameDir: String? {
+        get { UserDefaults.standard.string(forKey: "game") }
+        set { UserDefaults.standard.set(newValue, forKey: "game") }
+    }
+    // A bottle picked by hand in earlier versions.
     var bottle: String? {
         get { UserDefaults.standard.string(forKey: "bottle") }
         set { UserDefaults.standard.set(newValue, forKey: "bottle") }
@@ -45,7 +50,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         p.arguments = [res.appendingPathComponent("wasdmod.sh").path] + args
         var env = ProcessInfo.processInfo.environment
-        if let b = bottle { env["BOTTLE"] = b }
+        if let g = gameDir { env["GAMEDIR"] = g } else if let b = bottle { env["BOTTLE"] = b }
         for (k, v) in extra { env[k] = v }
         p.environment = env
         let out = Pipe(), err = Pipe()
@@ -82,7 +87,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
         let installed = state == "current" || state == "older" || state == "off"
         var text: String
         if !found {
-            text = "Minecraft Dungeons II wasn't found in a CrossOver bottle. Set it up with MCD2 Crossover (Steam in CrossOver), or choose the bottle it's in."
+            text = "Minecraft Dungeons II wasn't found in a CrossOver bottle. Set it up with MCD2 Crossover (Steam in CrossOver), or if it's somewhere else (a Minecraft Launcher copy…), click Choose Game Folder."
         } else if state == "current" {
             text = "Installed and up to date."
         } else if state == "older" {
@@ -191,20 +196,26 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     // Getting the game itself to run in CrossOver (Steam, sign-in) is MCD2 Crossover's job.
     @objc func openSetupHelp() { NSWorkspace.shared.open(URL(string: "https://github.com/Wanzho/mcd2-crossover")!) }
 
-    @objc func chooseBottle() {
+    // A copy the automatic search doesn't find (a Minecraft Launcher copy, another
+    // folder or bottle): the player picks the game's folder, its exe, or the bottle.
+    @objc func chooseGame() {
         let panel = NSOpenPanel()
-        panel.canChooseDirectories = true; panel.canChooseFiles = false
-        panel.message = "Pick the CrossOver bottle that has Minecraft Dungeons II"
+        panel.canChooseDirectories = true; panel.canChooseFiles = true
+        panel.message = "Pick Minecraft Dungeons II's folder, its Dungeons-Win64-Shipping.exe, or the CrossOver bottle it's in"
+        panel.prompt = "Use This"
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CrossOver/Bottles")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let old = bottle
-        bottle = url.path
-        refresh()
-        if (info["game"] ?? "").isEmpty {
-            bottle = old; refresh()
-            _ = alert("Minecraft Dungeons II isn't in that bottle.", "Pick the bottle folder (in CrossOver › Bottles) where the game is installed.", style: .warning)
+        status.stringValue = "Looking for the game in \(url.lastPathComponent)…"
+        let r = sh(["locate", url.path])
+        guard r.ok, let dir = fields(r.out)["game"], !dir.isEmpty else {
+            refresh(); _ = alert("Minecraft Dungeons II wasn't found there.", r.out, style: .warning); return
         }
+        gameDir = dir
+        refresh()
     }
+
+    // Back to finding the game by itself (Steam in a CrossOver bottle).
+    @objc func findGameAutomatically() { gameDir = nil; bottle = nil; refresh() }
 
     // ------------------------------------------------------------ the editor
 
@@ -339,6 +350,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
             main.addItem(item)
         }
         menu("wasdmod", [("About wasdmod", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""), ("-", nil, ""),
+                         ("Choose Game Folder…", #selector(chooseGame), "o"), ("Find Game Automatically", #selector(findGameAutomatically), ""), ("-", nil, ""),
                          ("Hide wasdmod", #selector(NSApplication.hide(_:)), "h"), ("-", nil, ""),
                          ("Quit wasdmod", #selector(NSApplication.terminate(_:)), "q")])
         menu("Edit", [("Undo", Selector(("undo:")), "z"), ("Redo", Selector(("redo:")), "Z"), ("-", nil, ""),
