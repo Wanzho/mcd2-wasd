@@ -1,9 +1,11 @@
-# Code signing (SignPath Foundation)
+# Code signing (SignPath)
 
-The Windows setup is signed by the [SignPath Foundation](https://signpath.org), built
-from this repository by GitHub Actions (`.github/workflows/build.yml`).
+The workflow (`.github/workflows/build.yml`) can send the Windows setup it builds to
+[SignPath](https://signpath.io) for signing. It isn't active: the SignPath Foundation's
+free program asks for a project that is already widely known, so the application can
+be made again later; a paid SignPath subscription would work too.
 
-Once SignPath has approved the project:
+To turn it on:
 
 1. In SignPath, the project's slug is `wasdmod`, with a signing policy `release-signing`
    (manual approval) and the artifact configuration in `artifact-configuration.xml`.
