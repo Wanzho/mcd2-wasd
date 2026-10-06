@@ -211,6 +211,10 @@ Tried and dropped: patching the game's `GetCursorPos` import (the game quits 20�
   - `wasdmod-Mac.dmg` (`mac/main.swift` over `mac/wasdmod.sh`);
   - `wasdmod.zip`.
 
+The first build downloads Microsoft's WebView2 SDK from nuget.org (checked against its SHA-256) for the loader of the Windows editor window.
+
+GitHub Actions runs the same build on every push (`.github/workflows/build.yml`) and attaches the files to each published release. The Windows setup is signed through the SignPath Foundation once that's set up; see [`.signpath/README.md`](.signpath/README.md).
+
 `lang.py` builds the translations into each part; `python3 lang.py --check` lists text that a language doesn't translate yet. In the code, English text is the key: `t("…")` in the editor, `L("…")` in the Mac app, `T("…")` in the DLL and the installer.
 
 No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` install from the source folder.

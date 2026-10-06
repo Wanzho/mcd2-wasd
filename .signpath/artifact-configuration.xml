@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration for the project "wasdmod": the GitHub Actions
+     artifact is a zip with the Windows setup, which gets an Authenticode signature. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="wasdmod-Windows.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

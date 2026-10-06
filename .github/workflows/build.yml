@@ -1,0 +1,69 @@
+# Builds wasdmod from this repository on GitHub's macOS machines (build.sh): the
+# Windows setup, the Mac app and the manual-install zip, kept as the run's
+# artifact. For a published release, the files are attached to the release.
+#
+# Code signing, by the SignPath Foundation: once the SignPath project exists, set
+# the repository variable SIGNPATH_ORGANIZATION_ID and the secret
+# SIGNPATH_API_TOKEN (see .signpath/README.md). A release's Windows setup is then
+# sent to SignPath, signed once the signing request is approved there, and the
+# signed setup is what the release gets.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: write # attach the files to a release
+      actions: read   # SignPath reads this run and its artifact
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: sh build.sh
+
+      - name: Keep the downloads
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasdmod
+          path: dist/
+          if-no-files-found: error
+
+      - name: Keep the Windows setup for signing
+        id: setup
+        if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasdmod-Windows-unsigned
+          path: dist/wasdmod-Windows.exe
+          if-no-files-found: error
+
+      - name: Sign the Windows setup (SignPath Foundation)
+        if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: wasdmod
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600 # time to approve the request in SignPath
+          output-artifact-directory: signed
+
+      - name: Use the signed setup
+        if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: cp signed/wasdmod-Windows.exe dist/wasdmod-Windows.exe
+
+      - name: Attach the files to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/wasdmod-Windows.exe dist/wasdmod-Mac.dmg dist/wasdmod.zip --clobber
