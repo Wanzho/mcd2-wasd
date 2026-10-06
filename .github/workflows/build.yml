@@ -24,13 +24,18 @@ jobs:
       contents: write # attach the files to a release
       actions: read   # SignPath reads this run and its artifact
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # LLVM's linker for the Windows files. (The lld-link inside a Rust toolchain,
+      # which build.sh uses on a Mac, only runs when rustc calls it.)
+      - name: Install lld
+        run: brew install lld
 
       - name: Build
-        run: sh build.sh
+        run: LLD="$(brew --prefix lld)/bin/lld-link" sh build.sh
 
       - name: Keep the downloads
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wasdmod
           path: dist/
@@ -39,7 +44,7 @@ jobs:
       - name: Keep the Windows setup for signing
         id: setup
         if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wasdmod-Windows-unsigned
           path: dist/wasdmod-Windows.exe

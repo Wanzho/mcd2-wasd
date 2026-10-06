@@ -272,7 +272,11 @@ code { font-family: var(--mono); font-size: .92em; }
 .app .cap { font: 500 12px/1 var(--body); border-radius: 5px; }
 .app ul.recs li { border-radius: 7px; }
 .app pre.ini, .app .path { font-size: 11px; border-radius: 7px; }
-.app .k { border-radius: 4px; }
+.app .k { border-radius: 4px; width: 22px; }
+.app .mouse .k { width: auto; }
+/* a little narrower than on the web page, so the map fits beside a scrollbar */
+.app .kbd, .app .krow { gap: 2px; }
+.app .k.w15 { width: 33px; } .app .k.w18 { width: 40px; } .app .k.w22 { width: 48px; } .app .k.w6 { width: 126px; }
 /* segmented controls */
 .app .seg { border: 0; background: var(--seg-bg); border-radius: 7px; padding: 2px; gap: 2px; }
 .app .seg label { border-radius: 5px; padding: 3px 10px; font: 500 12px/1 var(--body); color: var(--muted); text-decoration: none; }
@@ -1560,23 +1564,27 @@ base = iniText(stateFromIni(layoutText(cur)));
 state = stateFromIni(working || layoutText(cur));
 // The layout the game uses (host.game: its file and text, from the app): one made
 // outside this editor (an older version, a loaded file) joins your layouts, and the
-// editor opens on it unless there are unsaved changes on screen.
-let gameFound = "";
-if (host && host.game && host.game.text && /\[(Move|Buttons|Keys)\]/i.test(host.game.text)) {
-  const id = gameLayoutId();
-  if (!id) {
-    const name = String(host.game.file || "").replace(/\.(txt|ini)$/i, "") || t("My layout");
-    layouts.push({ id: "l" + Date.now().toString(36), name, text: host.game.text });
-    gameFound = name;
+// editor opens on it unless there are unsaved changes on screen. Layouts are compared
+// with the game's own keys filled in, so the game's settings are read first (a layout
+// the editor saved with the game's keys still matches its built-in original).
+async function adoptGameLayout() {
+  await readControls();
+  if (!host || !host.game || !host.game.text || !/\[(Move|Buttons|Keys)\]/i.test(host.game.text)) return;
+  let found = "";
+  if (!gameLayoutId()) {
+    found = String(host.game.file || "").replace(/\.(txt|ini)$/i, "") || t("My layout");
+    layouts.push({ id: "l" + Date.now().toString(36), name: found, text: host.game.text });
   }
-  if (!dirty()) { const g = gameLayoutId(); if (g) { cur = g; base = iniText(stateFromIni(layoutText(g))); state = stateFromIni(layoutText(g)); } }
+  const g = gameLayoutId();
+  if (g && g !== cur && !dirty()) selectLayout(g); else { render(); persist(); }
+  if (found) {
+    $("saveStatus").textContent = t("Found {name} in the game folder and added it to your layouts.", { name: found });
+    toast($("saveStatus").textContent);
+  }
+  if (realGame) await syncReal(); // the layout in the game, saved again if the game's keys moved
 }
 translatePage(); render(); persist();
-readControls();
+adoptGameLayout();
 window.addEventListener("focus", () => readControls()); // back from the game: its settings may have changed
-if (gameFound) {
-  $("saveStatus").textContent = t("Found {name} in the game folder and added it to your layouts.", { name: gameFound });
-  toast($("saveStatus").textContent);
-}
 }
 </script>
