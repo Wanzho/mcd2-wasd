@@ -49,7 +49,7 @@ fi
 fail() { echo "$*" >&2; exit 1; }
 ours() { grep -q -E "WASD mod loaded|Controller mod loaded" "$1"; }
 # The [p] keeps pgrep from matching a shell whose command line has the name in it.
-running() { pgrep -f 'Dungeons-Win64-Shi[p]ping' >/dev/null; }
+running() { [ -z "$WASDMOD_TEST_NOGAME" ] && pgrep -f 'Dungeons-Win64-Shi[p]ping' >/dev/null; } # tests: a game in another bottle doesn't count
 needGame() { [ -d "$GAME" ] || fail "Minecraft Dungeons II wasn't found in a CrossOver bottle."; }
 needQuit() { running && fail "Minecraft Dungeons II is running. Quit it, then try again."; return 0; }
 # The mod reads whichever settings file is newest.
@@ -218,6 +218,19 @@ report)
     echo "report=$OUT"
     ;;
 folder) needGame; open "$GAME" ;;
+controls)
+    # The game's own keyboard settings (Settings > Controls > Keyboard), in the bottle's
+    # user folder. With a file: write it (game closed; the first write keeps a backup).
+    needGame
+    B="${GAME%%/drive_c/*}"
+    F=$(ls "$B"/drive_c/users/*/AppData/Local/Dungeons2/Saved/SaveGames/EnhancedInputUserSettings.sav 2>/dev/null | head -1)
+    [ -n "$F" ] || fail "The game's controls file wasn't found. Change any key in the game's settings once, then try again."
+    if [ -n "$2" ]; then
+        needQuit
+        [ -f "$F.wasdmod-backup" ] || cp "$F" "$F.wasdmod-backup" || fail "Couldn't write the game's controls file."
+        cp "$2" "$F.tmp" && mv -f "$F.tmp" "$F" || fail "Couldn't write the game's controls file."
+    fi
+    echo "controls=$F" ;;
 locate)
     # Whatever the player picked, the folder with Dungeons-Win64-Shipping.exe in it:
     # the exe itself, that folder, the game's main folder (Steam or XboxGames layout),

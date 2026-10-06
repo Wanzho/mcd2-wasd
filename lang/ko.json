@@ -79,7 +79,6 @@
   "Open settings file": "설정 파일 열기",
   "Uninstall": "제거",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "문제가 있나요? '로그 기록'을 누르고 문제가 생길 때까지 플레이한 뒤 멈추면, GitHub에 올릴 보고서 파일이 만들어집니다.",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "무엇이든 바꾼 뒤에는 게임을 다시 시작하세요. 게임 중: Tab은 메뉴 휠, F9는 키 안내, ` 키(백틱)는 모드 켜기/끄기입니다.",
   "All files": "모든 파일",
   "Find Minecraft Dungeons II": "Minecraft Dungeons II 찾기",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II (Dungeons*.exe)",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "바탕화면에 {file} 파일을 저장했습니다. 모드 로그, 키 배치, Windows 버전이 들어 있으며 입력한 글자는 기록되지 않았습니다.\n\nGitHub를 열어 문제를 알릴까요? (파일을 첨부하세요)",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "저장한 키 배치(author.txt, wasdmod*.txt)도 삭제할까요?",
   "Uninstalled. The game is back to how it was.": "제거했습니다. 게임이 원래대로 돌아왔습니다.",
-  "Key layout changed. Restart the game to use it.": "키 배치를 바꿨습니다. 게임을 다시 시작하면 적용됩니다.",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "키 배치 편집기가 별도 창으로 열렸습니다. 이 창이 열려 있는 동안 편집기의 '게임에 적용' 버튼은 게임 폴더에 바로 저장합니다.",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "키 배치 편집기가 브라우저에서 열렸습니다. 거기서 배치를 고르거나 만든 뒤 '파일 다운로드'를 누르고, 여기서 '배치 파일 불러오기'를 누르세요.",
   "Load a key layout": "키 배치 불러오기",
   "Key layout (*.ini;*.txt)": "키 배치 (*.ini;*.txt)",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "키 배치 파일이 아닙니다([Buttons] 또는 [Move] 섹션이 없습니다).",
-  "Key layout loaded. Restart the game to use it.": "키 배치를 불러왔습니다. 게임을 다시 시작하면 적용됩니다.",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "키 배치 편집기에서 {file} 파일을 저장했습니다. 게임을 다시 시작하면 적용됩니다.",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II가 실행 중입니다. 게임을 끈 뒤 다시 시도하세요.",
   "The game folder already has a different xinput1_4.dll (another mod?).": "게임 폴더에 이미 다른 xinput1_4.dll이 있습니다(다른 모드인가요?).",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "게임 폴더에 쓰지 못했습니다. 이 설치 프로그램을 관리자 권한으로 실행해 보세요."
+  "Couldn't write to the game folder. Try running this installer as administrator.": "게임 폴더에 쓰지 못했습니다. 이 설치 프로그램을 관리자 권한으로 실행해 보세요.",
+  "Key layout changed. A running game switches to it within a second.": "키 배치를 바꿨습니다. 실행 중인 게임에도 1초 안에 적용됩니다.",
+  "Key layout loaded. A running game switches to it within a second.": "키 배치를 불러왔습니다. 실행 중인 게임에도 1초 안에 적용됩니다.",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "키 배치 편집기에서 {file} 파일을 저장했습니다. 실행 중인 게임에도 1초 안에 적용됩니다.",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "키 배치 변경은 실행 중인 게임에 1초 안에 적용됩니다. 설치한 뒤에는 게임을 다시 시작하세요. 게임 중: Tab은 메뉴 휠, F9는 키 안내, ` 키(백틱)는 모드 켜기/끄기입니다.",
+  "Couldn't write the game's controls file.": "게임 조작 설정 파일을 쓸 수 없습니다.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "게임 조작 설정 파일을 찾을 수 없습니다. 게임 설정에서 아무 키나 한 번 바꾼 뒤 다시 시도하세요."
  },
  "mac": {
   "Install": "설치",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "현재 {version}을(를) 사용 중입니다. 새 버전을 다운로드해 열고 wasdmod를 응용 프로그램으로 드래그해 교체하세요. 키 배치는 유지됩니다.",
   "Download": "다운로드",
   "Later": "나중에",
-  "Show in Finder": "Finder에서 보기"
+  "Show in Finder": "Finder에서 보기",
+  "Couldn't write the game's controls file.": "게임 조작 설정 파일을 쓸 수 없습니다.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "게임 조작 설정 파일을 찾을 수 없습니다. 게임 설정에서 아무 키나 한 번 바꾼 뒤 다시 시도하세요."
  },
  "editor": {
   "Move up": "위로 이동",
@@ -307,7 +311,6 @@
   "Folder path copied.": "폴더 경로를 복사했습니다.",
   "Saving…": "저장 중…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "게임에 {file}(으)로 저장했습니다. 하지만 게임은 더 최신인 {used} 파일을 쓰고 있습니다.",
-  "Saved to the game as {file}. Restart the game to use it.": "게임에 {file}(으)로 저장했습니다. 게임을 다시 시작하면 적용됩니다.",
   "Not saved: {error}": "저장하지 못했습니다: {error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "{file} 파일을 저장했습니다. wasdmod-Windows.exe의 '배치 파일 불러오기'로 불러오거나 게임의 Win64 폴더로 옮긴 뒤 게임을 다시 시작하세요. Mac의 wasdmod 앱에는 이 편집기가 들어 있습니다.",
   "Not saved.": "저장하지 않았습니다.",
@@ -473,6 +476,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "메뉴와 플레이어에게 순간이동이 게임의 키보드 단축키 대신 컨트롤러를 쓸 수 있습니다. 끄면: 인벤토리만",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "키를 누르면 게임 자체의 키보드 단축키가 전송되고 마우스 모드로 전환됩니다. 인벤토리는 대신 컨트롤러를 쓸 수 있습니다. 그러면 탭하면 열리고 누르고 있으면 미니 인벤토리가 표시되어 계속 이동할 수 있습니다.",
   "{name} (installed)": "{name} (설치됨)",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "색 줄이 있는 키는 기능이 있으며, 색으로 종류를 알 수 있습니다. 빗금 친 키는 플레이 중 차단되어 게임이 키보드 모드로 바뀌지 않습니다. 키에 마우스를 올리면 무엇을 하는지 볼 수 있습니다."
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "색 줄이 있는 키는 기능이 있으며, 색으로 종류를 알 수 있습니다. 빗금 친 키는 플레이 중 차단되어 게임이 키보드 모드로 바뀌지 않습니다. 키에 마우스를 올리면 무엇을 하는지 볼 수 있습니다.",
+  "Saved to the game as {file}. A running game switches to it within a second.": "게임에 {file}(으)로 저장했습니다. 실행 중인 게임에도 1초 안에 적용됩니다.",
+  "Apply to the game's controls": "게임 조작 설정에 적용",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "게임의 키보드 설정에 이 키들을 대신 지정합니다. 게임은 닫혀 있어야 하며, 이전 설정은 백업됩니다.",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "완료: 게임 조작 설정이 이제 일치합니다. 다음에 게임을 시작할 때 적용됩니다.",
+  "Couldn't change the game's controls: {error}": "게임 조작 설정을 바꿀 수 없음: {error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "이 버전이 모르는 형식의 파일이라 건드리지 않았습니다.",
+  "The game's controls changed, so the layout in the game was updated to match.": "게임 조작 설정이 바뀌어서 게임 속 키 배치도 맞게 업데이트했습니다."
  }
 }

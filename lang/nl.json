@@ -79,7 +79,6 @@
   "Open settings file": "Instellingenbestand openen",
   "Uninstall": "Verwijderen",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "Werkt er iets niet? Neem logs op, speel tot het gebeurt en stop dan: je krijgt een rapportbestand voor GitHub.",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Start de game opnieuw na elke wijziging. In de game: Tab opent het menuwiel, F9 toont de toetsenlijst, de backtick-toets (`) zet de mod uit en aan.",
   "All files": "Alle bestanden",
   "Find Minecraft Dungeons II": "Minecraft Dungeons II zoeken",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II (Dungeons*.exe)",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "{file} op je bureaublad opgeslagen. Het bevat het log van de mod, je toetsindeling en je Windows-versie; niets wat je typt wordt opgenomen.\n\nGitHub openen om het probleem te melden (voeg het bestand toe)?",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "Ook je opgeslagen toetsindelingen verwijderen (author.txt, wasdmod*.txt)?",
   "Uninstalled. The game is back to how it was.": "Verwijderd. De game is weer zoals hij was.",
-  "Key layout changed. Restart the game to use it.": "Toetsindeling gewijzigd. Start de game opnieuw om hem te gebruiken.",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "De indelingseditor is in een eigen venster geopend. De knop Opslaan in de game schrijft direct naar de gamemap zolang dit venster open blijft.",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "De indelingseditor is in je browser geopend. Kies of maak daar een indeling en klik op ‘Bestand downloaden’; klik dan hier op ‘Indelingsbestand laden’.",
   "Load a key layout": "Een toetsindeling laden",
   "Key layout (*.ini;*.txt)": "Toetsindeling (*.ini;*.txt)",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "Dat bestand is geen toetsindeling (er is geen sectie [Buttons] of [Move]).",
-  "Key layout loaded. Restart the game to use it.": "Toetsindeling geladen. Start de game opnieuw om hem te gebruiken.",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "{file} opgeslagen vanuit de indelingseditor. Start de game opnieuw om hem te gebruiken.",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II draait. Sluit het en probeer het opnieuw.",
   "The game folder already has a different xinput1_4.dll (another mod?).": "De gamemap heeft al een andere xinput1_4.dll (een andere mod?).",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "Kan niet naar de gamemap schrijven. Probeer deze installatie uit te voeren als administrator."
+  "Couldn't write to the game folder. Try running this installer as administrator.": "Kan niet naar de gamemap schrijven. Probeer deze installatie uit te voeren als administrator.",
+  "Key layout changed. A running game switches to it within a second.": "Toetsindeling gewijzigd. Een draaiende game gebruikt hem binnen een seconde.",
+  "Key layout loaded. A running game switches to it within a second.": "Toetsindeling geladen. Een draaiende game gebruikt hem binnen een seconde.",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "{file} opgeslagen vanuit de indelingseditor. Een draaiende game gebruikt hem binnen een seconde.",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Wijzigingen in de indeling bereiken een draaiende game binnen een seconde; start de game opnieuw na het installeren. In de game: Tab opent het menuwiel, F9 toont de toetsenlijst, de backtick-toets (`) zet de mod uit en aan.",
+  "Couldn't write the game's controls file.": "Kon het besturingsbestand van de game niet schrijven.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "Het besturingsbestand van de game is niet gevonden. Wijzig één keer een toets in de instellingen van de game en probeer het opnieuw."
  },
  "mac": {
   "Install": "Installeren",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "Je hebt {version}. Download de nieuwe, open hem en sleep wasdmod naar Apps om deze te vervangen; je indelingen blijven bewaard.",
   "Download": "Download",
   "Later": "Later",
-  "Show in Finder": "Toon in Finder"
+  "Show in Finder": "Toon in Finder",
+  "Couldn't write the game's controls file.": "Kon het besturingsbestand van de game niet schrijven.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "Het besturingsbestand van de game is niet gevonden. Wijzig één keer een toets in de instellingen van de game en probeer het opnieuw."
  },
  "editor": {
   "Move up": "Omhoog",
@@ -307,7 +311,6 @@
   "Folder path copied.": "Mappad gekopieerd.",
   "Saving…": "Opslaan…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "In de game opgeslagen als {file}. De game gebruikt nog {used} (die is nieuwer).",
-  "Saved to the game as {file}. Restart the game to use it.": "In de game opgeslagen als {file}. Start de game opnieuw om hem te gebruiken.",
   "Not saved: {error}": "Niet opgeslagen: {error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "{file} opgeslagen. Laad hem met wasdmod-Windows.exe (Indelingsbestand laden) of zet hem in de Win64-map van de game, en start de game opnieuw. Op een Mac heeft de wasdmod-app deze editor ingebouwd.",
   "Not saved.": "Niet opgeslagen.",
@@ -479,6 +482,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "menu's en Teleporteren naar speler kunnen elk de controller gebruiken in plaats van de toetsenbordsnelkoppeling van de game; uit: alleen de inventaris",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "Je toetsen sturen de eigen toetsenbordsnelkoppeling van de game en schakelen naar muismodus. De inventaris kan in plaats daarvan de controller gebruiken: hij opent dan met een tik en toont de mini-inventaris zolang je vasthoudt, zodat je kunt blijven lopen.",
   "{name} (installed)": "{name} (geïnstalleerd)",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "Toetsen met een gekleurde streep doen iets; de kleur zegt wat. Gearceerde toetsen zijn geblokkeerd tijdens het spelen, zodat de game niet naar toetsenbordmodus schakelt. Beweeg over een toets om te zien wat hij doet."
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "Toetsen met een gekleurde streep doen iets; de kleur zegt wat. Gearceerde toetsen zijn geblokkeerd tijdens het spelen, zodat de game niet naar toetsenbordmodus schakelt. Beweeg over een toets om te zien wat hij doet.",
+  "Saved to the game as {file}. A running game switches to it within a second.": "In de game opgeslagen als {file}. Een draaiende game gebruikt hem binnen een seconde.",
+  "Apply to the game's controls": "Toepassen op de besturing van de game",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "Zet deze toetsen voor je in de toetsenbordinstellingen van de game. De game moet gesloten zijn; je oude instellingen worden bewaard.",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "Klaar: de besturing van de game klopt nu. De game gebruikt die de volgende keer dat hij start.",
+  "Couldn't change the game's controls: {error}": "Kon de besturing van de game niet wijzigen: {error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "het bestand heeft een indeling die deze versie niet kent, dus het is niet aangeraakt.",
+  "The game's controls changed, so the layout in the game was updated to match.": "De besturing van de game is gewijzigd, dus de indeling in de game is aangepast."
  }
 }

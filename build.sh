@@ -11,7 +11,7 @@ fi
 [ -x "$LLD" ] || { echo "lld-link not found; set LLD=/path/to/lld-link"; exit 1; }
 mkdir -p build
 printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage > build/kernel32.def
-printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW BeginPaint EndPaint SetWindowLongPtrW CallWindowProcW TrackMouseEvent IsWindowEnabled LoadImageW DrawIconEx RedrawWindow > build/user32.def
+printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW BeginPaint EndPaint SetWindowLongPtrW CallWindowProcW TrackMouseEvent IsWindowEnabled LoadImageW DrawIconEx RedrawWindow DestroyWindow SetForegroundWindow > build/user32.def
 printf 'LIBRARY GDI32.dll\nEXPORTS\n%s\n' CreateFontA SelectObject SetTextColor SetBkMode TextOutA CreateSolidBrush GetTextExtentPoint32A CreatePen Ellipse GetStockObject DeleteObject Polygon GetDeviceCaps TextOutW GetTextExtentPoint32W GetTextFaceA CreateCompatibleDC CreateCompatibleBitmap DeleteDC BitBlt > build/gdi32.def
 printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext > build/imm32.def
 "$LLD" /lib /machine:x64 /def:build/kernel32.def /out:build/kernel32.lib >/dev/null
@@ -19,12 +19,13 @@ printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext >
 "$LLD" /lib /machine:x64 /def:build/imm32.def /out:build/imm32.lib >/dev/null
 "$LLD" /lib /machine:x64 /def:build/gdi32.def /out:build/gdi32.lib >/dev/null
 printf 'LIBRARY ADVAPI32.dll\nEXPORTS\n%s\n' RegOpenKeyExA RegQueryValueExA RegCloseKey SystemFunction036 > build/advapi32.def
-printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA SHGetFolderPathA > build/shell32.def
+printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA ShellExecuteW SHGetFolderPathA > build/shell32.def
+printf 'LIBRARY OLE32.dll\nEXPORTS\n%s\n' CoInitializeEx CoTaskMemFree > build/ole32.def
 printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameW > build/comdlg32.def
 printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept getsockname setsockopt recv send closesocket > build/ws2_32.def
 printf 'LIBRARY DWMAPI.dll\nEXPORTS\n%s\n' DwmSetWindowAttribute > build/dwmapi.def
 printf 'LIBRARY GDIPLUS.dll\nEXPORTS\n%s\n' GdiplusStartup GdipCreateFromHDC GdipDeleteGraphics GdipSetSmoothingMode GdipCreateSolidFill GdipDeleteBrush GdipCreatePen1 GdipDeletePen GdipSetPenStartCap GdipSetPenEndCap GdipCreatePath GdipDeletePath GdipAddPathArc GdipClosePathFigure GdipFillPath GdipDrawPath GdipFillEllipse GdipDrawLine GdipDrawArc > build/gdiplus.def
-for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
+for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus ole32; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
 VERSION=1.2.0 # shown in the apps, the log and the release
 # The translations (lang/*.json) as C tables for the mod and the Windows setup, a
 # file for the Mac app, and Keybinder.html (the key layout editor with every language).
@@ -35,12 +36,21 @@ clang $CFLAGS -Ibuild -c xinput_wasd.c -o build/xinput_wasd.obj
 clang $CFLAGS -c test_load.c -o build/test_load.obj
 "$LLD" /nodefaultlib /entry:mainCRTStartup /subsystem:console /machine:x64 /out:build/test_load.exe build/test_load.obj build/kernel32.lib build/user32.lib build/imm32.lib
 rm -f build/*.obj build/*.exp build/xinput1_4.lib
-# Windows installer: one exe with the DLL, both layouts and the editor inside.
-python3 pack.py
+# Windows installer: one exe with the DLL, both layouts and the editor inside, and
+# Microsoft's WebView2Loader.dll for the editor window (BSD license, see README),
+# from the WebView2 SDK on nuget.org: fetched once and checked.
+WEBVIEW2_SDK=1.0.4258.31
+if [ ! -f build/webview2/sdk/runtimes/win-x64/native/WebView2Loader.dll ]; then
+    mkdir -p build/webview2
+    curl -sfL -o build/webview2/sdk.nupkg "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WEBVIEW2_SDK/microsoft.web.webview2.$WEBVIEW2_SDK.nupkg"
+    echo "56f7f4b8bf9aee4b8efefbbdd4f67d5f74ebd1b100ed0806da71bf76af481aa9  build/webview2/sdk.nupkg" | shasum -a 256 -c - >/dev/null || { echo "The WebView2 SDK download doesn't match its checksum."; exit 1; }
+    (cd build/webview2 && unzip -q -o sdk.nupkg -d sdk)
+fi
+WEBVIEW2_SDK=$WEBVIEW2_SDK python3 pack.py
 clang $CFLAGS -c installer.c -o build/installer.obj
 SETUP="build/wasdmod-Windows.exe"
 "$LLD" /brepro /nodefaultlib /entry:start /subsystem:windows /machine:x64 /out:"$SETUP" build/installer.obj build/installer.res \
-    build/kernel32.lib build/user32.lib build/gdi32.lib build/advapi32.lib build/shell32.lib build/comdlg32.lib build/ws2_32.lib build/dwmapi.lib build/gdiplus.lib
+    build/kernel32.lib build/user32.lib build/gdi32.lib build/advapi32.lib build/shell32.lib build/comdlg32.lib build/ws2_32.lib build/dwmapi.lib build/gdiplus.lib build/ole32.lib
 rm -f build/*.obj build/payload.h
 # Mac app (mac/main.swift): the key layout editor in a window, with install and
 # uninstall at the top, done by mac/wasdmod.sh. Put together outside this folder:

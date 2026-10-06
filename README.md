@@ -97,11 +97,13 @@ Opening a menu or moving the mouse switches to **mouse mode**: the cursor and ke
 The key layout editor is the main window of the Mac app. On Windows, click **Edit key layout…** in the installer; the editor opens in its own window, and the installer has to stay open while you edit.
 
 - Pick **Default** or **Recommended** under Layout, or click **+ Create** for your own. Click a key to change it.
-- Click **Save to game**, then restart the game.
+- Click **Save to game**. A running game switches to it within a second, and the key list shows for a moment; no restart needed.
 - Changing a built-in layout asks to save it as a new layout of yours. **Reset** goes back to the saved version.
 - Menus send the game's own keyboard shortcut. The inventory can use the controller instead: tap for the full inventory, hold for the mini inventory while you keep moving. **Allow controller input for menus** gives the other menus and Teleport to player that choice too.
 
 **Match the game's own keyboard settings.** The game reads its own keyboard settings in menus, with the cursor and while aiming the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
+
+In the Mac app and the Windows editor window you don't have to do that by hand: the editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`), and **Apply to the game's controls** writes your keys into them while the game is closed. The first write keeps your old settings as `EnhancedInputUserSettings.sav.wasdmod-backup`; the game uses the new ones from its next start. A few rows the game hasn't saved yet (jump, artifacts 2 and 3, the guidance trail, teleports, map, emotes, event log) still have to be set in the game's menu.
 
 ## Languages
 
@@ -188,7 +190,7 @@ Every option is explained in `default.txt`. A few worth knowing:
 - `BumpNudgePct`: after a small mouse bump the game shows keyboard prompts; wasdmod flips it back with a tiny right-stick nudge. Lower it if you ever dodge by accident.
 - `DisabledKeys` (filled in by the editor): the game's own keys for actions you moved to other keys. They never reach the game, in any mode. Left click is never disabled.
 
-wasdmod uses the newest of `default.txt`, `author.txt` and any `wasdmod*.txt` in the game folder. The editor saves `default.txt` or `author.txt` for an unchanged built-in layout, otherwise `wasdmod-MMDDYY.txt`.
+wasdmod uses the newest of `default.txt`, `author.txt` and any `wasdmod*.txt` in the game folder. It checks every second, so a newer file takes over in a running game. The editor saves `default.txt` or `author.txt` for an unchanged built-in layout, otherwise `wasdmod-MMDDYY.txt`.
 
 The Windows installer also has a command line: `/find`, `/status`, `/install`, `/uninstall`, `/default`, `/recommended`, `/own`, `/off`, `/on` (optionally followed by the game's Win64 folder).
 
@@ -220,6 +222,18 @@ No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` i
 [MIT](LICENSE).
 
 Headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain), with some glyphs and the spacing adjusted to match Minecraft's lettering, and Cyrillic, Polish, Turkish and Portuguese letters added on the same pixel grid.
+
+The Windows setup includes Microsoft's `WebView2Loader.dll` from the [WebView2 SDK](https://www.nuget.org/packages/Microsoft.Web.WebView2), which starts the key layout editor's window. Its license:
+
+> Copyright (C) Microsoft Corporation. All rights reserved.
+>
+> Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+>
+> * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+> * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+> * The name of Microsoft Corporation, or the names of its contributors may not be used to endorse or promote products derived from this software without specific prior written permission.
+>
+> THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Unofficial project. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with CodeWeavers or Valve.
 

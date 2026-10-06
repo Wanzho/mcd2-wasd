@@ -46,6 +46,7 @@ static int legendCount, legendW, legendH, lineH = 18;
 static HANDLE legendWnd, legendFont, legendBrush;
 static int legendShown;
 
+static void reloadIfChanged(void);
 static void addLine(const char *key, const char *what) {
     if (legendCount >= LEGEND_LINES) return;
     char *l = legendText[legendCount++]; l[0] = 0;
@@ -200,7 +201,7 @@ static LRESULT legendProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         EndPaint(w, &ps);
         return 0;
     }
-    if (msg == 0x113) { placeLegend(); return 0; } // WM_TIMER
+    if (msg == 0x113) { reloadIfChanged(); placeLegend(); return 0; } // WM_TIMER
     if (msg == 0x84) return -1;                     // WM_NCHITTEST: HTTRANSPARENT, clicks go to the game
     return DefWindowProcA(w, msg, wp, lp);
 }
@@ -269,6 +270,57 @@ static LRESULT tickProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, msg, wp, lp);
 }
 
+// The panel sized to its text.
+static void sizeLegend(void) {
+    HANDLE dc = GetDC(0); SelectObject(dc, legendFont);
+    int w = 160; SIZE s;
+    if (textSize(dc, T("Keyboard controls"), &s) && s.cx > w) w = s.cx;
+    for (int i = 0; i < legendCount; i++) if (textSize(dc, legendText[i], &s) && s.cx > w) w = s.cx;
+    if (textSize(dc, "Ag", &s)) lineH = s.cy + 2;
+    ReleaseDC(0, dc);
+    legendW = w + 20; legendH = (legendCount + 1) * lineH + 20;
+}
+// The typing banner sized to its text.
+static void sizeTyping(void) {
+    HANDLE tdc = GetDC(0); SelectObject(tdc, typeFont); SIZE ts;
+    if (!textSize(tdc, T("TYPING  -  Esc to finish"), &ts)) { ts.cx = 260; ts.cy = 26; }
+    ReleaseDC(0, tdc);
+    typeW = ts.cx + 40; typeH = ts.cy + 18;
+}
+
+// A layout saved or picked while the game runs (a newer settings file in the game
+// folder) is used within a second: keys, options and the key list, which shows for
+// a moment so you can see it took. No restart needed.
+static void reloadIfChanged(void) {
+    static U64 checkedAt;
+    U64 now = GetTickCount64();
+    if (now - checkedAt < 1000) return;
+    checkedAt = now;
+    char path[1100]; DWORD when[2];
+    newestSettings(path, sizeof(path), when);
+    if (sameStr(path, ini) && when[0] == settingsWhen[0] && when[1] == settingsWhen[1]) return;
+    int oldLang = langIndex;
+    releaseRemaps();
+    clearSettings();
+    loadSettings();
+    buildOwned();
+    memset(&mouseDodge, 0, sizeof(mouseDodge));
+    { unsigned n = len(ini); const char *f = ini + n; while (f > ini && f[-1] != '\\') f--;
+      char l[160] = "Key layout reloaded: "; append(l, sizeof(l), f); logline(l); }
+    pickLanguage();
+    if (langIndex != oldLang) { // other letters: other fonts
+        HANDLE lf = makeFont(-14, 500), tf = makeFont(-22, 700);
+        DeleteObject(legendFont); legendFont = lf;
+        if (typeFont) DeleteObject(typeFont);
+        typeFont = tf; sizeTyping();
+        if (typeWnd) InvalidateRect(typeWnd, 0, 1);
+    }
+    buildLegend(); sizeLegend();
+    if (legendShown) { ShowWindow(legendWnd, 0); legendShown = 0; } // shown again at its new size
+    if (cfg.legend) legendUntil = now + 5000;
+    placeLegend();
+}
+
 static DWORD legendThread(void *unused) {
     ClipCursor(0); // an older build could leave the mouse confined
     buildLegend();
@@ -277,14 +329,7 @@ static DWORD legendThread(void *unused) {
     RegisterClassA(&wc);
     legendFont = makeFont(-14, 500);
     legendBrush = CreateSolidBrush(RGB(20, 22, 28));
-    // Size the panel to its text.
-    HANDLE dc = GetDC(0); SelectObject(dc, legendFont);
-    int w = 160; SIZE s;
-    if (textSize(dc, T("Keyboard controls"), &s) && s.cx > w) w = s.cx;
-    for (int i = 0; i < legendCount; i++) if (textSize(dc, legendText[i], &s) && s.cx > w) w = s.cx;
-    if (textSize(dc, "Ag", &s)) lineH = s.cy + 2;
-    ReleaseDC(0, dc);
-    legendW = w + 20; legendH = (legendCount + 1) * lineH + 20;
+    sizeLegend();
     legendWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TRANSPARENT|TOPMOST|TOOLWINDOW|NOACTIVATE*/,
                                 "WasdModLegend", "Keyboard controls", 0x80000000 /*WS_POPUP*/, 0, 0, legendW, legendH, 0, 0, self, 0);
     if (!legendWnd) { logline("Could not create the key legend"); return 0; }
@@ -297,10 +342,7 @@ static DWORD legendThread(void *unused) {
         RegisterClassA(&tc);
         typeFont = makeFont(-22, 700);
         typeBrush = CreateSolidBrush(RGB(20, 22, 28)); typeEdge = CreateSolidBrush(RGB(255, 214, 102));
-        HANDLE tdc = GetDC(0); SelectObject(tdc, typeFont); SIZE ts;
-        if (!textSize(tdc, T("TYPING  -  Esc to finish"), &ts)) { ts.cx = 260; ts.cy = 26; }
-        ReleaseDC(0, tdc);
-        typeW = ts.cx + 40; typeH = ts.cy + 18;
+        sizeTyping();
         typeWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TRANSPARENT|TOPMOST|TOOLWINDOW|NOACTIVATE*/,
                                   "WasdModTyping", "Typing mode", 0x80000000 /*WS_POPUP*/, 0, 0, typeW, typeH, 0, 0, self, 0);
         if (typeWnd) SetLayeredWindowAttributes(typeWnd, 0, 230, 2 /*LWA_ALPHA*/);

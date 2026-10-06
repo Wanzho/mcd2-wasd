@@ -159,6 +159,7 @@ ul.recs button { padding: 5px 9px; }
 #recsCard.flash { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow .3s; }
 .row.flash { outline: 3px solid var(--danger); outline-offset: 3px; border-radius: 6px; }
 ul.recs li { cursor: pointer; }
+.apply-game { display: grid; gap: 6px; justify-items: start; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 ul.recs li:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
 .row.point { animation: point 1.8s ease-out; border-radius: 6px; }
 .ingame .point { animation: pointKey 1.8s ease-out; }
@@ -896,7 +897,91 @@ const MOD_ROWS = [
   { id: "OtherMenus", label: _("Other menu shortcuts"), sub: _("sent to the game; switch to mouse mode"), max: 8, get: st => st.extraMenuKeys, set: (st, v) => st.extraMenuKeys = v },
 ];
 
-if (typeof globalThis !== "undefined") globalThis.Keybinder = { ACTIONS, DEFAULT_INI, AUTHOR_INI, GAME_DEFAULTS, stateFromIni, iniText, recommendations, usage, route, parseIni };
+// =================================================================== the game's own keyboard settings file
+// The game keeps Settings › Controls › Keyboard in SaveGames\EnhancedInputUserSettings.sav,
+// an Unreal save (GVAS). Only the keys you changed are in it, in the keyboard profile:
+// per change the action's name, the key, two device fields ("None") and 6 bytes whose
+// last is the column (0 first, 1 second). Nothing else in the file counts its length,
+// so changes can be written in place. The apps read it to show the game's real keys,
+// and can write it while the game is closed. Anything unexpected: not touched.
+const CONTROLS_PROFILE = "/Script/SWCoreGameplay.SWEnhancedPlayerMappableKeyProfile", CONTROLS_KEYBOARD = "SW.Input.Profile.InputType.Keyboard";
+// The game's names for the actions (one row in its settings can be two of them). Rows
+// not listed here keep the keys typed into the editor; the checklist asks for them.
+const GAME_ACTIONS = { melee: ["PrimaryAction"], ranged: ["RangedAttack"], heavy: ["HeavyJumpAttack"], art1: ["Artifact1"], potion: ["HealthPotion"],
+  root: ["Root"], dodge: ["DirectionalDodge"], fdodge: ["ForwardDodge"], inventory: ["Inventory", "MiniInventory"], quest: ["QuestLog", "TrackQuest"],
+  wheel: ["MenuWheel"], collect: ["IA_OpenUI_Collectibles"], social: ["SocialMenu"] };
+const UE_KEYS = { Space: "SpaceBar", Shift: "LeftShift", Ctrl: "LeftControl", Alt: "LeftAlt", Tab: "Tab", Escape: "Escape", Enter: "Enter",
+  Backspace: "BackSpace", CapsLock: "CapsLock", Backtick: "Tilde", Up: "Up", Down: "Down", Left: "Left", Right: "Right", "-": "Hyphen", "=": "Equals",
+  "[": "LeftBracket", "]": "RightBracket", ";": "Semicolon", "'": "Apostrophe", ",": "Comma", ".": "Period", "/": "Slash", "\\": "Backslash",
+  Mouse1: "LeftMouseButton", Mouse2: "RightMouseButton", Mouse3: "MiddleMouseButton", Mouse4: "ThumbMouseButton", Mouse5: "ThumbMouseButton2" };
+["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"].forEach((n, i) => { UE_KEYS[String(i)] = n; });
+const FROM_UE = Object.fromEntries(Object.entries(UE_KEYS).map(([k, v]) => [v, k]));
+Object.assign(FROM_UE, { RightShift: "Shift", RightControl: "Ctrl", RightAlt: "Alt" });
+["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"].forEach((n, i) => { FROM_UE["NumPad" + n] = String(i); });
+const ueKey = k => !k ? "None" : UE_KEYS[k] || (/^([A-Z]|F([1-9]|1[0-2]))$/.test(k) ? k : null);
+const fromUe = u => u === "None" ? null : FROM_UE[u] || (/^([A-Z]|F([1-9]|1[0-2]))$/.test(u) ? u : undefined); // undefined: a key the editor has no name for
+
+function parseControls(bytes) {
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), bad = () => { throw new Error("format"); };
+  let p = 0;
+  const i32 = () => { if (p + 4 > bytes.length) bad(); const x = v.getInt32(p, true); p += 4; return x; };
+  const str = () => {
+    const n = i32(); if (n <= 0 || n > 512 || p + n > bytes.length || bytes[p + n - 1] !== 0) bad();
+    let s = ""; for (let i = 0; i < n - 1; i++) { const c = bytes[p + i]; if (c < 32 || c > 126) bad(); s += String.fromCharCode(c); }
+    p += n; return s;
+  };
+  if (String.fromCharCode(...bytes.slice(0, 4)) !== "GVAS") bad();
+  const enc = new TextEncoder().encode(CONTROLS_PROFILE), find = from => { outer: for (let i = from; i + enc.length < bytes.length; i++) { for (let j = 0; j < enc.length; j++) if (bytes[i + j] !== enc[j]) continue outer; return i - 4; } return -1; };
+  const first = find(0); if (first < 8) bad();
+  p = first - 4; const count = i32(); if (count < 1 || count > 64) bad();
+  const profiles = [];
+  for (let e = 0; e < count; e++) {
+    if (str() !== CONTROLS_PROFILE) bad();
+    str(); const at = p, n = i32(); if (n < 0 || n > 2000) bad();
+    const records = [];
+    for (let r = 0; r < n; r++) {
+      const name = str(), key = str(), dev1 = str(), dev2 = str();
+      if (p + 6 > bytes.length) bad();
+      const tail = bytes.slice(p, p + 6); p += 6; if (tail[5] > 1) bad();
+      records.push({ name, key, dev1, dev2, tail, slot: tail[5] });
+    }
+    profiles.push({ at, end: p, records, id: str() });
+  }
+  const keyboard = profiles.find(x => x.id === CONTROLS_KEYBOARD); if (!keyboard) bad();
+  return { bytes, keyboard };
+}
+// The game's keys per editor row, from the file (a row without changes has its defaults).
+function controlsKeys(ctl) {
+  const out = {};
+  for (const [id, names] of Object.entries(GAME_ACTIONS)) {
+    const g = [...(GAME_DEFAULTS[id] || [])]; while (g.length < 2) g.push(null);
+    for (const r of ctl.keyboard.records) if (r.name === names[0]) { const k = fromUe(r.key); g[r.slot] = k === undefined ? null : k; }
+    out[id] = g.slice(0, 2);
+  }
+  return out;
+}
+// The file with these rows set ({id: [first, second]}); other changes in it stay as they are.
+function writeControls(ctl, want) {
+  const recs = ctl.keyboard.records.map(r => ({ ...r })), tail5 = recs.length ? recs[0].tail.slice(0, 5) : new Uint8Array(5);
+  for (const [id, keys] of Object.entries(want)) for (const name of GAME_ACTIONS[id] || []) for (const slot of [0, 1]) {
+    const k = keys[slot] || null, ue = ueKey(k); if (ue === null) continue; // a key the game can't take: left alone
+    const have = recs.find(r => r.name === name && r.slot === slot);
+    const now = have ? (fromUe(have.key) === undefined ? null : fromUe(have.key)) : (GAME_DEFAULTS[id] || [])[slot] || null;
+    if (now === k) continue;
+    if (have) have.key = ue;
+    else { const tail = new Uint8Array(6); tail.set(tail5); tail[5] = slot; recs.push({ name, key: ue, dev1: "None", dev2: "None", tail, slot }); }
+  }
+  const parts = [], put = s => { const b = new TextEncoder().encode(s); const n = new Uint8Array(4 + b.length + 1); new DataView(n.buffer).setInt32(0, b.length + 1, true); n.set(b, 4); parts.push(n); };
+  const count = new Uint8Array(4); new DataView(count.buffer).setInt32(0, recs.length, true); parts.push(count);
+  for (const r of recs) { put(r.name); put(r.key); put(r.dev1); put(r.dev2); parts.push(r.tail); }
+  const mid = parts.reduce((a, b) => a + b.length, 0), out = new Uint8Array(ctl.keyboard.at + mid + ctl.bytes.length - ctl.keyboard.end);
+  out.set(ctl.bytes.subarray(0, ctl.keyboard.at), 0); let o = ctl.keyboard.at;
+  for (const b of parts) { out.set(b, o); o += b.length; }
+  out.set(ctl.bytes.subarray(ctl.keyboard.end), o);
+  return out;
+}
+
+if (typeof globalThis !== "undefined") globalThis.Keybinder = { ACTIONS, DEFAULT_INI, AUTHOR_INI, GAME_DEFAULTS, stateFromIni, iniText, recommendations, usage, route, parseIni, parseControls, controlsKeys, writeControls, GAME_ACTIONS };
 
 // =================================================================== page
 if (typeof document !== "undefined") {
@@ -1052,6 +1137,50 @@ function showGameKey(r) {
   const key = row.querySelector(`.ingame [data-slot="${r.slot}"]`) || row.querySelector(".ingame");
   for (const x of [row, key]) if (x) { x.classList.remove("point"); void x.offsetWidth; x.classList.add("point"); setTimeout(() => x.classList.remove("point"), 1800); }
 }
+// ---------------------------------------------------------------- the game's own controls (apps only)
+// The apps read the game's keyboard settings file, so the "in game" keys are the game's
+// real ones (rows it has names for), and can write it. See parseControls.
+let controls = null, realGame = null;
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const toB64 = u => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+function applyReal(st) { if (realGame) for (const [id, g] of Object.entries(realGame)) st.game[id] = g.slice(); return st; }
+async function readControls() {
+  if (!host || !host.gameControls) return;
+  let data = null, ctl = null, next = null;
+  try { data = await host.gameControls(); } catch (e) {}
+  if (data) try { ctl = parseControls(fromB64(data)); next = controlsKeys(ctl); } catch (e) {}
+  controls = ctl;
+  if (JSON.stringify(next) === JSON.stringify(realGame)) return;
+  realGame = next;
+  if (realGame) await syncReal(); else renderRecs();
+}
+// The game's real keys into what's on screen (not counted as a change). The layout in
+// the game sends some keys on to the game's own keys; when those moved, it's saved
+// again so the mod matches.
+async function syncReal() {
+  applyReal(state); base = iniText(applyReal(stateFromIni(base)));
+  const l = layouts.find(x => x.id === cur); if (l && !dirty()) l.text = base;
+  render(); persist();
+  if (host && host.game && gameLayoutId() === cur && !dirty() && iniText(stateFromIni(host.game.text)) !== iniText(state)) {
+    await downloadFile();
+    toast(t("The game's controls changed, so the layout in the game was updated to match."));
+  }
+}
+async function applyControls() {
+  const want = {};
+  for (const r of recommendations(state)) if (GAME_ACTIONS[r.a.id]) (want[r.a.id] = want[r.a.id] || (state.game[r.a.id] || []).slice(0, 2))[r.slot] = r.want;
+  let msg;
+  try {
+    await host.writeGameControls(toB64(writeControls(controls, want)));
+    await readControls();
+    msg = t("Done: the game's controls now match. The game uses them the next time it starts.");
+  } catch (e) {
+    const m = String(e && e.message || e);
+    msg = t("Couldn't change the game's controls: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so it was left alone.") : m });
+  }
+  $("saveStatus").textContent = msg; toast(msg);
+}
+
 const applyRec = r => { const arr = state.game[r.a.id] = state.game[r.a.id] || []; arr[r.slot] = r.want; };
 function recLine(r) {
   const vars = { action: t(r.a.game), key: r.want ? pretty(r.want) : "" };
@@ -1069,6 +1198,11 @@ function renderRecs() {
       el("span", { class: "was", text: r.was ? t("now: {key}", { key: pretty(r.was) }) : t("now: empty") }), r.a.note ? el("span", { class: "note", text: t(r.a.note) }) : null),
     el("button", { type: "button", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
   card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: t("Mark all as done"), onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
+  // In the apps: write the game's own settings instead (the rows the file has names for).
+  if (controls && host && host.writeGameControls && recs.some(r => GAME_ACTIONS[r.a.id]))
+    card.append(el("div", { class: "apply-game" },
+      el("button", { type: "button", class: "primary", text: t("Apply to the game's controls"), onclick: applyControls }),
+      el("span", { class: "note", text: t("Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.") })));
 }
 // The notice at the top: while the game's own keyboard settings differ from the
 // layout, keyboard mode and controller mode are two different layouts.
@@ -1295,8 +1429,8 @@ const dirty = () => iniText(state) !== base;
 // Which of the layouts here is the one in the game (the same settings), if any.
 function gameLayoutId() {
   if (!host || !host.game || !host.game.text) return null;
-  const want = iniText(stateFromIni(host.game.text));
-  return [...Object.keys(BUILTIN), ...layouts.map(l => l.id)].find(id => iniText(stateFromIni(layoutText(id))) === want) || null;
+  const want = iniText(applyReal(stateFromIni(host.game.text)));
+  return [...Object.keys(BUILTIN), ...layouts.map(l => l.id)].find(id => iniText(applyReal(stateFromIni(layoutText(id)))) === want) || null;
 }
 function persist() { store.set("d2kb-ini", iniText(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur); }
 function save() { persist(); }
@@ -1304,7 +1438,7 @@ function edited() { switchWarn = false; confirmReset = false; renderLayoutBar();
 function changed() { switchWarn = false; confirmReset = false; save(); render(); }
 function selectLayout(id) {
   const text = layoutText(id); if (!text) return;
-  state = stateFromIni(text); cur = id; base = iniText(state); naming = null; switchWarn = false; pendingSwitch = null;
+  state = applyReal(stateFromIni(text)); cur = id; base = iniText(state); naming = null; switchWarn = false; pendingSwitch = null;
   render(); persist();
 }
 function newLayout(name) {
@@ -1338,7 +1472,7 @@ $("resetBtn").addEventListener("click", askReset);
 function importText(text, from) {
   if (!/\[(Move|Buttons|Keys)\]/i.test(text)) { $("importStatus").textContent = t("That doesn't look like a WASD mod settings file."); return; }
   if (dirty() && !BUILTIN[cur]) saveChanges(); // keep unsaved edits to your layout before switching
-  state = stateFromIni(text);
+  state = applyReal(stateFromIni(text));
   newLayout(String(from).replace(/\.(txt|ini)$/i, "") || t("Imported layout"));
   $("importCard").hidden = true;
   $("importStatus").textContent = ""; $("saveStatus").textContent = t("Imported {file} as a layout of yours.", { file: from });
@@ -1374,7 +1508,7 @@ async function downloadFile() {
       const used = await host.save(name, text);
       if (!used || used === name) host.game = { file: name, text };
       renderLayoutBar();
-      $("saveStatus").textContent = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. Restart the game to use it.", { file: name });
+      $("saveStatus").textContent = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. A running game switches to it within a second.", { file: name });
     } catch (e) {
       // "saved:" starts the app's messages for a file that was saved but can't be used yet.
       const m = String(e && e.message || e);
@@ -1438,6 +1572,8 @@ if (host && host.game && host.game.text && /\[(Move|Buttons|Keys)\]/i.test(host.
   if (!dirty()) { const g = gameLayoutId(); if (g) { cur = g; base = iniText(stateFromIni(layoutText(g))); state = stateFromIni(layoutText(g)); } }
 }
 translatePage(); render(); persist();
+readControls();
+window.addEventListener("focus", () => readControls()); // back from the game: its settings may have changed
 if (gameFound) {
   $("saveStatus").textContent = t("Found {name} in the game folder and added it to your layouts.", { name: gameFound });
   toast($("saveStatus").textContent);

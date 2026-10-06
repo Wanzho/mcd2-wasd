@@ -38,9 +38,9 @@ ends it), and the backtick key (`) turns the mod off and on.
 Change keys
 -----------
 Open "Key Layout Editor.html", pick Default or Recommended or "+ Create" your
-own, and click "Download file". Put the file in the same Win64 folder and
-restart the game. The mod uses the newest of default.txt, author.txt and
-wasdmod*.txt.
+own, and click "Download file". Put the file in the same Win64 folder; a
+running game switches to it within a second. The mod uses the newest of
+default.txt, author.txt and wasdmod*.txt.
 
 Languages
 ---------

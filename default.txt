@@ -1,5 +1,6 @@
 ; Keyboard & mouse as a controller for Minecraft Dungeons II.
-; Edit, then restart the game. The on-screen key list is built from this file.
+; Edit and save: a running game switches to it within a second. The on-screen
+; key list is built from this file.
 ;
 ; A key is a letter or digit (W), a name (Space, Enter, Escape, Tab, Shift,
 ; Ctrl, Alt, Backspace, CapsLock, Up, Down, Left, Right, Backtick, F1-F12,

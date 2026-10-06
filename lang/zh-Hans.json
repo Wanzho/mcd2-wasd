@@ -79,7 +79,6 @@
   "Open settings file": "打开配置文件",
   "Uninstall": "卸载",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "遇到问题？点“录制日志”，玩到问题出现后停止，就会生成一份可以提交到 GitHub 的报告。",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "每次修改后都要重启游戏。游戏中：Tab 打开轮盘菜单，F9 显示键位说明，反引号键（`）开关模组。",
   "All files": "所有文件",
   "Find Minecraft Dungeons II": "查找 Minecraft Dungeons II",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II（Dungeons*.exe）",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "已在桌面保存 {file}，里面有模组日志、你的键位和 Windows 版本，不包含你打的字。\n\n要打开 GitHub 反馈问题吗？（记得附上这个文件）",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "要同时删除已保存的键位方案（author.txt、wasdmod*.txt）吗？",
   "Uninstalled. The game is back to how it was.": "卸载完成，游戏已恢复原样。",
-  "Key layout changed. Restart the game to use it.": "键位方案已切换，重启游戏后生效。",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "键位编辑器已在新窗口中打开。只要本窗口不关，点编辑器里的“应用到游戏”就会直接写入游戏目录。",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "键位编辑器已在浏览器中打开。在那里选好或新建方案后点“下载文件”，再回到这里点“导入键位文件”。",
   "Load a key layout": "导入键位文件",
   "Key layout (*.ini;*.txt)": "键位文件（*.ini;*.txt）",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "这不是键位文件（里面没有 [Buttons] 或 [Move] 段）。",
-  "Key layout loaded. Restart the game to use it.": "键位已导入，重启游戏后生效。",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "已从键位编辑器保存 {file}，重启游戏后生效。",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II 正在运行，请先关闭游戏再试。",
   "The game folder already has a different xinput1_4.dll (another mod?).": "游戏目录里已经有别的 xinput1_4.dll（可能是其他模组）。",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "无法写入游戏目录，请试试以管理员身份运行本安装程序。"
+  "Couldn't write to the game folder. Try running this installer as administrator.": "无法写入游戏目录，请试试以管理员身份运行本安装程序。",
+  "Key layout changed. A running game switches to it within a second.": "键位方案已切换，正在运行的游戏会在一秒内生效。",
+  "Key layout loaded. A running game switches to it within a second.": "键位已导入，正在运行的游戏会在一秒内生效。",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "已从键位编辑器保存 {file}，正在运行的游戏会在一秒内生效。",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "键位修改会在一秒内应用到正在运行的游戏；安装后需要重启游戏。游戏中：Tab 打开轮盘菜单，F9 显示键位说明，反引号键（`）开关模组。",
+  "Couldn't write the game's controls file.": "无法写入游戏的按键设置文件。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "找不到游戏的按键设置文件。先在游戏设置里随便改一次按键，再试一次。"
  },
  "mac": {
   "Install": "安装",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "你当前的版本是 {version}。下载新版本，打开后把 wasdmod 拖到“应用程序”中替换当前版本；键位方案会保留。",
   "Download": "下载",
   "Later": "以后再说",
-  "Show in Finder": "在访达中显示"
+  "Show in Finder": "在访达中显示",
+  "Couldn't write the game's controls file.": "无法写入游戏的按键设置文件。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "找不到游戏的按键设置文件。先在游戏设置里随便改一次按键，再试一次。"
  },
  "editor": {
   "Move up": "向上移动",
@@ -307,7 +311,6 @@
   "Folder path copied.": "已复制目录路径。",
   "Saving…": "正在保存…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "已保存到游戏（{file}），但游戏用的仍是更新的 {used}。",
-  "Saved to the game as {file}. Restart the game to use it.": "已保存到游戏（{file}），重启游戏后生效。",
   "Not saved: {error}": "保存失败：{error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "已保存 {file}。用 wasdmod-Windows.exe 的“导入键位文件”导入，或者直接放进游戏的 Win64 文件夹，然后重启游戏。Mac 上的 wasdmod 应用自带这个编辑器。",
   "Not saved.": "未保存。",
@@ -473,6 +476,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "菜单和“传送至玩家”可分别改用手柄，而不是游戏的键盘快捷键；关闭时：仅背包可以",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "按键会发送游戏自带的键盘快捷键，并切换到鼠标模式。背包可以改用手柄：短按打开完整背包，长按显示迷你背包，同时还能继续移动。",
   "{name} (installed)": "{name}（已安装）",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "带彩色线条的键有功能，颜色表示类别。带斜纹的键在游戏时会被屏蔽，防止游戏切到键盘模式。鼠标悬停在键上可以查看它的作用。"
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "带彩色线条的键有功能，颜色表示类别。带斜纹的键在游戏时会被屏蔽，防止游戏切到键盘模式。鼠标悬停在键上可以查看它的作用。",
+  "Saved to the game as {file}. A running game switches to it within a second.": "已保存到游戏（{file}），正在运行的游戏会在一秒内生效。",
+  "Apply to the game's controls": "应用到游戏的按键设置",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "替你把这些按键写入游戏自己的键盘设置。游戏需要先关闭；原来的设置会备份。",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "完成：游戏的按键设置已一致，下次启动游戏时生效。",
+  "Couldn't change the game's controls: {error}": "无法修改游戏的按键设置：{error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "文件格式是这个版本不认识的，所以没有改动。",
+  "The game's controls changed, so the layout in the game was updated to match.": "游戏的按键设置变了，游戏中的键位方案已随之更新。"
  }
 }

@@ -79,7 +79,6 @@
   "Open settings file": "Відкрити файл налаштувань",
   "Uninstall": "Видалити",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "Щось не працює? Запишіть логи, грайте, доки це не станеться, і зупиніть запис: вийде файл звіту для GitHub.",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Після будь-яких змін перезапускайте гру. У грі: Tab відкриває колесо меню, F9 показує список клавіш, клавіша ` (гравіс) вимикає й вмикає мод.",
   "All files": "Усі файли",
   "Find Minecraft Dungeons II": "Знайти Minecraft Dungeons II",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II (Dungeons*.exe)",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "{file} збережено на робочому столі. У ньому лог мода, ваша розкладка й версія Windows; те, що ви друкуєте, не записується.\n\nВідкрити GitHub, щоб повідомити про проблему (додайте файл)?",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "Видалити й збережені розкладки (author.txt, wasdmod*.txt)?",
   "Uninstalled. The game is back to how it was.": "Видалено. Гра така сама, як була.",
-  "Key layout changed. Restart the game to use it.": "Розкладку змінено. Перезапустіть гру, щоб застосувати її.",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "Редактор розкладки відкрився в окремому вікні. Його кнопка «Зберегти в гру» пише просто в теку гри, поки це вікно відкрите.",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "Редактор розкладки відкрився в браузері. Виберіть або створіть там розкладку й натисніть «Завантажити файл», потім натисніть тут «Завантажити файл розкладки».",
   "Load a key layout": "Завантажити розкладку клавіш",
   "Key layout (*.ini;*.txt)": "Розкладка клавіш (*.ini;*.txt)",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "Цей файл не розкладка клавіш (у ньому немає розділу [Buttons] або [Move]).",
-  "Key layout loaded. Restart the game to use it.": "Розкладку завантажено. Перезапустіть гру, щоб застосувати її.",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "{file} збережено з редактора розкладки. Перезапустіть гру, щоб застосувати його.",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II запущено. Закрийте гру й спробуйте знову.",
   "The game folder already has a different xinput1_4.dll (another mod?).": "У теці гри вже є інший xinput1_4.dll (інший мод?).",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "Не вдалося записати в теку гри. Спробуйте запустити інсталятор від імені адміністратора."
+  "Couldn't write to the game folder. Try running this installer as administrator.": "Не вдалося записати в теку гри. Спробуйте запустити інсталятор від імені адміністратора.",
+  "Key layout changed. A running game switches to it within a second.": "Розкладку змінено. Запущена гра підхопить її за секунду.",
+  "Key layout loaded. A running game switches to it within a second.": "Розкладку завантажено. Запущена гра підхопить її за секунду.",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "{file} збережено з редактора розкладки. Запущена гра підхопить його за секунду.",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Зміни розкладки доходять до запущеної гри за секунду; після встановлення перезапустіть гру. У грі: Tab відкриває колесо меню, F9 показує список клавіш, клавіша ` (гравіс) вимикає й вмикає мод.",
+  "Couldn't write the game's controls file.": "Не вдалося записати файл керування гри.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "Файл керування гри не знайдено. Змініть один раз будь-яку клавішу в налаштуваннях гри й спробуйте знову."
  },
  "mac": {
   "Install": "Встановити",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "У вас {version}. Завантажте нову версію, відкрийте її й перетягніть wasdmod у «Програми», щоб замінити цю; розкладки збережуться.",
   "Download": "Завантажити",
   "Later": "Пізніше",
-  "Show in Finder": "Показати у Finder"
+  "Show in Finder": "Показати у Finder",
+  "Couldn't write the game's controls file.": "Не вдалося записати файл керування гри.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "Файл керування гри не знайдено. Змініть один раз будь-яку клавішу в налаштуваннях гри й спробуйте знову."
  },
  "editor": {
   "Move up": "Угору",
@@ -307,7 +311,6 @@
   "Folder path copied.": "Шлях до теки скопійовано.",
   "Saving…": "Збереження…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "Збережено в гру як {file}. Гра досі використовує {used} (він новіший).",
-  "Saved to the game as {file}. Restart the game to use it.": "Збережено в гру як {file}. Перезапустіть гру, щоб застосувати.",
   "Not saved: {error}": "Не збережено: {error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "{file} збережено. Завантажте його через wasdmod-Windows.exe («Завантажити файл розкладки») або перемістіть у теку гри Win64 і перезапустіть гру. На Mac цей редактор вбудовано в застосунок wasdmod.",
   "Not saved.": "Не збережено.",
@@ -483,6 +486,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "меню й «Телепорт до гравця» зможуть використовувати геймпад замість клавіатурного скорочення гри; вимк.: лише інвентар",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "Ваші клавіші надсилають клавіатурне скорочення самої гри й перемикають у режим миші. Інвентар може натомість використовувати геймпад: тоді він відкривається натисканням, а під час утримання показує міні-інвентар, тож ви можете рухатися далі.",
   "{name} (installed)": "{name} (встановлено)",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "Клавіші з кольоровою смужкою щось роблять; колір показує що. Заштриховані клавіші блокуються під час гри, щоб гра не перемикалася в режим клавіатури. Наведіть на клавішу, щоб побачити, що вона робить."
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "Клавіші з кольоровою смужкою щось роблять; колір показує що. Заштриховані клавіші блокуються під час гри, щоб гра не перемикалася в режим клавіатури. Наведіть на клавішу, щоб побачити, що вона робить.",
+  "Saved to the game as {file}. A running game switches to it within a second.": "Збережено в гру як {file}. Запущена гра підхопить його за секунду.",
+  "Apply to the game's controls": "Застосувати до керування гри",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "Задає ці клавіші за вас у налаштуваннях клавіатури гри. Гра має бути закрита; старі налаштування зберігаються в резервній копії.",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "Готово: керування гри збігається. Гра застосує його під час наступного запуску.",
+  "Couldn't change the game's controls: {error}": "Не вдалося змінити керування гри: {error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "файл у форматі, якого ця версія не знає, тому його не змінено.",
+  "The game's controls changed, so the layout in the game was updated to match.": "Керування гри змінилося, тому розкладку в грі оновлено відповідно."
  }
 }

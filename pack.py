@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generates the installers' inputs (run by build.sh):
 
-build/payload.h         the mod DLL, both built-in layouts and the key layout editor
-                        as C arrays, for the Windows installer
+build/payload.h         the mod DLL, both built-in layouts, the key layout editor and
+                        WebView2Loader.dll as C arrays, for the Windows installer
 build/installer.res     icon + manifest, in the .res format lld-link links directly
 build/wasdmod.iconset   the same icon for the Mac app (iconutil makes the .icns)
 """
@@ -17,6 +17,11 @@ with open("build/payload.h", "w") as f:
     for name, path in [("payloadDll", "build/xinput1_4.dll"), ("payloadIni", "default.txt"),
                        ("payloadAuthor", "author.txt"), ("payloadEditor", "Keybinder.html")]:
         f.write(c_array(name, open(path, "rb").read()))
+    # Microsoft's WebView2Loader.dll for the editor window (build.sh fetches the SDK);
+    # without it the editor opens in Edge or Chrome.
+    loader = "build/webview2/sdk/runtimes/win-x64/native/WebView2Loader.dll"
+    f.write(c_array("payloadWebView2Loader", open(loader, "rb").read() if os.path.exists(loader) else b"\0"))
+    f.write('#define WEBVIEW2_SDK "%s"\n' % os.environ.get("WEBVIEW2_SDK", "none"))
 
 # ---- icon: a 16x16 pixel-art gamepad, scaled up without smoothing
 ART = [

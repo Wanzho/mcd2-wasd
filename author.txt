@@ -3,8 +3,9 @@
 ; quests (V), social (/) and teleport (X) send the game's own keys; Tab opens the
 ; menu wheel; Shift forward dodge.
 ; Only the keys you press change; the game's own keys stay at their defaults.
-; Put this file in the game's Win64 folder (Windows setup: Load layout file) and
-; restart the game. The newest of default.txt, author.txt and wasdmod*.txt is used.
+; Put this file in the game's Win64 folder (Windows setup: Load layout file); a
+; running game switches to it within a second. The newest of default.txt,
+; author.txt and wasdmod*.txt is used.
 
 [Move]
 Up=W

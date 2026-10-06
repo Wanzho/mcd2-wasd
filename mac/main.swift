@@ -396,6 +396,8 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
             game: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("\(game.base64EncodedString())"), c => c.charCodeAt(0)))),
             set(k, v) { store[k] = v; post({ cmd: "store", value: JSON.stringify(store) }); },
             setLang(code) { post({ cmd: "lang", value: code }); },
+            gameControls() { return post({ cmd: "controls" }); },
+            writeGameControls(data) { return post({ cmd: "controls-write", data }); },
             save(name, text) { return post({ cmd: "save", name, text }); }
           };
         })();
@@ -418,6 +420,20 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
             UserDefaults.standard.set([code == "pt" ? "pt-BR" : code], forKey: "AppleLanguages")
             applyTexts()
             return replyHandler(nil, nil)
+        }
+        // The game's own keyboard settings file, as base64 (nil when there's none).
+        if cmd == "controls" {
+            let r = sh(["controls"])
+            guard r.ok, let path = fields(r.out)["controls"], let data = FileManager.default.contents(atPath: path) else { return replyHandler(nil, nil) }
+            return replyHandler(data.base64EncodedString(), nil)
+        }
+        if cmd == "controls-write" {
+            guard let text = body["data"] as? String, let data = Data(base64Encoded: text), data.starts(with: Array("GVAS".utf8)) else { return replyHandler(nil, "Unknown request.") }
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".sav")
+            defer { try? FileManager.default.removeItem(at: file) }
+            do { try data.write(to: file) } catch { return replyHandler(nil, error.localizedDescription) }
+            let r = sh(["controls", file.path])
+            return r.ok ? replyHandler("ok", nil) : replyHandler(nil, L(r.out))
         }
         guard cmd == "save", let name = body["name"] as? String, let text = body["text"] as? String else { return replyHandler(nil, "Unknown request.") }
         // wasdmod.sh load keeps the editor's names and validates the file.

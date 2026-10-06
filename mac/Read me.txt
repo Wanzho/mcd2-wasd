@@ -18,8 +18,8 @@ another folder or bottle), click Choose Game Folder and pick the game's folder,
 its Dungeons-Win64-Shipping.exe, or the CrossOver bottle it's in.
 
 The window below is the key layout editor: pick Default (the game's own keys),
-Recommended, or "+ Create" your own, and click "Save to game". Restart the game
-to use it. The yellow notice lists the game's own keyboard settings to change so
+Recommended, or "+ Create" your own, and click "Save to game". A running game
+switches to it within a second. The yellow notice lists the game's own keyboard settings to change so
 keyboard mode uses the same keys.
 
 In game: Tab opens the menu wheel (the game's own key, S, is "move down"

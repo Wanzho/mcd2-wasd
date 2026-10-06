@@ -303,31 +303,35 @@ static void readKeyList(const char *name, const char *fallback, BYTE *flags, cha
     }
 }
 
+// Settings: default.txt (the installed defaults), author.txt, or a layout the
+// key editor saved (wasdmod-093026.txt...) -- whichever was changed most
+// recently. Files from older versions (wasdmod.ini, wasd-mod...) still count.
+static DWORD settingsWhen[2]; // when the file in use was written
+static void newestSettings(char *out, unsigned cap, DWORD when[2]) {
+    const char *names[] = {"default.txt", "author.txt", "wasdmod*.txt", "wasdmod.ini", "wasd-mod.ini", "wasd-mod*.txt"};
+    int found = 0;
+    when[0] = when[1] = 0;
+    out[0] = 0; append(out, cap, dir); append(out, cap, "default.txt");
+    for (int i = 0; i < 6; i++) {
+        char pattern[1100] = {0}; append(pattern, sizeof(pattern), dir); append(pattern, sizeof(pattern), names[i]);
+        FINDDATA f; HANDLE h = FindFirstFileA(pattern, &f);
+        if (h == (HANDLE)-1) continue;
+        do {
+            if (f.attributes & 0x10 /*directory*/) continue;
+            if (!found || f.written[1] > when[1] || (f.written[1] == when[1] && f.written[0] > when[0])) {
+                when[0] = f.written[0]; when[1] = f.written[1]; found = 1;
+                out[0] = 0; append(out, cap, dir); append(out, cap, f.name);
+            }
+        } while (FindNextFileA(h, &f));
+        FindClose(h);
+    }
+}
+
 static void loadSettings(void) {
     DWORD n = GetModuleFileNameA(self, dir, sizeof(dir));
     while (n && dir[n - 1] != '\\' && dir[n - 1] != '/') n--;
     dir[n] = 0;
-    // Settings: default.txt (the installed defaults), author.txt, or a layout the
-    // key editor saved (wasdmod-093026.txt...) -- whichever was changed most
-    // recently. Files from older versions (wasdmod.ini, wasd-mod...) still count.
-    {
-        const char *names[] = {"default.txt", "author.txt", "wasdmod*.txt", "wasdmod.ini", "wasd-mod.ini", "wasd-mod*.txt"};
-        DWORD best[2] = {0, 0}; int found = 0;
-        ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), "default.txt");
-        for (int i = 0; i < 6; i++) {
-            char pattern[1100] = {0}; append(pattern, sizeof(pattern), dir); append(pattern, sizeof(pattern), names[i]);
-            FINDDATA f; HANDLE h = FindFirstFileA(pattern, &f);
-            if (h == (HANDLE)-1) continue;
-            do {
-                if (f.attributes & 0x10 /*directory*/) continue;
-                if (!found || f.written[1] > best[1] || (f.written[1] == best[1] && f.written[0] > best[0])) {
-                    best[0] = f.written[0]; best[1] = f.written[1]; found = 1;
-                    ini[0] = 0; append(ini, sizeof(ini), dir); append(ini, sizeof(ini), f.name);
-                }
-            } while (FindNextFileA(h, &f));
-            FindClose(h);
-        }
-    }
+    newestSettings(ini, sizeof(ini), settingsWhen);
     cfg.log = GetPrivateProfileIntA("Options", "Log", 1, ini);
     cfg.requireFocus = GetPrivateProfileIntA("Options", "RequireFocus", 1, ini);
     cfg.alwaysConnected = GetPrivateProfileIntA("Options", "AlwaysConnected", 1, ini);
@@ -427,6 +431,15 @@ static void readButtonList(const char *section, const char *name, const char *fa
 
 // Every key the mod owns; these are hidden from the game while it is active.
 static BYTE owned[256];
+// Before loading another layout: the lists the settings add to start empty again.
+static void clearSettings(void) {
+    memset(menuVk, 0, sizeof(menuVk)); memset(passVk, 0, sizeof(passVk)); memset(disabledVk, 0, sizeof(disabledVk));
+    memset(instantVk, 0, sizeof(instantVk)); memset(backVk, 0, sizeof(backVk)); memset(bowVk, 0, sizeof(bowVk));
+    memset(typeVk, 0, sizeof(typeVk)); memset(remapTo, 0, sizeof(remapTo)); memset(mouseAfter, 0, sizeof(mouseAfter));
+    memset(remapList, 0, sizeof(remapList)); remapCount = 0;
+    menuText[0] = remapText[0] = typeText[0] = 0;
+    memset(owned, 0, sizeof(owned));
+}
 static void markOwned(const Binding *b) { for (int i = 0; i < MAXKEYS; i++) if (b->vk[i]) owned[b->vk[i]] = 1; }
 static void buildOwned(void) {
     markOwned(&moveUp); markOwned(&moveDown); markOwned(&moveLeft); markOwned(&moveRight); markOwned(&dodgeMouse);

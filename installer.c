@@ -62,6 +62,7 @@ IMP void *GetProcAddress(HANDLE, const char *);
 typedef struct { WORD year, month, weekday, day, hour, minute, second, ms; } SYSTEMTIME;
 IMP void GetLocalTime(SYSTEMTIME *);
 IMP DWORD GetEnvironmentVariableA(const char *, char *, DWORD);
+IMP HANDLE LoadLibraryA(const char *);
 IMP HANDLE CreateToolhelp32Snapshot(DWORD, DWORD);
 typedef struct { DWORD size, usage, pid; U64 heap; DWORD module, threads, parent; LONG priority; DWORD flags; char exe[260]; } PROCESSENTRY;
 IMP BOOL Process32First(HANDLE, PROCESSENTRY *);
@@ -102,6 +103,8 @@ IMP int DrawTextW(HANDLE, const WCHAR *, int, void *, UINT);
 IMP BOOL InvalidateRect(HANDLE, const void *, BOOL);
 IMP BOOL EnableWindow(HANDLE, BOOL);
 IMP BOOL ShowWindow(HANDLE, int);
+IMP BOOL DestroyWindow(HANDLE);
+IMP BOOL SetForegroundWindow(HANDLE);
 IMP HANDLE LoadCursorA(HANDLE, const char *);
 IMP HANDLE LoadIconA(HANDLE, const char *);
 IMP HANDLE GetDC(HANDLE);
@@ -161,6 +164,10 @@ IMP BOOL BitBlt(HANDLE, int, int, int, int, HANDLE, int, int, DWORD);
 IMP int GetTextFaceA(HANDLE, int, char *);
 // shell32 / comdlg32
 IMP HANDLE ShellExecuteA(HANDLE, const char *, const char *, const char *, const char *, int);
+IMP HANDLE ShellExecuteW(HANDLE, const WCHAR *, const WCHAR *, const WCHAR *, const WCHAR *, int);
+// ole32 (the editor window)
+IMP LONG CoInitializeEx(void *, DWORD);
+IMP void CoTaskMemFree(void *);
 IMP LONG SHGetFolderPathA(HANDLE, int, HANDLE, DWORD, char *);
 typedef struct {
     DWORD size; HANDLE owner, instance; const WCHAR *filter; WCHAR *customFilter; DWORD maxCustomFilter, filterIndex;
@@ -561,6 +568,8 @@ static const char *HOST_D = "\",\n"
     "    game: ";
 static const char *HOST_E = ",\n"
     "    set(k, v) { store[k] = v; const body = JSON.stringify(store).replace(/</g, \"\\\\u003c\"); chain = chain.then(() => send(\"store\", body)).catch(() => {}); },\n"
+    "    async gameControls() { const r = await send(\"controls\", \"\"); const t = await r.text(); return r.ok && t ? t : null; },\n"
+    "    async writeGameControls(data) { const r = await send(\"controls-write\", data); const t = await r.text(); if (!r.ok) throw new Error(t); return t; },\n"
     "    setLang(code) { chain = chain.then(() => send(\"lang?\" + encodeURIComponent(code), \"\")).catch(() => {}); },\n"
     "    async save(name, text) { const r = await send(\"save?name=\" + encodeURIComponent(name), text); const t = await r.text(); if (!r.ok) throw new Error(t); return t; }\n"
     "  };\n"
@@ -638,6 +647,49 @@ static void serveSave(SOCKET s, const char *query, const char *body, DWORD n) {
     char active[PATHLEN]; activeSettings(gameDir, active);
     replyText(s, "200 OK", baseName(active));
 }
+// The game's own keyboard settings (Settings > Controls > Keyboard), which the editor
+// reads to show the game's real keys and can write while the game is closed (the
+// first write keeps the original as .wasdmod-backup). Sent as base64.
+static int controlsPath(char *out) {
+    char base[PATHLEN] = "";
+    if (!GetEnvironmentVariableA("LOCALAPPDATA", base, 400)) return 0;
+    join(out, base, "Dungeons2\\Saved\\SaveGames\\EnhancedInputUserSettings.sav");
+    return exists(out);
+}
+static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static void serveControls(SOCKET s) {
+    char p[PATHLEN]; DWORD n = 0; char *d = controlsPath(p) ? readAll(p, &n) : 0;
+    if (!d) { replyText(s, "200 OK", ""); return; }
+    DWORD m = (n + 2) / 3 * 4; char *o = HeapAlloc(GetProcessHeap(), 0, m + 1);
+    if (o) {
+        for (DWORD i = 0, k = 0; i < n; i += 3) {
+            DWORD v = (BYTE)d[i] << 16 | (i + 1 < n ? (BYTE)d[i + 1] << 8 : 0) | (i + 2 < n ? (BYTE)d[i + 2] : 0);
+            o[k++] = B64[v >> 18 & 63]; o[k++] = B64[v >> 12 & 63];
+            o[k++] = i + 1 < n ? B64[v >> 6 & 63] : '='; o[k++] = i + 2 < n ? B64[v & 63] : '=';
+        }
+        reply(s, "200 OK", "text/plain", o, m); HeapFree(GetProcessHeap(), 0, o);
+    } else replyText(s, "500 Internal Server Error", "Out of memory.");
+    HeapFree(GetProcessHeap(), 0, d);
+}
+static void serveControlsWrite(SOCKET s, const char *body, DWORD n) {
+    char p[PATHLEN], backup[PATHLEN + 20];
+    if (!controlsPath(p)) { replyText(s, "500 Internal Server Error", T("The game's controls file wasn't found. Change any key in the game's settings once, then try again.")); return; }
+    if (gameRunning()) { replyText(s, "500 Internal Server Error", T(errorText[ERR_RUNNING])); return; }
+    BYTE *d = HeapAlloc(GetProcessHeap(), 0, n / 4 * 3 + 3); DWORD k = 0, v = 0; int bits = 0;
+    if (!d) { replyText(s, "500 Internal Server Error", "Out of memory."); return; }
+    for (DWORD i = 0; i < n && body[i] != '='; i++) {
+        const char *c = B64; while (*c && *c != body[i]) c++;
+        if (!*c) continue;
+        v = v << 6 | (DWORD)(c - B64); bits += 6;
+        if (bits >= 8) { bits -= 8; d[k++] = (BYTE)(v >> bits); }
+    }
+    scpy(backup, sizeof(backup), p); cat(backup, sizeof(backup), ".wasdmod-backup");
+    if (k < 8 || d[0] != 'G' || d[1] != 'V' || d[2] != 'A' || d[3] != 'S') replyText(s, "500 Internal Server Error", "Not a settings file.");
+    else if (!exists(backup) && !CopyFileA(p, backup, 1)) replyText(s, "500 Internal Server Error", T("Couldn't write the game's controls file."));
+    else if (!writeAll(p, d, k)) replyText(s, "500 Internal Server Error", T("Couldn't write the game's controls file."));
+    else replyText(s, "200 OK", "ok");
+    HeapFree(GetProcessHeap(), 0, d);
+}
 static DWORD serveOne(void *arg) {
     SOCKET s = (SOCKET)arg;
     DWORD timeout = 15000; setsockopt(s, 0xFFFF /*SOL_SOCKET*/, 0x1006 /*SO_RCVTIMEO*/, (const char *)&timeout, 4);
@@ -674,7 +726,9 @@ static DWORD serveOne(void *arg) {
             int l = langOf(code);
             if (l >= 0) { langIndex = l; if (mainWnd) PostMessageA(mainWnd, WM_LANGUAGE, 0, 0); }
             replyText(s, "200 OK", "");
-        } else if (ours && post && sameTextN(rest, "save?", 5)) {
+        } else if (ours && post && sameTextN(rest, "controls ", 9)) serveControls(s);
+        else if (ours && post && sameTextN(rest, "controls-write ", 15)) serveControlsWrite(s, body, n);
+        else if (ours && post && sameTextN(rest, "save?", 5)) {
             char *q = rest + 5; char *e = q; while (*e && *e != ' ') e++;
             *e = 0; serveSave(s, q, body, n);
         } else replyText(s, "404 Not Found", "Not found.");
@@ -792,12 +846,17 @@ static int writeReport(const char *dir, char *out) {
     return ok ? OK : ERR_WRITE;
 }
 
-static int openEditor(void) {
+// Without WebView2: the editor as an Edge or Chrome app window, else in the browser.
+static void openEditorInBrowser(void) {
     char url[120], exe[PATHLEN], args[220] = "--app=";
-    if (!startServer()) return 0;
     editorUrl(url);
     if (findAppBrowser(exe)) { cat(args, sizeof(args), url); cat(args, sizeof(args), " --window-size=1200,860"); ShellExecuteA(mainWnd, "open", exe, args, 0, 1); }
     else ShellExecuteA(mainWnd, "open", url, 0, 0, 1);
+}
+static int openEditorWindow(void);
+static int openEditor(void) {
+    if (!startServer()) return 0;
+    if (!openEditorWindow()) openEditorInBrowser();
     return 1;
 }
 
@@ -869,12 +928,14 @@ static void loadTheme(void) {
     bgBrush = CreateSolidBrush(C.bg); cardBrush = CreateSolidBrush(C.card);
 }
 // The title bar in the same colours (dark title bar; on Windows 11 the window's own colour).
-static void themeTitleBar(void) {
+static void themeWindow(HANDLE w) {
     BOOL on = dark; COLORREF bar = C.bg;
-    DwmSetWindowAttribute(mainWnd, 20 /*DWMWA_USE_IMMERSIVE_DARK_MODE*/, &on, 4);
-    DwmSetWindowAttribute(mainWnd, 19 /*the same, before Windows 10 20H1*/, &on, 4);
-    DwmSetWindowAttribute(mainWnd, 35 /*DWMWA_CAPTION_COLOR*/, &bar, 4);
+    DwmSetWindowAttribute(w, 20 /*DWMWA_USE_IMMERSIVE_DARK_MODE*/, &on, 4);
+    DwmSetWindowAttribute(w, 19 /*the same, before Windows 10 20H1*/, &on, 4);
+    DwmSetWindowAttribute(w, 35 /*DWMWA_CAPTION_COLOR*/, &bar, 4);
 }
+static HANDLE editorWnd; // the key layout editor window (below)
+static void themeTitleBar(void) { themeWindow(mainWnd); if (editorWnd) themeWindow(editorWnd); }
 
 static void *gfx(HANDLE dc) { void *g = 0; GdipCreateFromHDC(dc, &g); if (g) GdipSetSmoothingMode(g, 4 /*antialias*/); return g; }
 static void roundPath(void *path, REAL x, REAL y, REAL w, REAL h, REAL r) {
@@ -1131,7 +1192,7 @@ static void applyTexts(void) {
     setText(settingsBtn, T("Open settings file"));
     setText(uninstallBtn, T("Uninstall"));
     setText(recordHint, T("Something not working? Record logs, play until it happens, then stop: a report file for GitHub."));
-    setText(footerWnd, T("Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on."));
+    setText(footerWnd, T("Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on."));
     refresh();
 }
 
@@ -1193,7 +1254,7 @@ static void onCommand(int id) {
         int r = useLayout(gameDir, id - ID_DEFAULT);
         if (r != OK) ask(T(errorText[r]), 0x30);
         refresh();
-        if (r == OK) setStatus(T("Key layout changed. Restart the game to use it."));
+        if (r == OK) setStatus(T("Key layout changed. A running game switches to it within a second."));
         return;
     } else if (id == ID_EDITOR) {
         if (openEditor()) { setStatus(T("The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.")); return; }
@@ -1215,7 +1276,7 @@ static void onCommand(int id) {
         char dest[PATHLEN]; join(dest, gameDir, keep ? name : "wasdmod.txt");
         if (!valid) ask(T("That file isn't a key layout (it has no [Buttons] or [Move] section)."), 0x30);
         else if (!writeAll(dest, b, n)) ask(T(errorText[ERR_WRITE]), 0x30);
-        else ask(T("Key layout loaded. Restart the game to use it."), 0x40);
+        else ask(T("Key layout loaded. A running game switches to it within a second."), 0x40);
         if (b) HeapFree(GetProcessHeap(), 0, b);
     } else if (id == ID_SETTINGS) {
         activeSettings(gameDir, p);
@@ -1281,7 +1342,7 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     }
     if (msg == WM_EDITOR_SAVED) {
         refresh();
-        char text[PATHLEN + 400]; fill(text, sizeof(text), T("Saved {file} from the key layout editor. Restart the game to use it."), savedName);
+        char text[PATHLEN + 400]; fill(text, sizeof(text), T("Saved {file} from the key layout editor. A running game switches to it within a second."), savedName);
         setStatus(text);
         return 0;
     }
@@ -1296,6 +1357,207 @@ static HANDLE makeFont(int px, int weight, const char *face, const char *fallbac
     char got[64] = ""; HANDLE dc = GetDC(0), old = SelectObject(dc, f); GetTextFaceA(dc, sizeof(got), got); SelectObject(dc, old); ReleaseDC(0, dc);
     if (fallback && !sameText(got, face)) { DeleteObject(f); f = CreateFontA(-S(px), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 5, 0, fallback); }
     return f;
+}
+
+// ---------------------------------------------------------------- the key layout editor window
+//
+// "Edit key layout..." opens the editor in a window of its own: WebView2, the Edge
+// engine Windows provides for apps, inside a plain window with wasdmod's icon. It
+// shows the same page the local server serves (see servePage). Microsoft's
+// WebView2Loader.dll (BSD license, see the README) travels inside this exe and is
+// written to %LOCALAPPDATA%\wasdmod to start it. Without WebView2 the editor opens
+// as an Edge or Chrome app window instead.
+//
+// WebView2 is COM: each object starts with its method table. The method numbers
+// below are from WebView2.h (SDK 1.0.4258.31); the handlers WebView2 calls back
+// are small static objects.
+typedef long HRESULT;
+typedef struct { DWORD a; WORD b, c; BYTE d[8]; } GUID;
+typedef struct { BYTE A, R, G, B; } WV2COLOR;
+typedef struct { long long value; } EVENTTOKEN;
+typedef struct { LONG x, y; } XY;
+typedef struct { XY reserved, maxSize, maxPosition, minTrack, maxTrack; } MINMAXINFO;
+typedef struct { void **v; } COMOBJ;
+#define METHOD(o, i, T) ((T)(((COMOBJ *)(o))->v[i]))
+typedef HRESULT (*M0)(void *);
+typedef HRESULT (*MP)(void *, void *);
+typedef HRESULT (*MPP)(void *, void *, void *);
+typedef HRESULT (*MI)(void *, int);
+typedef HRESULT (*MRECT)(void *, RECT);
+typedef HRESULT (*MCOLOR)(void *, WV2COLOR);
+typedef HRESULT (*MQI)(void *, const GUID *, void **);
+typedef unsigned long (*MREF)(void *);
+enum { ADDREF = 1, RELEASE = 2,
+       ENV_CreateController = 3,
+       CTL_put_IsVisible = 4, CTL_put_Bounds = 6, CTL_MoveFocus = 12, CTL_NotifyParentWindowPositionChanged = 23, CTL_Close = 24, CTL_get_CoreWebView2 = 25,
+       CTL2_put_DefaultBackgroundColor = 27,
+       WV_get_Settings = 3, WV_Navigate = 5, WV_add_NavigationStarting = 7, WV_add_NewWindowRequested = 44, WV_add_DocumentTitleChanged = 46, WV_get_DocumentTitle = 48,
+       SET_put_IsStatusBarEnabled = 10, SET_put_AreDevToolsEnabled = 12, SET3_put_AreBrowserAcceleratorKeysEnabled = 24,
+       NAV_get_Uri = 3, NAV_put_Cancel = 8, NEW_get_Uri = 3, NEW_put_Handled = 6 };
+static const GUID IID_IUnknown = {0x00000000, 0x0000, 0x0000, {0xC0, 0, 0, 0, 0, 0, 0, 0x46}};
+static const GUID IID_EnvDone = {0x4e8a3389, 0xc9d8, 0x4bd2, {0xb6, 0xb5, 0x12, 0x4f, 0xee, 0x6c, 0xc1, 0x4d}};
+static const GUID IID_ControllerDone = {0x6c4819f3, 0xc9b7, 0x4260, {0x81, 0x27, 0xc9, 0xf5, 0xbd, 0xe7, 0xf6, 0x8c}};
+static const GUID IID_NavStarting = {0x9adbe429, 0xf36d, 0x432b, {0x9d, 0xdc, 0xf8, 0x88, 0x1f, 0xbd, 0x76, 0xe3}};
+static const GUID IID_NewWindow = {0xd4c185fe, 0xc81c, 0x4989, {0x97, 0xaf, 0x2d, 0x3f, 0xa7, 0xab, 0x56, 0x51}};
+static const GUID IID_TitleChanged = {0xf5f2b923, 0x953e, 0x4042, {0x9f, 0x95, 0xf3, 0xa1, 0x18, 0xe1, 0xaf, 0xd4}};
+static const GUID IID_Controller2 = {0xc979903e, 0xd4ca, 0x4228, {0x92, 0xeb, 0x47, 0xee, 0x3f, 0xa9, 0x6e, 0xab}};
+static const GUID IID_Settings3 = {0xfdb5ab74, 0xaf33, 0x4854, {0x84, 0xf0, 0x0a, 0x63, 0x1d, 0xeb, 0x5e, 0xba}};
+
+static void *wvController, *wvView;
+static char editorBase[120]; // the editor's address; anything else opens in the browser
+typedef struct { void **v; const GUID *iid; } HANDLER;
+static int sameGuid(const GUID *a, const GUID *b) { const BYTE *x = (const BYTE *)a, *y = (const BYTE *)b; for (int i = 0; i < 16; i++) if (x[i] != y[i]) return 0; return 1; }
+static HRESULT handlerQuery(HANDLER *h, const GUID *iid, void **out) {
+    if (sameGuid(iid, h->iid) || sameGuid(iid, &IID_IUnknown)) { *out = h; return 0; }
+    *out = 0; return (HRESULT)0x80004002; // E_NOINTERFACE
+}
+static unsigned long handlerRef(HANDLER *h) { (void)h; return 1; } // static objects: nothing to count
+static HRESULT envDone(HANDLER *h, HRESULT err, void *env);
+static HRESULT controllerDone(HANDLER *h, HRESULT err, void *ctl);
+static HRESULT navStarting(HANDLER *h, void *sender, void *args);
+static HRESULT newWindow(HANDLER *h, void *sender, void *args);
+static HRESULT titleChanged(HANDLER *h, void *sender, void *args);
+static void *envVt[] = {(void *)handlerQuery, (void *)handlerRef, (void *)handlerRef, (void *)envDone};
+static void *ctlVt[] = {(void *)handlerQuery, (void *)handlerRef, (void *)handlerRef, (void *)controllerDone};
+static void *navVt[] = {(void *)handlerQuery, (void *)handlerRef, (void *)handlerRef, (void *)navStarting};
+static void *newVt[] = {(void *)handlerQuery, (void *)handlerRef, (void *)handlerRef, (void *)newWindow};
+static void *titleVt[] = {(void *)handlerQuery, (void *)handlerRef, (void *)handlerRef, (void *)titleChanged};
+static HANDLER envH = {envVt, &IID_EnvDone}, ctlH = {ctlVt, &IID_ControllerDone}, navH = {navVt, &IID_NavStarting},
+               newH = {newVt, &IID_NewWindow}, titleH = {titleVt, &IID_TitleChanged};
+
+// WebView2 didn't start (not installed, blocked...): the browser way instead.
+static void editorFailed(void) {
+    HANDLE w = editorWnd;
+    editorWnd = 0;
+    if (w) DestroyWindow(w);
+    openEditorInBrowser();
+}
+static HRESULT envDone(HANDLER *h, HRESULT err, void *env) {
+    (void)h;
+    if (!editorWnd) return 0; // closed in the meantime
+    if (err < 0 || !env || METHOD(env, ENV_CreateController, MPP)(env, editorWnd, &ctlH) < 0) editorFailed();
+    return 0;
+}
+static HRESULT controllerDone(HANDLER *h, HRESULT err, void *ctl) {
+    (void)h;
+    if (!editorWnd) return 0;
+    if (err < 0 || !ctl) { editorFailed(); return 0; }
+    METHOD(ctl, ADDREF, MREF)(ctl); // kept until the window closes
+    wvController = ctl;
+    void *c2 = 0; // the page's background colour until it has drawn (no white flash in dark mode)
+    if (METHOD(ctl, 0, MQI)(ctl, &IID_Controller2, &c2) >= 0 && c2) {
+        WV2COLOR bg = {255, (BYTE)(C.bg & 0xFF), (BYTE)((C.bg >> 8) & 0xFF), (BYTE)((C.bg >> 16) & 0xFF)};
+        METHOD(c2, CTL2_put_DefaultBackgroundColor, MCOLOR)(c2, bg); METHOD(c2, RELEASE, MREF)(c2);
+    }
+    if (METHOD(ctl, CTL_get_CoreWebView2, MP)(ctl, &wvView) < 0 || !wvView) { editorFailed(); return 0; }
+    void *set = 0; // an app, not a browser: no status bar, developer tools, or reload/find/print keys
+    if (METHOD(wvView, WV_get_Settings, MP)(wvView, &set) >= 0 && set) {
+        METHOD(set, SET_put_IsStatusBarEnabled, MI)(set, 0);
+        METHOD(set, SET_put_AreDevToolsEnabled, MI)(set, 0);
+        void *s3 = 0;
+        if (METHOD(set, 0, MQI)(set, &IID_Settings3, &s3) >= 0 && s3) { METHOD(s3, SET3_put_AreBrowserAcceleratorKeysEnabled, MI)(s3, 0); METHOD(s3, RELEASE, MREF)(s3); }
+        METHOD(set, RELEASE, MREF)(set);
+    }
+    EVENTTOKEN token;
+    METHOD(wvView, WV_add_NavigationStarting, MPP)(wvView, &navH, &token);
+    METHOD(wvView, WV_add_NewWindowRequested, MPP)(wvView, &newH, &token);
+    METHOD(wvView, WV_add_DocumentTitleChanged, MPP)(wvView, &titleH, &token);
+    RECT r; GetClientRect(editorWnd, &r);
+    METHOD(ctl, CTL_put_Bounds, MRECT)(ctl, r);
+    METHOD(ctl, CTL_put_IsVisible, MI)(ctl, 1);
+    WCHAR url[120]; if (!MultiByteToWideChar(0, 0, editorBase, -1, url, 120)) url[0] = 0;
+    METHOD(wvView, WV_Navigate, MP)(wvView, url);
+    METHOD(ctl, CTL_MoveFocus, MI)(ctl, 0 /*PROGRAMMATIC*/);
+    return 0;
+}
+// Links (GitHub, reporting a problem) open in the browser; the window stays on the editor.
+static int isEditorUrl(const WCHAR *u) { for (int i = 0; editorBase[i]; i++) if (u[i] != (WCHAR)(BYTE)editorBase[i]) return 0; return 1; }
+static int isWebUrl(const WCHAR *u) {
+    const char *p[] = {"https://", "http://", "mailto:"};
+    for (int k = 0; k < 3; k++) { int i = 0; while (p[k][i] && u[i] == (WCHAR)p[k][i]) i++; if (!p[k][i]) return 1; }
+    return 0;
+}
+static HRESULT navStarting(HANDLER *h, void *sender, void *args) {
+    (void)h; (void)sender;
+    WCHAR *uri = 0;
+    if (METHOD(args, NAV_get_Uri, MP)(args, &uri) >= 0 && uri) {
+        if (!isEditorUrl(uri)) {
+            METHOD(args, NAV_put_Cancel, MI)(args, 1);
+            if (isWebUrl(uri)) ShellExecuteW(editorWnd, L"open", uri, 0, 0, 1);
+        }
+        CoTaskMemFree(uri);
+    }
+    return 0;
+}
+static HRESULT newWindow(HANDLER *h, void *sender, void *args) {
+    (void)h; (void)sender;
+    WCHAR *uri = 0;
+    METHOD(args, NEW_put_Handled, MI)(args, 1);
+    if (METHOD(args, NEW_get_Uri, MP)(args, &uri) >= 0 && uri) { if (isWebUrl(uri)) ShellExecuteW(editorWnd, L"open", uri, 0, 0, 1); CoTaskMemFree(uri); }
+    return 0;
+}
+static HRESULT titleChanged(HANDLER *h, void *sender, void *args) {
+    (void)h; (void)args;
+    WCHAR *title = 0;
+    if (editorWnd && METHOD(sender, WV_get_DocumentTitle, MP)(sender, &title) >= 0 && title) {
+        WCHAR full[300] = L"wasdmod - "; int n = 10;
+        for (int i = 0; title[i] && n < 299; i++) full[n++] = title[i];
+        full[n] = 0;
+        SetWindowTextW(editorWnd, full); CoTaskMemFree(title);
+    }
+    return 0;
+}
+
+static LRESULT editorProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x05 /*WM_SIZE*/ && wvController) {
+        RECT r; GetClientRect(w, &r);
+        METHOD(wvController, CTL_put_Bounds, MRECT)(wvController, r);
+        METHOD(wvController, CTL_put_IsVisible, MI)(wvController, wp != 1 /*SIZE_MINIMIZED*/);
+        return 0;
+    }
+    if (msg == 0x03 /*WM_MOVE*/ && wvController) METHOD(wvController, CTL_NotifyParentWindowPositionChanged, M0)(wvController);
+    if (msg == 0x07 /*WM_SETFOCUS*/ && wvController) { METHOD(wvController, CTL_MoveFocus, MI)(wvController, 0); return 0; }
+    if (msg == 0x24 /*WM_GETMINMAXINFO*/) { MINMAXINFO *m = (MINMAXINFO *)lp; m->minTrack.x = S(760); m->minTrack.y = S(520); return 0; }
+    if (msg == 0x02 /*WM_DESTROY*/) {
+        if (wvView) { METHOD(wvView, RELEASE, MREF)(wvView); wvView = 0; }
+        if (wvController) { METHOD(wvController, CTL_Close, M0)(wvController); METHOD(wvController, RELEASE, MREF)(wvController); wvController = 0; }
+        if (editorWnd == w) editorWnd = 0;
+        return 0;
+    }
+    return DefWindowProcW(w, msg, wp, lp);
+}
+
+static int openEditorWindow(void) {
+    if (editorWnd) { ShowWindow(editorWnd, 9 /*SW_RESTORE*/); SetForegroundWindow(editorWnd); return 1; }
+    if (sizeof(payloadWebView2Loader) < 1024) return 0; // built without the WebView2 SDK
+    char dir[PATHLEN] = "", dll[PATHLEN], data[PATHLEN];
+    if (!GetEnvironmentVariableA("LOCALAPPDATA", dir, 400)) return 0;
+    cat(dir, sizeof(dir), "\\wasdmod"); CreateDirectoryA(dir, 0);
+    join(dll, dir, "WebView2Loader-" WEBVIEW2_SDK ".dll");
+    join(data, dir, "WebView2");
+    if (!sameAs(dll, payloadWebView2Loader, sizeof(payloadWebView2Loader)) && !writeAll(dll, payloadWebView2Loader, sizeof(payloadWebView2Loader))) return 0;
+    HANDLE lib = LoadLibraryA(dll);
+    HRESULT (*create)(const WCHAR *, const WCHAR *, void *, void *) = lib ? GetProcAddress(lib, "CreateCoreWebView2EnvironmentWithOptions") : 0;
+    if (!create) return 0;
+    static int registered;
+    HANDLE inst = GetModuleHandleA(0);
+    if (!registered) {
+        WNDCLASSW wc; memset(&wc, 0, sizeof(wc));
+        wc.proc = editorProc; wc.instance = inst; wc.className = L"WasdmodEditor";
+        wc.icon = LoadIconA(inst, (const char *)1); wc.cursor = LoadCursorA(0, (const char *)32512 /*IDC_ARROW*/);
+        wc.background = bgBrush; // the page's colour until it draws
+        registered = RegisterClassW(&wc) != 0;
+    }
+    RECT r = {0, 0, S(1200), S(860)}; AdjustWindowRect(&r, 0x00CF0000 /*WS_OVERLAPPEDWINDOW*/, 0);
+    editorWnd = CreateWindowExW(0, L"WasdmodEditor", W("wasdmod"), 0x00CF0000, (int)0x80000000 /*CW_USEDEFAULT*/, (int)0x80000000,
+                                r.right - r.left, r.bottom - r.top, 0, 0, inst, 0);
+    if (!editorWnd) return 0;
+    themeWindow(editorWnd);
+    ShowWindow(editorWnd, 1);
+    editorUrl(editorBase);
+    WCHAR wdata[PATHLEN]; if (!MultiByteToWideChar(0 /*CP_ACP*/, 0, data, -1, wdata, PATHLEN)) wdata[0] = 0;
+    if (create(0, wdata[0] ? wdata : 0, 0, &envH) < 0) { HANDLE w = editorWnd; editorWnd = 0; DestroyWindow(w); return 0; }
+    return 1;
 }
 
 static HANDLE createMain(void) {
@@ -1388,6 +1650,7 @@ void start(void) {
     }
     findGame(gameDir);
     pickLanguage();
+    CoInitializeEx(0, 2 /*COINIT_APARTMENTTHREADED*/); // WebView2 (the editor window) needs it
     HANDLE w = createMain();
     MSG m;
     while (GetMessageW(&m, 0, 0, 0) > 0) if (!IsDialogMessageW(w, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }

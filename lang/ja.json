@@ -79,7 +79,6 @@
   "Open settings file": "設定ファイルを開く",
   "Uninstall": "アンインストール",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "うまく動かない？「ログを記録」を押して、問題が起きるまで遊んでから止めると、GitHub に送れるレポートファイルができます。",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "変更したらゲームを再起動してください。ゲーム中：Tab でメニューホイール、F9 でキー操作一覧、` キー（バッククォート）で MOD のオン/オフ。",
   "All files": "すべてのファイル",
   "Find Minecraft Dungeons II": "Minecraft Dungeons II を探す",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II（Dungeons*.exe）",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "デスクトップに {file} を保存しました。MOD のログ、キー配置、Windows のバージョンが入っています。入力した文字は記録されていません。\n\nGitHub を開いて問題を報告しますか？（ファイルを添付してください）",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "保存したキー配置（author.txt、wasdmod*.txt）も削除しますか？",
   "Uninstalled. The game is back to how it was.": "アンインストールしました。ゲームは元の状態に戻りました。",
-  "Key layout changed. Restart the game to use it.": "キー配置を変更しました。ゲームを再起動すると反映されます。",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "キー配置エディターを別ウィンドウで開きました。このウィンドウを開いている間は、エディターの「ゲームに反映」でゲームフォルダーに直接書き込まれます。",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "キー配置エディターをブラウザーで開きました。そこで配置を選ぶか作成して「ファイルをダウンロード」を押し、ここで「キー配置ファイルを読み込む」を押してください。",
   "Load a key layout": "キー配置を読み込む",
   "Key layout (*.ini;*.txt)": "キー配置（*.ini;*.txt）",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "キー配置のファイルではありません（[Buttons] か [Move] のセクションがありません）。",
-  "Key layout loaded. Restart the game to use it.": "キー配置を読み込みました。ゲームを再起動すると反映されます。",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "キー配置エディターから {file} を保存しました。ゲームを再起動すると反映されます。",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II が起動中です。ゲームを閉じてからやり直してください。",
   "The game folder already has a different xinput1_4.dll (another mod?).": "ゲームフォルダーにはすでに別の xinput1_4.dll があります（ほかの MOD？）。",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "ゲームフォルダーに書き込めませんでした。このセットアップを管理者として実行してみてください。"
+  "Couldn't write to the game folder. Try running this installer as administrator.": "ゲームフォルダーに書き込めませんでした。このセットアップを管理者として実行してみてください。",
+  "Key layout changed. A running game switches to it within a second.": "キー配置を変更しました。起動中のゲームにも1秒ほどで反映されます。",
+  "Key layout loaded. A running game switches to it within a second.": "キー配置を読み込みました。起動中のゲームにも1秒ほどで反映されます。",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "キー配置エディターから {file} を保存しました。起動中のゲームにも1秒ほどで反映されます。",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "キー配置の変更は起動中のゲームにも1秒ほどで反映されます。インストール後はゲームを再起動してください。ゲーム中：Tab でメニューホイール、F9 でキー操作一覧、` キー（バッククォート）で MOD のオン/オフ。",
+  "Couldn't write the game's controls file.": "ゲームの操作設定ファイルを書き込めませんでした。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "ゲームの操作設定ファイルが見つかりません。ゲームの設定で一度どれかのキーを変更してから、もう一度お試しください。"
  },
  "mac": {
   "Install": "インストール",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "現在のバージョンは {version} です。新しいバージョンをダウンロードして開き、wasdmod を「アプリケーション」にドラッグして置き換えてください。キー配置はそのまま残ります。",
   "Download": "ダウンロード",
   "Later": "後で",
-  "Show in Finder": "Finder で表示"
+  "Show in Finder": "Finder で表示",
+  "Couldn't write the game's controls file.": "ゲームの操作設定ファイルを書き込めませんでした。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "ゲームの操作設定ファイルが見つかりません。ゲームの設定で一度どれかのキーを変更してから、もう一度お試しください。"
  },
  "editor": {
   "Move up": "上へ移動",
@@ -307,7 +311,6 @@
   "Folder path copied.": "フォルダーのパスをコピーしました。",
   "Saving…": "保存中…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "{file} としてゲームに保存しました。ただし、ゲームはより新しい {used} を使っています。",
-  "Saved to the game as {file}. Restart the game to use it.": "{file} としてゲームに保存しました。ゲームを再起動すると反映されます。",
   "Not saved: {error}": "保存できませんでした：{error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "{file} を保存しました。wasdmod-Windows.exe の「キー配置ファイルを読み込む」で読み込むか、ゲームの Win64 フォルダーに移してから、ゲームを再起動してください。Mac の wasdmod アプリにはこのエディターが内蔵されています。",
   "Not saved.": "保存しませんでした。",
@@ -473,6 +476,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "メニューと「プレイヤーにテレポート」で、ゲームのキーボードショートカットの代わりにコントローラーを使えるようにします。オフ：インベントリのみ",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "キーはゲーム本来のキーボードショートカットを送り、マウスモードに切り替わります。インベントリはコントローラーも使えます。その場合、タップで開き、長押しでミニインベントリを表示するので、移動を続けられます。",
   "{name} (installed)": "{name}（インストール済み）",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "色の線があるキーには機能があり、色で種類がわかります。斜線のキーはプレイ中ブロックされるので、ゲームがキーボードモードに切り替わりません。キーにカーソルを合わせると、何をするキーかわかります。"
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "色の線があるキーには機能があり、色で種類がわかります。斜線のキーはプレイ中ブロックされるので、ゲームがキーボードモードに切り替わりません。キーにカーソルを合わせると、何をするキーかわかります。",
+  "Saved to the game as {file}. A running game switches to it within a second.": "{file} としてゲームに保存しました。起動中のゲームにも1秒ほどで反映されます。",
+  "Apply to the game's controls": "ゲームの操作設定に反映",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "ゲームのキーボード設定にこれらのキーを代わりに設定します。ゲームは閉じておく必要があります。元の設定はバックアップされます。",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "完了：ゲームの操作設定が一致しました。次にゲームを起動したときに反映されます。",
+  "Couldn't change the game's controls: {error}": "ゲームの操作設定を変更できませんでした：{error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "このバージョンが知らない形式のファイルなので、変更していません。",
+  "The game's controls changed, so the layout in the game was updated to match.": "ゲームの操作設定が変わったため、ゲーム内のキー配置もそれに合わせて更新しました。"
  }
 }

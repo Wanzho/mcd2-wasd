@@ -79,7 +79,6 @@
   "Open settings file": "開啟設定檔",
   "Uninstall": "解除安裝",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "遇到問題？按「錄製記錄檔」，玩到問題出現後停止，就會產生一份可以回報到 GitHub 的報告。",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "每次修改後都要重新啟動遊戲。遊戲中：Tab 打開輪盤選單，F9 顯示按鍵說明，反引號鍵（`）開關模組。",
   "All files": "所有檔案",
   "Find Minecraft Dungeons II": "尋找 Minecraft Dungeons II",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II（Dungeons*.exe）",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "已在桌面儲存 {file}，裡面有模組記錄檔、你的鍵位和 Windows 版本，不包含你打的字。\n\n要開啟 GitHub 回報問題嗎？（記得附上這個檔案）",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "要一起刪除已儲存的鍵位配置（author.txt、wasdmod*.txt）嗎？",
   "Uninstalled. The game is back to how it was.": "已解除安裝，遊戲已恢復原狀。",
-  "Key layout changed. Restart the game to use it.": "鍵位配置已切換，重新啟動遊戲後生效。",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "鍵位編輯器已在新視窗開啟。只要這個視窗不關，按編輯器裡的「套用到遊戲」就會直接寫進遊戲資料夾。",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "鍵位編輯器已在瀏覽器開啟。在那裡選好或新增配置後按「下載檔案」，再回到這裡按「載入鍵位檔案」。",
   "Load a key layout": "載入鍵位檔案",
   "Key layout (*.ini;*.txt)": "鍵位檔案（*.ini;*.txt）",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "這不是鍵位檔案（裡面沒有 [Buttons] 或 [Move] 區段）。",
-  "Key layout loaded. Restart the game to use it.": "鍵位已載入，重新啟動遊戲後生效。",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "已從鍵位編輯器儲存 {file}，重新啟動遊戲後生效。",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II 正在執行，請先關閉遊戲再試一次。",
   "The game folder already has a different xinput1_4.dll (another mod?).": "遊戲資料夾裡已經有別的 xinput1_4.dll（可能是其他模組）。",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "無法寫入遊戲資料夾，請試著用系統管理員身分執行這個安裝程式。"
+  "Couldn't write to the game folder. Try running this installer as administrator.": "無法寫入遊戲資料夾，請試著用系統管理員身分執行這個安裝程式。",
+  "Key layout changed. A running game switches to it within a second.": "鍵位配置已切換，執行中的遊戲會在一秒內生效。",
+  "Key layout loaded. A running game switches to it within a second.": "鍵位已載入，執行中的遊戲會在一秒內生效。",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "已從鍵位編輯器儲存 {file}，執行中的遊戲會在一秒內生效。",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "鍵位修改會在一秒內套用到執行中的遊戲；安裝後需要重新啟動遊戲。遊戲中：Tab 打開輪盤選單，F9 顯示按鍵說明，反引號鍵（`）開關模組。",
+  "Couldn't write the game's controls file.": "無法寫入遊戲的按鍵設定檔。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "找不到遊戲的按鍵設定檔。先在遊戲設定裡隨便改一次按鍵，再試一次。"
  },
  "mac": {
   "Install": "安裝",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "你目前的版本是 {version}。下載新版本，開啟後把 wasdmod 拖到「應用程式」中取代目前版本；鍵位配置會保留。",
   "Download": "下載",
   "Later": "稍後再說",
-  "Show in Finder": "在 Finder 中顯示"
+  "Show in Finder": "在 Finder 中顯示",
+  "Couldn't write the game's controls file.": "無法寫入遊戲的按鍵設定檔。",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "找不到遊戲的按鍵設定檔。先在遊戲設定裡隨便改一次按鍵，再試一次。"
  },
  "editor": {
   "Move up": "往上移動",
@@ -307,7 +311,6 @@
   "Folder path copied.": "已複製資料夾路徑。",
   "Saving…": "儲存中…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "已儲存到遊戲（{file}），但遊戲用的還是比較新的 {used}。",
-  "Saved to the game as {file}. Restart the game to use it.": "已儲存到遊戲（{file}），重新啟動遊戲後生效。",
   "Not saved: {error}": "儲存失敗：{error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "已儲存 {file}。用 wasdmod-Windows.exe 的「載入鍵位檔案」載入，或直接放進遊戲的 Win64 資料夾，再重新啟動遊戲。Mac 版 wasdmod App 內建這個編輯器。",
   "Not saved.": "未儲存。",
@@ -473,6 +476,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "選單和「傳送到玩家身邊」可分別改用控制器，而不是遊戲的鍵盤快捷鍵；關閉時：僅背包可以",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "按鍵會送出遊戲本身的鍵盤快捷鍵，並切換到滑鼠模式。背包可以改用控制器：短按開啟完整背包，長按顯示迷你背包，同時還能繼續移動。",
   "{name} (installed)": "{name}（已安裝）",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "有彩色線條的鍵有功能，顏色表示類別。有斜紋的鍵在遊戲時會被封鎖，避免遊戲切到鍵盤模式。滑鼠停在鍵上可以查看它的作用。"
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "有彩色線條的鍵有功能，顏色表示類別。有斜紋的鍵在遊戲時會被封鎖，避免遊戲切到鍵盤模式。滑鼠停在鍵上可以查看它的作用。",
+  "Saved to the game as {file}. A running game switches to it within a second.": "已儲存到遊戲（{file}），執行中的遊戲會在一秒內生效。",
+  "Apply to the game's controls": "套用到遊戲的按鍵設定",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "替你把這些按鍵寫入遊戲自己的鍵盤設定。遊戲需要先關閉；原來的設定會備份。",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "完成：遊戲的按鍵設定已一致，下次啟動遊戲時生效。",
+  "Couldn't change the game's controls: {error}": "無法修改遊戲的按鍵設定：{error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "檔案格式是這個版本不認得的，所以沒有改動。",
+  "The game's controls changed, so the layout in the game was updated to match.": "遊戲的按鍵設定變了，遊戲中的鍵位配置已隨之更新。"
  }
 }

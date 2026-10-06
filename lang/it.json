@@ -79,7 +79,6 @@
   "Open settings file": "Apri file impostazioni",
   "Uninstall": "Disinstalla",
   "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.": "Qualcosa non va? Registra i log, gioca finché succede, poi ferma: avrai un file di segnalazione per GitHub.",
-  "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Riavvia il gioco dopo ogni modifica. In gioco: Tab apre la ruota dei menu, F9 mostra l'elenco dei tasti, il tasto accento grave (`) attiva e disattiva la mod.",
   "All files": "Tutti i file",
   "Find Minecraft Dungeons II": "Trova Minecraft Dungeons II",
   "Minecraft Dungeons II (Dungeons*.exe)": "Minecraft Dungeons II (Dungeons*.exe)",
@@ -94,17 +93,20 @@
   "Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?": "{file} salvato sulla Scrivania. Contiene il log della mod, la tua configurazione dei tasti e la tua versione di Windows; niente di quello che scrivi viene registrato.\n\nAprire GitHub per segnalare il problema (allega il file)?",
   "Also delete your saved key layouts (author.txt, wasdmod*.txt)?": "Eliminare anche le configurazioni salvate (author.txt, wasdmod*.txt)?",
   "Uninstalled. The game is back to how it was.": "Disinstallata. Il gioco è tornato com'era.",
-  "Key layout changed. Restart the game to use it.": "Configurazione cambiata. Riavvia il gioco per usarla.",
   "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.": "L'editor della configurazione si è aperto in una sua finestra. Il suo pulsante Salva nel gioco scrive direttamente nella cartella del gioco finché questa finestra resta aperta.",
   "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.": "L'editor della configurazione si è aperto nel browser. Scegli o crea lì una configurazione e clicca «Scarica il file»; poi clicca qui «Carica file configurazione».",
   "Load a key layout": "Carica una configurazione dei tasti",
   "Key layout (*.ini;*.txt)": "Configurazione tasti (*.ini;*.txt)",
   "That file isn't a key layout (it has no [Buttons] or [Move] section).": "Quel file non è una configurazione dei tasti (non ha una sezione [Buttons] o [Move]).",
-  "Key layout loaded. Restart the game to use it.": "Configurazione caricata. Riavvia il gioco per usarla.",
-  "Saved {file} from the key layout editor. Restart the game to use it.": "{file} salvato dall'editor della configurazione. Riavvia il gioco per usarla.",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II è in esecuzione. Chiudilo e riprova.",
   "The game folder already has a different xinput1_4.dll (another mod?).": "La cartella del gioco ha già un altro xinput1_4.dll (un'altra mod?).",
-  "Couldn't write to the game folder. Try running this installer as administrator.": "Impossibile scrivere nella cartella del gioco. Prova ad avviare questa installazione come amministratore."
+  "Couldn't write to the game folder. Try running this installer as administrator.": "Impossibile scrivere nella cartella del gioco. Prova ad avviare questa installazione come amministratore.",
+  "Key layout changed. A running game switches to it within a second.": "Configurazione cambiata. Il gioco aperto la applica entro un secondo.",
+  "Key layout loaded. A running game switches to it within a second.": "Configurazione caricata. Il gioco aperto la applica entro un secondo.",
+  "Saved {file} from the key layout editor. A running game switches to it within a second.": "{file} salvato dall'editor della configurazione. Il gioco aperto la applica entro un secondo.",
+  "Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.": "Le modifiche alla configurazione arrivano al gioco aperto entro un secondo; dopo l'installazione riavvia il gioco. In gioco: Tab apre la ruota dei menu, F9 mostra l'elenco dei tasti, il tasto accento grave (`) attiva e disattiva la mod.",
+  "Couldn't write the game's controls file.": "Impossibile scrivere il file dei comandi del gioco.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "File dei comandi del gioco non trovato. Cambia una volta un tasto qualsiasi nelle impostazioni del gioco, poi riprova."
  },
  "mac": {
   "Install": "Installa",
@@ -203,7 +205,9 @@
   "You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.": "Hai la {version}. Scarica la nuova, aprila e trascina wasdmod in Applicazioni per sostituire questa; le tue configurazioni restano.",
   "Download": "Scarica",
   "Later": "Più tardi",
-  "Show in Finder": "Mostra nel Finder"
+  "Show in Finder": "Mostra nel Finder",
+  "Couldn't write the game's controls file.": "Impossibile scrivere il file dei comandi del gioco.",
+  "The game's controls file wasn't found. Change any key in the game's settings once, then try again.": "File dei comandi del gioco non trovato. Cambia una volta un tasto qualsiasi nelle impostazioni del gioco, poi riprova."
  },
  "editor": {
   "Move up": "Muoviti in su",
@@ -307,7 +311,6 @@
   "Folder path copied.": "Percorso della cartella copiato.",
   "Saving…": "Salvataggio…",
   "Saved to the game as {file}. The game still uses {used} (it's newer).": "Salvato nel gioco come {file}. Il gioco usa ancora {used} (è più recente).",
-  "Saved to the game as {file}. Restart the game to use it.": "Salvato nel gioco come {file}. Riavvia il gioco per usarlo.",
   "Not saved: {error}": "Non salvato: {error}",
   "Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.": "{file} salvato. Caricalo con wasdmod-Windows.exe (Carica file configurazione) o spostalo nella cartella Win64 del gioco, poi riavvia il gioco. Su Mac, l'app wasdmod ha questo editor integrato.",
   "Not saved.": "Non salvato.",
@@ -479,6 +482,13 @@
   "menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can": "i menu e Teletrasporto al giocatore possono usare ciascuno il controller invece della scorciatoia da tastiera del gioco; disattivato: solo l'inventario",
   "Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving.": "I tuoi tasti inviano la scorciatoia da tastiera del gioco e passano alla modalità mouse. L'inventario può usare invece il controller: si apre con un tocco e, tenendo premuto, mostra il mini inventario, così puoi continuare a muoverti.",
   "{name} (installed)": "{name} (installata)",
-  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "I tasti con una linea colorata fanno qualcosa; il colore dice cosa. I tasti tratteggiati sono bloccati mentre giochi, così il gioco non passa alla modalità tastiera. Passa sopra un tasto per vedere cosa fa."
+  "Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does.": "I tasti con una linea colorata fanno qualcosa; il colore dice cosa. I tasti tratteggiati sono bloccati mentre giochi, così il gioco non passa alla modalità tastiera. Passa sopra un tasto per vedere cosa fa.",
+  "Saved to the game as {file}. A running game switches to it within a second.": "Salvato nel gioco come {file}. Il gioco aperto lo applica entro un secondo.",
+  "Apply to the game's controls": "Applica ai comandi del gioco",
+  "Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.": "Imposta questi tasti per te nelle impostazioni della tastiera del gioco. Il gioco deve essere chiuso; le vecchie impostazioni vengono salvate.",
+  "Done: the game's controls now match. The game uses them the next time it starts.": "Fatto: i comandi del gioco ora corrispondono. Il gioco li userà al prossimo avvio.",
+  "Couldn't change the game's controls: {error}": "Impossibile cambiare i comandi del gioco: {error}",
+  "the file is in a format this version doesn't know, so it was left alone.": "il file è in un formato che questa versione non conosce, quindi non è stato toccato.",
+  "The game's controls changed, so the layout in the game was updated to match.": "I comandi del gioco sono cambiati, quindi la configurazione nel gioco è stata aggiornata."
  }
 }
