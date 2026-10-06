@@ -30,6 +30,7 @@ typedef long long LRESULT;
 typedef unsigned long long WPARAM;
 typedef long long LPARAM;
 typedef unsigned long long U64;
+typedef long long LONG_PTR;
 #define IMP __declspec(dllimport)
 
 // kernel32
@@ -107,12 +108,57 @@ IMP HANDLE GetDC(HANDLE);
 IMP int ReleaseDC(HANDLE, HANDLE);
 IMP BOOL AdjustWindowRect(RECT *, DWORD, BOOL);
 IMP BOOL SetProcessDPIAware(void);
+IMP BOOL GetClientRect(HANDLE, RECT *);
+typedef struct { HANDLE dc; BOOL erase; RECT rc; BOOL restore, incUpdate; BYTE reserved[32]; } PAINTSTRUCT;
+IMP HANDLE BeginPaint(HANDLE, PAINTSTRUCT *);
+IMP BOOL EndPaint(HANDLE, const PAINTSTRUCT *);
+IMP int FillRect(HANDLE, const RECT *, HANDLE);
+IMP LONG_PTR SetWindowLongPtrW(HANDLE, int, LONG_PTR);
+IMP LRESULT CallWindowProcW(WNDPROC, HANDLE, UINT, WPARAM, LPARAM);
+typedef struct { DWORD size, flags; HANDLE wnd; DWORD hoverTime; } TRACKMOUSEEVENT;
+IMP BOOL TrackMouseEvent(TRACKMOUSEEVENT *);
+IMP BOOL IsWindowEnabled(HANDLE);
+IMP HANDLE LoadImageW(HANDLE, const WCHAR *, UINT, int, int, UINT);
+IMP BOOL DrawIconEx(HANDLE, int, int, HANDLE, int, int, UINT, HANDLE, UINT);
+IMP BOOL RedrawWindow(HANDLE, const RECT *, HANDLE, UINT);
+// dwmapi
+IMP LONG DwmSetWindowAttribute(HANDLE, DWORD, const void *, DWORD);
+// gdiplus (flat API): antialiased round shapes
+typedef float REAL;
+typedef struct { UINT version; void *callback; BOOL noThread, noCodecs; } GDIPINPUT;
+IMP int GdiplusStartup(U64 *, const GDIPINPUT *, void *);
+IMP int GdipCreateFromHDC(HANDLE, void **);
+IMP int GdipDeleteGraphics(void *);
+IMP int GdipSetSmoothingMode(void *, int);
+IMP int GdipCreateSolidFill(DWORD, void **);
+IMP int GdipDeleteBrush(void *);
+IMP int GdipCreatePen1(DWORD, REAL, int, void **);
+IMP int GdipDeletePen(void *);
+IMP int GdipSetPenStartCap(void *, int);
+IMP int GdipSetPenEndCap(void *, int);
+IMP int GdipCreatePath(int, void **);
+IMP int GdipDeletePath(void *);
+IMP int GdipAddPathArc(void *, REAL, REAL, REAL, REAL, REAL, REAL);
+IMP int GdipClosePathFigure(void *);
+IMP int GdipFillPath(void *, void *, void *);
+IMP int GdipDrawPath(void *, void *, void *);
+IMP int GdipFillEllipse(void *, void *, REAL, REAL, REAL, REAL);
+IMP int GdipDrawLine(void *, void *, REAL, REAL, REAL, REAL);
+IMP int GdipDrawArc(void *, void *, REAL, REAL, REAL, REAL, REAL, REAL);
 // gdi32
 IMP HANDLE CreateFontA(int, int, int, int, int, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, const char *);
 IMP int GetDeviceCaps(HANDLE, int);
 IMP HANDLE SelectObject(HANDLE, HANDLE);
 IMP int SetBkMode(HANDLE, int);
 IMP HANDLE GetSysColorBrush(int);
+IMP DWORD SetTextColor(HANDLE, DWORD);
+IMP HANDLE CreateSolidBrush(DWORD);
+IMP BOOL DeleteObject(HANDLE);
+IMP HANDLE CreateCompatibleDC(HANDLE);
+IMP HANDLE CreateCompatibleBitmap(HANDLE, int, int);
+IMP BOOL DeleteDC(HANDLE);
+IMP BOOL BitBlt(HANDLE, int, int, int, int, HANDLE, int, int, DWORD);
+IMP int GetTextFaceA(HANDLE, int, char *);
 // shell32 / comdlg32
 IMP HANDLE ShellExecuteA(HANDLE, const char *, const char *, const char *, const char *, int);
 IMP LONG SHGetFolderPathA(HANDLE, int, HANDLE, DWORD, char *);
@@ -458,7 +504,7 @@ static int useLayout(const char *dir, int which) {
 enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF, ID_RECORD };
 static HANDLE onOffBtn, recordBtn;
 static HANDLE mainWnd, fontNormal, fontTitle, fontSmall, statusWnd, pathWnd, installBtn, uninstallBtn, editorBtn, loadBtn, settingsBtn, layoutBtn[3];
-static HANDLE titleWnd, introWnd, folderLabel, browseBtn, layoutLabel, recordHint, footerWnd;
+static HANDLE titleWnd, introWnd, folderLabel, browseBtn, layoutLabel, recordHint, footerWnd, fontStrong;
 static char gameDir[PATHLEN];
 static int dpi = 96;
 static int S(int v) { return v * dpi / 96; }
@@ -511,23 +557,43 @@ static const char *HOST_C = "/\";\n"
     "    store,\n"
     "    lang: \"";
 static const char *HOST_D = "\",\n"
+    "    app: \"win\",\n"
+    "    game: ";
+static const char *HOST_E = ",\n"
     "    set(k, v) { store[k] = v; const body = JSON.stringify(store).replace(/</g, \"\\\\u003c\"); chain = chain.then(() => send(\"store\", body)).catch(() => {}); },\n"
     "    setLang(code) { chain = chain.then(() => send(\"lang?\" + encodeURIComponent(code), \"\")).catch(() => {}); },\n"
     "    async save(name, text) { const r = await send(\"save?name=\" + encodeURIComponent(name), text); const t = await r.text(); if (!r.ok) throw new Error(t); return t; }\n"
     "  };\n"
     "})();\n"
     "</script>\n";
+// Text as a JSON string; < as \u003c so it can't end the script.
+static char *jsonString(char *o, const char *t, DWORD n) {
+    *o++ = '"';
+    for (DWORD i = 0; i < n; i++) {
+        BYTE c = (BYTE)t[i];
+        if (c == '"' || c == '\\') { *o++ = '\\'; *o++ = (char)c; }
+        else if (c < 0x20 || c == '<') { memcpy(o, "\\u00", 4); o += 4; *o++ = "0123456789abcdef"[c >> 4]; *o++ = "0123456789abcdef"[c & 15]; }
+        else *o++ = (char)c;
+    }
+    *o++ = '"';
+    return o;
+}
 static void servePage(SOCKET s) {
     char path[PATHLEN]; DWORD storeN = 0; char *saved = 0;
+    // The layout the game uses, so the editor can show it (and add it when it's not there).
+    char active[PATHLEN] = ""; DWORD gameN = 0; char *gameText = 0;
+    if (gameDir[0] && installState(gameDir) != NOT_INSTALLED) { activeSettings(gameDir, active); if (active[0]) gameText = readAll(active, &gameN); }
+    const char *gameName = baseName(active);
     storePath(path); if (path[0]) saved = readAll(path, &storeN);
     if (saved && (storeN == 0 || saved[0] != '{' || contains(saved, storeN, "</"))) { HeapFree(GetProcessHeap(), 0, saved); saved = 0; }
     DWORD off = 0, size = sizeof(payloadEditor);
     for (int lines = 0; off < size && lines < 4; off++) if (payloadEditor[off] == '\n') lines++;
     const char *code = LANG_CODE[langIndex];
     DWORD a = slen(HOST_A), b = slen(HOST_B), c = slen(HOST_C), d = slen(HOST_D), lc = slen(code), st = saved ? storeN : 2;
-    DWORD total = off + a + st + b + 32 + c + lc + d + (size - off);
+    DWORD e = slen(HOST_E), gn = gameText ? 24 + 6 * (slen(gameName) + gameN) : 4;
+    DWORD total = off + a + st + b + 32 + c + lc + d + gn + e + (size - off);
     char *page = HeapAlloc(GetProcessHeap(), 0, total), *o = page;
-    if (!page) { replyText(s, "500 Internal Server Error", "Out of memory."); if (saved) HeapFree(GetProcessHeap(), 0, saved); return; }
+    if (!page) { replyText(s, "500 Internal Server Error", "Out of memory."); if (saved) HeapFree(GetProcessHeap(), 0, saved); if (gameText) HeapFree(GetProcessHeap(), 0, gameText); return; }
     memcpy(o, payloadEditor, off); o += off;
     memcpy(o, HOST_A, a); o += a;
     memcpy(o, saved ? saved : "{}", st); o += st;
@@ -536,10 +602,16 @@ static void servePage(SOCKET s) {
     memcpy(o, HOST_C, c); o += c;
     memcpy(o, code, lc); o += lc;
     memcpy(o, HOST_D, d); o += d;
-    memcpy(o, payloadEditor + off, size - off);
-    reply(s, "200 OK", "text/html; charset=utf-8", page, total);
+    if (gameText) {
+        memcpy(o, "{\"file\":", 8); o += 8; o = jsonString(o, gameName, slen(gameName));
+        memcpy(o, ",\"text\":", 8); o += 8; o = jsonString(o, gameText, gameN); *o++ = '}';
+    } else { memcpy(o, "null", 4); o += 4; }
+    memcpy(o, HOST_E, e); o += e;
+    memcpy(o, payloadEditor + off, size - off); o += size - off;
+    reply(s, "200 OK", "text/html; charset=utf-8", page, (DWORD)(o - page));
     HeapFree(GetProcessHeap(), 0, page);
     if (saved) HeapFree(GetProcessHeap(), 0, saved);
+    if (gameText) HeapFree(GetProcessHeap(), 0, gameText);
 }
 static int hexVal(char c) { return c >= '0' && c <= '9' ? c - '0' : low(c) >= 'a' && low(c) <= 'f' ? low(c) - 'a' + 10 : -1; }
 static void serveSave(SOCKET s, const char *query, const char *body, DWORD n) {
@@ -748,9 +820,195 @@ static void fill(char *out, unsigned cap, const char *text, const char *value) {
     }
 }
 
+// ---------------------------------------------------------------- look
+//
+// Windows 11's own look: light or dark like the system, its accent colour, the
+// window's parts on cards, rounded buttons with a hover. The buttons and radio
+// buttons are drawn here (GDI+ for the round shapes), so Windows 10 looks the same.
+typedef DWORD COLORREF;
+static struct { COLORREF bg, card, cardEdge, divider, text, text2, textOff, btn, btnHover, btnDown, btnEdge, btnBottom, accent, accentText, accentOff, ok, warn; } C;
+static int dark, installAccent, radioOn[3], statusKind; // statusKind: 0 info, 1 ok, 2 warning, 3 off
+static HANDLE bgBrush, cardBrush, appIcon, hovered;
+static WNDPROC buttonProc;
+static RECT cards[4], dividers[6], statusIcon; static int cardCount, dividerCount;
+#define RGB(r, g, b) ((COLORREF)((r) | ((g) << 8) | ((b) << 16)))
+static DWORD argb(COLORREF c) { return 0xFF000000 | ((c & 0xFF) << 16) | (c & 0xFF00) | ((c >> 16) & 0xFF); }
+static COLORREF mix(COLORREF a, COLORREF b, int pctA) { // a over b
+    COLORREF out = 0;
+    for (int sh = 0; sh < 24; sh += 8) out |= ((((a >> sh) & 0xFF) * pctA + ((b >> sh) & 0xFF) * (100 - pctA)) / 100) << sh;
+    return out;
+}
+static int regBytes(const char *key, const char *value, BYTE *out, DWORD cap) {
+    HANDLE k; DWORD n = cap;
+    if (RegOpenKeyExA((HANDLE)(U64)0x80000001 /*HKCU*/, key, 0, 0x20019 /*KEY_READ*/, &k)) return 0;
+    LONG r = RegQueryValueExA(k, value, 0, 0, out, &n); RegCloseKey(k);
+    return r == 0 ? (int)n : 0;
+}
+static void loadTheme(void) {
+    DWORD light = 1; BYTE pal[32];
+    regBytes("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "AppsUseLightTheme", (BYTE *)&light, 4);
+    dark = light == 0;
+    // The accent colour's shades: buttons use a darker one on light, a lighter one on dark.
+    int havePal = regBytes("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Accent", "AccentPalette", pal, 32) == 32;
+    BYTE *a = pal + (dark ? 1 : 4) * 4;
+    if (dark) {
+        C.bg = RGB(32, 32, 32); C.card = RGB(43, 43, 43); C.cardEdge = RGB(29, 29, 29); C.divider = RGB(29, 29, 29);
+        C.text = RGB(255, 255, 255); C.text2 = RGB(200, 200, 200); C.textOff = RGB(120, 120, 120);
+        C.btn = RGB(55, 55, 55); C.btnHover = RGB(61, 61, 61); C.btnDown = RGB(50, 50, 50); C.btnEdge = RGB(64, 64, 64); C.btnBottom = RGB(48, 48, 48);
+        C.accent = havePal ? RGB(a[0], a[1], a[2]) : RGB(0x60, 0xCD, 0xFF); C.accentText = RGB(0, 0, 0); C.accentOff = RGB(67, 67, 67);
+        C.ok = RGB(108, 203, 95); C.warn = RGB(252, 225, 0);
+    } else {
+        C.bg = RGB(243, 243, 243); C.card = RGB(251, 251, 251); C.cardEdge = RGB(229, 229, 229); C.divider = RGB(234, 234, 234);
+        C.text = RGB(27, 27, 27); C.text2 = RGB(96, 96, 96); C.textOff = RGB(160, 160, 160);
+        C.btn = RGB(254, 254, 254); C.btnHover = RGB(249, 249, 249); C.btnDown = RGB(245, 245, 245); C.btnEdge = RGB(229, 229, 229); C.btnBottom = RGB(204, 204, 204);
+        C.accent = havePal ? RGB(a[0], a[1], a[2]) : RGB(0x00, 0x5F, 0xB8); C.accentText = RGB(255, 255, 255); C.accentOff = RGB(191, 191, 191);
+        C.ok = RGB(15, 123, 15); C.warn = RGB(157, 93, 0);
+    }
+    if (bgBrush) DeleteObject(bgBrush);
+    if (cardBrush) DeleteObject(cardBrush);
+    bgBrush = CreateSolidBrush(C.bg); cardBrush = CreateSolidBrush(C.card);
+}
+// The title bar in the same colours (dark title bar; on Windows 11 the window's own colour).
+static void themeTitleBar(void) {
+    BOOL on = dark; COLORREF bar = C.bg;
+    DwmSetWindowAttribute(mainWnd, 20 /*DWMWA_USE_IMMERSIVE_DARK_MODE*/, &on, 4);
+    DwmSetWindowAttribute(mainWnd, 19 /*the same, before Windows 10 20H1*/, &on, 4);
+    DwmSetWindowAttribute(mainWnd, 35 /*DWMWA_CAPTION_COLOR*/, &bar, 4);
+}
+
+static void *gfx(HANDLE dc) { void *g = 0; GdipCreateFromHDC(dc, &g); if (g) GdipSetSmoothingMode(g, 4 /*antialias*/); return g; }
+static void roundPath(void *path, REAL x, REAL y, REAL w, REAL h, REAL r) {
+    REAL d = 2 * r;
+    GdipAddPathArc(path, x, y, d, d, 180, 90); GdipAddPathArc(path, x + w - d, y, d, d, 270, 90);
+    GdipAddPathArc(path, x + w - d, y + h - d, d, d, 0, 90); GdipAddPathArc(path, x, y + h - d, d, d, 90, 90);
+    GdipClosePathFigure(path);
+}
+static void fillRound(void *g, REAL x, REAL y, REAL w, REAL h, REAL r, COLORREF c) {
+    void *path = 0, *b = 0;
+    GdipCreatePath(0, &path); roundPath(path, x, y, w, h, r);
+    GdipCreateSolidFill(argb(c), &b); GdipFillPath(g, b, path);
+    GdipDeleteBrush(b); GdipDeletePath(path);
+}
+static void strokeRound(void *g, REAL x, REAL y, REAL w, REAL h, REAL r, COLORREF c, REAL width) {
+    void *path = 0, *pen = 0;
+    GdipCreatePath(0, &path); roundPath(path, x, y, w, h, r);
+    GdipCreatePen1(argb(c), width, 2 /*pixels*/, &pen); GdipDrawPath(g, pen, path);
+    GdipDeletePen(pen); GdipDeletePath(path);
+}
+static void fillCircle(void *g, REAL x, REAL y, REAL d, COLORREF c) {
+    void *b = 0; GdipCreateSolidFill(argb(c), &b); GdipFillEllipse(g, b, x, y, d, d); GdipDeleteBrush(b);
+}
+static void *roundPen(COLORREF c, REAL width) {
+    void *pen = 0; GdipCreatePen1(argb(c), width, 2, &pen); GdipSetPenStartCap(pen, 2 /*round*/); GdipSetPenEndCap(pen, 2); return pen;
+}
+// The status sign: a coloured circle with a tick, "!", "i" or a line (turned off).
+static void drawStatusIcon(void *g, RECT r) {
+    REAL d = (REAL)(r.right - r.left), x = (REAL)r.left, y = (REAL)r.top, u = d / 20;
+    COLORREF c = statusKind == 1 ? C.ok : statusKind == 2 ? C.warn : statusKind == 3 ? C.textOff : C.accent;
+    fillCircle(g, x, y, d, c);
+    void *pen = roundPen(dark ? RGB(0, 0, 0) : RGB(255, 255, 255), 2 * u);
+    if (statusKind == 1) { GdipDrawLine(g, pen, x + 5.5f * u, y + 10.5f * u, x + 8.5f * u, y + 13.5f * u); GdipDrawLine(g, pen, x + 8.5f * u, y + 13.5f * u, x + 14.5f * u, y + 6.5f * u); }
+    else if (statusKind == 3) GdipDrawLine(g, pen, x + 6 * u, y + 10 * u, x + 14 * u, y + 10 * u);
+    else {
+        int warn = statusKind == 2;
+        GdipDrawLine(g, pen, x + 10 * u, y + (warn ? 5 : 9) * u, x + 10 * u, y + (warn ? 11 : 15) * u);
+        void *b = 0; GdipCreateSolidFill(argb(dark ? RGB(0, 0, 0) : RGB(255, 255, 255)), &b);
+        GdipFillEllipse(g, b, x + 8.6f * u, y + (warn ? 13.2f : 4.6f) * u, 2.8f * u, 2.8f * u); GdipDeleteBrush(b);
+    }
+    GdipDeletePen(pen);
+}
+
+static void paintWindow(HANDLE w) {
+    PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
+    RECT r; GetClientRect(w, &r);
+    HANDLE mem = CreateCompatibleDC(dc), bmp = CreateCompatibleBitmap(dc, r.right, r.bottom), oldBmp = SelectObject(mem, bmp);
+    FillRect(mem, &r, bgBrush);
+    void *g = gfx(mem);
+    for (int i = 0; i < cardCount; i++) {
+        RECT c = cards[i];
+        fillRound(g, (REAL)c.left, (REAL)c.top, (REAL)(c.right - c.left), (REAL)(c.bottom - c.top), (REAL)S(8), C.cardEdge);
+        fillRound(g, c.left + 1.0f, c.top + 1.0f, c.right - c.left - 2.0f, c.bottom - c.top - 2.0f, S(8) - 1.0f, C.card);
+    }
+    if (statusIcon.right) drawStatusIcon(g, statusIcon);
+    GdipDeleteGraphics(g);
+    HANDLE line = CreateSolidBrush(C.divider);
+    for (int i = 0; i < dividerCount; i++) FillRect(mem, &dividers[i], line);
+    DeleteObject(line);
+    if (appIcon) DrawIconEx(mem, S(24), S(22), appIcon, S(32), S(32), 0, 0, 3 /*DI_NORMAL*/);
+    BitBlt(dc, 0, 0, r.right, r.bottom, mem, 0, 0, 0x00CC0020 /*SRCCOPY*/);
+    SelectObject(mem, oldBmp); DeleteObject(bmp); DeleteDC(mem);
+    EndPaint(w, &ps);
+}
+
+// Buttons and radio buttons (owner-drawn), with the hover state Windows doesn't give them.
+typedef struct { UINT type, id, item, action, state; HANDLE wnd, dc; RECT rc; U64 data; } DRAWITEM;
+static int isRadio(HANDLE c) { return c == layoutBtn[0] || c == layoutBtn[1] || c == layoutBtn[2]; }
+static void drawButton(DRAWITEM *d) {
+    RECT r = d->rc; int wdt = r.right - r.left, hgt = r.bottom - r.top;
+    HANDLE mem = CreateCompatibleDC(d->dc), bmp = CreateCompatibleBitmap(d->dc, wdt, hgt), oldBmp = SelectObject(mem, bmp);
+    RECT all = {0, 0, wdt, hgt}; FillRect(mem, &all, cardBrush);
+    int off = (d->state & 4) != 0, down = (d->state & 1) != 0, hover = hovered == d->wnd && !off;
+    int focus = (d->state & 0x10) && !(d->state & 0x200);
+    WCHAR text[256]; int n = GetWindowTextW(d->wnd, text, 256);
+    void *g = gfx(mem);
+    COLORREF ink = off ? C.textOff : C.text;
+    RECT tr = all; UINT how = 0x800 /*DT_NOPREFIX*/ | 0x20 /*DT_SINGLELINE*/ | 0x4 /*DT_VCENTER*/ | 0x8000 /*DT_END_ELLIPSIS*/;
+    if (isRadio(d->wnd)) {
+        int on = radioOn[d->wnd == layoutBtn[0] ? 0 : d->wnd == layoutBtn[1] ? 1 : 2];
+        REAL dd = (REAL)S(20), x = 1, y = (hgt - dd) / 2;
+        if (on) {
+            fillCircle(g, x, y, dd, off ? C.textOff : hover ? mix(C.accent, C.card, 90) : C.accent);
+            REAL dot = (REAL)S(hover ? 10 : down ? 6 : 8);
+            fillCircle(g, x + (dd - dot) / 2, y + (dd - dot) / 2, dot, C.accentText);
+        } else {
+            fillCircle(g, x, y, dd, off ? C.textOff : dark ? RGB(160, 160, 160) : RGB(133, 133, 133));
+            fillCircle(g, x + 1, y + 1, dd - 2, hover ? (dark ? RGB(52, 52, 52) : RGB(238, 238, 238)) : C.card);
+        }
+        if (focus) strokeRound(g, 0.5f, 0.5f, wdt - 1.0f, hgt - 1.0f, (REAL)S(4), C.text, 1.5f);
+        tr.left = S(20) + S(12);
+        ink = off ? C.textOff : C.text;
+    } else {
+        int accent = d->wnd == installBtn && installAccent;
+        REAL rr = (REAL)S(4), W_ = (REAL)wdt, H_ = (REAL)hgt;
+        if (accent) {
+            COLORREF f = off ? C.accentOff : down ? mix(C.accent, C.card, 80) : hover ? mix(C.accent, C.card, 90) : C.accent;
+            fillRound(g, 0, 0, W_, H_, rr, f);
+            ink = off ? (dark ? RGB(167, 167, 167) : RGB(255, 255, 255)) : down ? mix(C.accentText, f, 80) : C.accentText;
+        } else {
+            fillRound(g, 0, 0, W_, H_, rr, down || off ? C.btnEdge : C.btnBottom);
+            fillRound(g, 0, 0, W_, H_ - 1, rr, C.btnEdge);
+            fillRound(g, 1, 1, W_ - 2, H_ - 2, rr - 1, off ? C.btn : down ? C.btnDown : hover ? C.btnHover : C.btn);
+            if (down) ink = C.text2;
+        }
+        if (focus) strokeRound(g, 1, 1, W_ - 2, H_ - 2, rr, C.text, 2);
+        how |= 0x1 /*DT_CENTER*/; tr.left += S(10); tr.right -= S(10);
+    }
+    GdipDeleteGraphics(g);
+    HANDLE oldFont = SelectObject(mem, (HANDLE)SendMessageW(d->wnd, 0x31 /*WM_GETFONT*/, 0, 0));
+    SetBkMode(mem, 1); SetTextColor(mem, ink);
+    DrawTextW(mem, text, n, &tr, how);
+    SelectObject(mem, oldFont);
+    BitBlt(d->dc, r.left, r.top, wdt, hgt, mem, 0, 0, 0x00CC0020);
+    SelectObject(mem, oldBmp); DeleteObject(bmp); DeleteDC(mem);
+}
+static LRESULT hoverProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x200 /*WM_MOUSEMOVE*/ && hovered != w) {
+        HANDLE old = hovered; hovered = w;
+        if (old) InvalidateRect(old, 0, 0);
+        InvalidateRect(w, 0, 0);
+        TRACKMOUSEEVENT t = {sizeof(t), 2 /*TME_LEAVE*/, w, 0}; TrackMouseEvent(&t);
+    }
+    if (msg == 0x2A3 /*WM_MOUSELEAVE*/ && hovered == w) { hovered = 0; InvalidateRect(w, 0, 0); }
+    if (msg == 0x203 /*WM_LBUTTONDBLCLK*/) msg = 0x201; // two quick clicks are two clicks
+    if (msg == 0x14 /*WM_ERASEBKGND*/) return 1;
+    return CallWindowProcW(buttonProc, w, msg, wp, lp);
+}
+
+// ---------------------------------------------------------------- layout
+//
 // Every control is placed for the text it has now (a translation can be longer):
 // buttons as wide as their labels, text wrapped, and the window as big as needed.
-static const DWORD WINDOW_STYLE = 0x00CA0000; // caption, system menu, minimize box
+static const DWORD WINDOW_STYLE = 0x02CA0000; // caption, system menu, minimize box; children drawn over the cards
 static int measure(HANDLE c, int width, int *height) {
     WCHAR text[1024]; int n = GetWindowTextW(c, text, 1024);
     HANDLE dc = GetDC(c), old = SelectObject(dc, (HANDLE)SendMessageW(c, 0x31 /*WM_GETFONT*/, 0, 0));
@@ -760,36 +1018,63 @@ static int measure(HANDLE c, int width, int *height) {
     if (height) *height = r.bottom;
     return r.right;
 }
-static int buttonWidth(HANDLE c, int least) { int w = measure(c, 0, 0) + S(28); return w > S(least) ? w : S(least); }
+static int buttonWidth(HANDLE c, int least) { int w = measure(c, 0, 0) + S(32); return w > S(least) ? w : S(least); }
 static int textHeight(HANDLE c, int width, int least) { int h; measure(c, width, &h); return h > S(least) ? h : S(least); }
 static void place(HANDLE c, int x, int y, int w, int h) { SetWindowPos(c, 0, x, y, w, h, 0x4 /*SWP_NOZORDER*/ | 0x10 /*SWP_NOACTIVATE*/); }
+static int max2(int a, int b) { return a > b ? a : b; }
+static void card(int x, int top, int w, int bottom) { RECT r = {x, top, x + w, bottom}; cards[cardCount++] = r; }
+static void divider(int x, int y, int w) { RECT r = {x, y, x + w, y + 1}; dividers[dividerCount++] = r; }
 static void layout(void) {
     if (!mainWnd || !footerWnd) return;
-    int m = S(20), gap = S(8), y = S(16);
-    int install = buttonWidth(installBtn, 150), remove = buttonWidth(uninstallBtn, 110), onOff = buttonWidth(onOffBtn, 110), browse = buttonWidth(browseBtn, 86);
-    int editor = buttonWidth(editorBtn, 156), load = buttonWidth(loadBtn, 156), settings = buttonWidth(settingsBtn, 152), record = buttonWidth(recordBtn, 156);
-    int inner = S(480);
-    if (install + remove + onOff + 2 * gap > inner) inner = install + remove + onOff + 2 * gap;
-    if (editor + load + settings + 2 * gap > inner) inner = editor + load + settings + 2 * gap;
-    if (record + gap + S(200) > inner) inner = record + gap + S(200);
-    place(titleWnd, m, y, inner, S(30)); y += S(32);
-    int h = textHeight(introWnd, inner, 18); place(introWnd, m, y, inner, h); y += h + S(16);
-    place(folderLabel, m, y, inner, S(20)); y += S(22);
-    place(pathWnd, m, y + 1, inner - browse - gap, S(26)); place(browseBtn, m + inner - browse, y, browse, S(28)); y += S(38);
-    h = textHeight(statusWnd, inner, 42); place(statusWnd, m, y, inner, h); y += h + S(8);
-    place(installBtn, m, y, install, S(34)); place(uninstallBtn, m + install + gap, y, remove, S(34));
-    place(onOffBtn, m + install + remove + 2 * gap, y, onOff, S(34)); y += S(52);
-    place(layoutLabel, m, y, inner, S(20)); y += S(22);
-    for (int i = 0; i < 3; i++) { place(layoutBtn[i], m + S(8), y, inner - S(8), S(22)); y += S(24); }
-    y += S(8);
-    place(editorBtn, m, y, editor, S(30)); place(loadBtn, m + editor + gap, y, load, S(30));
-    place(settingsBtn, m + editor + load + 2 * gap, y, settings, S(30)); y += S(44);
-    h = textHeight(recordHint, inner - record - gap, 30);
-    place(recordBtn, m, y, record, S(30)); place(recordHint, m + record + gap, y - S(2), inner - record - gap, h); y += (h > S(30) ? h : S(30)) + S(14);
-    h = textHeight(footerWnd, inner, 30); place(footerWnd, m, y, inner, h); y += h + S(8);
+    cardCount = dividerCount = 0;
+    int m = S(24), pad = S(16), gap = S(8), bh = S(32);
+    int install = buttonWidth(installBtn, 120), remove = buttonWidth(uninstallBtn, 96), onOff = buttonWidth(onOffBtn, 96), browse = buttonWidth(browseBtn, 96);
+    int editor = buttonWidth(editorBtn, 120), load = buttonWidth(loadBtn, 120), settings = buttonWidth(settingsBtn, 120), record = buttonWidth(recordBtn, 120);
+    int inner = S(560); // the cards' width
+    inner = max2(inner, 2 * pad + editor + load + settings + 2 * gap);
+    inner = max2(inner, 2 * pad + S(22) + S(12) + S(200) + gap + install);
+    int x = m, cx = m + pad, cw = inner - 2 * pad, y = S(20);
+    // header: icon, title, what it is
+    int th = S(30), ih = textHeight(introWnd, inner - S(44), 18);
+    place(titleWnd, m + S(44), y - S(2), inner - S(44), th);
+    place(introWnd, m + S(44), y + th - S(4), inner - S(44), ih);
+    y += max2(S(40), th + ih) + S(18);
+    // card 1: the state and what to do, the game folder, turn off / uninstall
+    int top = y; y += pad;
+    int sx = cx + S(22) + S(12), sw = cw - S(22) - S(12) - gap - install;
+    int sh = textHeight(statusWnd, sw, 20), row = max2(sh, bh);
+    RECT icon = {cx, y + (row - S(22)) / 2, cx + S(22), y + (row - S(22)) / 2 + S(22)}; statusIcon = icon;
+    place(statusWnd, sx, y + (row - sh) / 2, sw, sh);
+    place(installBtn, cx + cw - install, y + (row - bh) / 2, install, bh);
+    y += row + pad; divider(x + 1, y, inner - 2); y += 1 + pad - S(4);
+    int lh = S(20), ph = S(18);
+    place(folderLabel, cx, y, cw - browse - gap, lh);
+    place(pathWnd, cx, y + lh, cw - browse - gap, ph);
+    place(browseBtn, cx + cw - browse, y + (lh + ph - bh) / 2, browse, bh);
+    y += lh + ph + pad - S(4); divider(x + 1, y, inner - 2); y += 1 + pad - S(6);
+    place(onOffBtn, cx, y, onOff, bh); place(uninstallBtn, cx + onOff + gap, y, remove, bh);
+    y += bh + pad - S(6); card(x, top, inner, y);
+    // card 2: the key layout
+    y += S(20);
+    place(layoutLabel, m + S(2), y, inner, S(22)); y += S(28);
+    top = y; y += pad - S(6);
+    for (int i = 0; i < 3; i++) { place(layoutBtn[i], cx, y, cw, S(36)); y += S(36); }
+    y += pad - S(10); divider(x + 1, y, inner - 2); y += 1 + pad;
+    place(editorBtn, cx, y, editor, bh); place(loadBtn, cx + editor + gap, y, load, bh);
+    place(settingsBtn, cx + editor + load + 2 * gap, y, settings, bh);
+    y += bh + pad; card(x, top, inner, y);
+    // card 3: Record logs
+    y += S(12); top = y; y += pad;
+    int hw = cw - record - S(16), hh = textHeight(recordHint, hw, 18); row = max2(hh, bh);
+    place(recordHint, cx, y + (row - hh) / 2, hw, hh);
+    place(recordBtn, cx + cw - record, y + (row - bh) / 2, record, bh);
+    y += row + pad; card(x, top, inner, y);
+    // what to remember
+    y += S(14);
+    int fh = textHeight(footerWnd, inner - S(4), 18); place(footerWnd, m + S(2), y, inner - S(4), fh); y += fh + S(20);
     RECT r = {0, 0, inner + 2 * m, y}; AdjustWindowRect(&r, WINDOW_STYLE, 0);
     SetWindowPos(mainWnd, 0, 0, 0, r.right - r.left, r.bottom - r.top, 0x2 /*SWP_NOMOVE*/ | 0x4 | 0x10);
-    InvalidateRect(mainWnd, 0, 1);
+    RedrawWindow(mainWnd, 0, 0, 0x1 /*RDW_INVALIDATE*/ | 0x4 /*RDW_ERASE*/ | 0x80 /*RDW_ALLCHILDREN*/);
 }
 static void setStatus(const char *text) { setText(statusWnd, text); layout(); }
 
@@ -803,6 +1088,8 @@ static void refresh(void) {
         : state == TURNED_OFF ? T("Turned off: the game starts without wasdmod. Your layouts are kept; click Turn on to use it again.")
         : T("Not installed yet.");
     setText(statusWnd, text);
+    statusKind = !have || state == OTHER_DLL ? 2 : state == INSTALLED_LATEST ? 1 : state == TURNED_OFF ? 3 : 0;
+    installAccent = have && state != INSTALLED_LATEST && state != TURNED_OFF; // blue while it's the thing to do
     setText(installBtn, state == INSTALLED_OLDER ? T("Update") : state == INSTALLED_LATEST || state == TURNED_OFF ? T("Reinstall") : T("Install"));
     EnableWindow(installBtn, have);
     int installed = have && (state == INSTALLED_LATEST || state == INSTALLED_OLDER || state == TURNED_OFF);
@@ -824,14 +1111,11 @@ static void refresh(void) {
     else scpy(ownName, sizeof(ownName), T("Your own (none saved yet)"));
     setText(layoutBtn[2], ownName);
     for (int i = 0; i < 3; i++) {
-        SendMessageW(layoutBtn[i], 0xF1 /*BM_SETCHECK*/, i == current, 0);
+        radioOn[i] = i == current;
+        InvalidateRect(layoutBtn[i], 0, 0);
         EnableWindow(layoutBtn[i], installed && (i < 2 || hasOwn));
     }
     layout();
-    // Show the end of a long path (once the box has its size).
-    SendMessageW(pathWnd, 0xB1 /*EM_SETSEL*/, 0, 0);
-    SendMessageW(pathWnd, 0xB1, 0x7FFFFFFF, 0x7FFFFFFF);
-    SendMessageW(pathWnd, 0xB7 /*EM_SCROLLCARET*/, 0, 0);
 }
 // All the window's text, in the current language (again after a change in the editor).
 static void applyTexts(void) {
@@ -942,42 +1226,58 @@ static void onCommand(int id) {
     refresh();
 }
 
+static int sameWide(const WCHAR *a, const WCHAR *b) { while (*a && *a == *b) a++, b++; return *a == *b; }
 static HANDLE control(const char *cls, DWORD style, int id, HANDLE font) {
-    HANDLE c = CreateWindowExW(cls[0] == 'E' ? 0x200 /*WS_EX_CLIENTEDGE*/ : 0, W(cls), W(""), 0x50000000 /*WS_CHILD|WS_VISIBLE*/ | style,
+    HANDLE c = CreateWindowExW(0, W(cls), W(""), 0x50000000 /*WS_CHILD|WS_VISIBLE*/ | style,
                                0, 0, 10, 10, mainWnd, (HANDLE)(U64)id, GetModuleHandleA(0), 0);
     SendMessageW(c, 0x30 /*WM_SETFONT*/, (WPARAM)font, 1);
+    if (cls[0] == 'B') { WNDPROC old = (WNDPROC)SetWindowLongPtrW(c, -4 /*GWLP_WNDPROC*/, (LONG_PTR)hoverProc); if (!buttonProc) buttonProc = old; }
     return c;
 }
+#define LABEL 0x80     // SS_NOPREFIX: & is just &
+#define BUTTON 0x1000B // WS_TABSTOP | BS_OWNERDRAW
 
 static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == 0x01) { // WM_CREATE
         mainWnd = w;
-        titleWnd = control("STATIC", 0, 0, fontTitle); setText(titleWnd, "wasdmod");
-        introWnd = control("STATIC", 0, 0, fontSmall);
-        folderLabel = control("STATIC", 0, 0, fontNormal);
-        pathWnd = control("EDIT", 0x80 /*ES_AUTOHSCROLL*/ | 0x800 /*ES_READONLY*/, ID_PATH, fontNormal);
-        browseBtn = control("BUTTON", 0x10000 /*WS_TABSTOP*/, ID_BROWSE, fontNormal);
-        statusWnd = control("STATIC", 0, ID_STATUS, fontNormal);
-        installBtn = control("BUTTON", 0x10000 | 0x1 /*BS_DEFPUSHBUTTON*/, ID_INSTALL, fontNormal);
-        uninstallBtn = control("BUTTON", 0x10000, ID_UNINSTALL, fontNormal);
-        onOffBtn = control("BUTTON", 0x10000, ID_ONOFF, fontNormal);
-        layoutLabel = control("STATIC", 0, 0, fontNormal);
-        layoutBtn[0] = control("BUTTON", 0x10000 | 0x4 /*BS_RADIOBUTTON*/, ID_DEFAULT, fontNormal);
-        layoutBtn[1] = control("BUTTON", 0x10000 | 0x4, ID_RECOMMENDED, fontNormal);
-        layoutBtn[2] = control("BUTTON", 0x10000 | 0x4, ID_OWN, fontNormal);
-        editorBtn = control("BUTTON", 0x10000, ID_EDITOR, fontNormal);
-        loadBtn = control("BUTTON", 0x10000, ID_LOAD, fontNormal);
-        settingsBtn = control("BUTTON", 0x10000, ID_SETTINGS, fontNormal);
-        recordBtn = control("BUTTON", 0x10000, ID_RECORD, fontNormal);
-        recordHint = control("STATIC", 0, 0, fontSmall);
-        footerWnd = control("STATIC", 0, 0, fontSmall);
+        themeTitleBar();
+        titleWnd = control("STATIC", LABEL, 0, fontTitle); setText(titleWnd, "wasdmod");
+        introWnd = control("STATIC", LABEL, 0, fontNormal);
+        statusWnd = control("STATIC", LABEL, ID_STATUS, fontNormal);
+        installBtn = control("BUTTON", BUTTON, ID_INSTALL, fontNormal);
+        folderLabel = control("STATIC", LABEL, 0, fontNormal);
+        pathWnd = control("STATIC", LABEL | 0x8000 /*SS_PATHELLIPSIS*/, ID_PATH, fontSmall);
+        browseBtn = control("BUTTON", BUTTON, ID_BROWSE, fontNormal);
+        onOffBtn = control("BUTTON", BUTTON, ID_ONOFF, fontNormal);
+        uninstallBtn = control("BUTTON", BUTTON, ID_UNINSTALL, fontNormal);
+        layoutLabel = control("STATIC", LABEL, 0, fontStrong);
+        layoutBtn[0] = control("BUTTON", BUTTON, ID_DEFAULT, fontNormal);
+        layoutBtn[1] = control("BUTTON", BUTTON, ID_RECOMMENDED, fontNormal);
+        layoutBtn[2] = control("BUTTON", BUTTON, ID_OWN, fontNormal);
+        editorBtn = control("BUTTON", BUTTON, ID_EDITOR, fontNormal);
+        loadBtn = control("BUTTON", BUTTON, ID_LOAD, fontNormal);
+        settingsBtn = control("BUTTON", BUTTON, ID_SETTINGS, fontNormal);
+        recordHint = control("STATIC", LABEL, 0, fontNormal);
+        recordBtn = control("BUTTON", BUTTON, ID_RECORD, fontNormal);
+        footerWnd = control("STATIC", LABEL, 0, fontSmall);
         applyTexts();
         return 0;
     }
     if (msg == 0x111 /*WM_COMMAND*/ && (wp >> 16) == 0 /*BN_CLICKED*/) { onCommand((int)(wp & 0xFFFF)); return 0; }
-    if (msg == 0x138 /*WM_CTLCOLORSTATIC*/ && (HANDLE)lp != pathWnd) { // labels on the window background
+    if (msg == 0x2B /*WM_DRAWITEM*/) { drawButton((DRAWITEM *)lp); return 1; }
+    if (msg == 0x0F /*WM_PAINT*/) { paintWindow(w); return 0; }
+    if (msg == 0x14 /*WM_ERASEBKGND*/) return 1;
+    if (msg == 0x138 /*WM_CTLCOLORSTATIC*/) { // text on the window or on a card, plain or grey
+        HANDLE c = (HANDLE)lp;
+        int onWindow = c == titleWnd || c == introWnd || c == layoutLabel || c == footerWnd;
         SetBkMode((HANDLE)wp, 1 /*TRANSPARENT*/);
-        return (LRESULT)GetSysColorBrush(15 /*COLOR_BTNFACE*/);
+        SetTextColor((HANDLE)wp, c == introWnd || c == pathWnd || c == footerWnd || c == recordHint ? C.text2 : C.text);
+        return (LRESULT)(onWindow ? bgBrush : cardBrush);
+    }
+    if (msg == 0x1A /*WM_SETTINGCHANGE*/ && lp && sameWide((const WCHAR *)lp, L"ImmersiveColorSet")) { // light/dark or the accent changed
+        loadTheme(); themeTitleBar();
+        RedrawWindow(w, 0, 0, 0x1 | 0x4 | 0x80);
+        return 0;
     }
     if (msg == WM_EDITOR_SAVED) {
         refresh();
@@ -990,20 +1290,31 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(w, msg, wp, lp);
 }
 
+// A font by name, or the next one when this Windows doesn't have it.
+static HANDLE makeFont(int px, int weight, const char *face, const char *fallback) {
+    HANDLE f = CreateFontA(-S(px), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 5 /*CLEARTYPE*/, 0, face);
+    char got[64] = ""; HANDLE dc = GetDC(0), old = SelectObject(dc, f); GetTextFaceA(dc, sizeof(got), got); SelectObject(dc, old); ReleaseDC(0, dc);
+    if (fallback && !sameText(got, face)) { DeleteObject(f); f = CreateFontA(-S(px), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 5, 0, fallback); }
+    return f;
+}
+
 static HANDLE createMain(void) {
     HANDLE inst = GetModuleHandleA(0);
     HANDLE dc = GetDC(0); dpi = GetDeviceCaps(dc, 88 /*LOGPIXELSX*/); ReleaseDC(0, dc);
     if (dpi < 96) dpi = 96;
+    U64 gdip; GDIPINPUT in = {1, 0, 0, 0}; GdiplusStartup(&gdip, &in, 0);
+    loadTheme();
     // Segoe UI: Windows fills in Chinese, Japanese, Korean and other letters it lacks from its own fonts.
-    fontNormal = CreateFontA(-S(15), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5 /*CLEARTYPE*/, 0, "Segoe UI");
-    fontSmall = CreateFontA(-S(13), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
-    fontTitle = CreateFontA(-S(22), 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
+    fontNormal = makeFont(14, 400, "Segoe UI", 0);
+    fontSmall = makeFont(12, 400, "Segoe UI", 0);
+    fontStrong = makeFont(14, 600, "Segoe UI", 0);
+    fontTitle = makeFont(24, 600, "Segoe UI Variable Display", "Segoe UI"); // Windows 11's, else 10's
+    appIcon = LoadImageW(inst, (const WCHAR *)1, 1 /*IMAGE_ICON*/, S(32), S(32), 0);
     WNDCLASSW wc; memset(&wc, 0, sizeof(wc));
     wc.proc = wndProc; wc.instance = inst; wc.className = L"DungeonsControllerModSetup";
     wc.icon = LoadIconA(inst, (const char *)1); wc.cursor = LoadCursorA(0, (const char *)32512 /*IDC_ARROW*/);
-    wc.background = (HANDLE)(15 + 1); // COLOR_BTNFACE
     RegisterClassW(&wc);
-    RECT r = {0, 0, S(520), S(480)}; AdjustWindowRect(&r, WINDOW_STYLE, 0);
+    RECT r = {0, 0, S(608), S(600)}; AdjustWindowRect(&r, WINDOW_STYLE, 0);
     HANDLE w = CreateWindowExW(0, wc.className, W("wasdmod"), WINDOW_STYLE, (int)0x80000000 /*CW_USEDEFAULT*/, (int)0x80000000,
                                r.right - r.left, r.bottom - r.top, 0, 0, inst, 0);
     ShowWindow(w, 1);

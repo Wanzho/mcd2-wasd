@@ -41,20 +41,39 @@ func L(_ s: String, _ vars: [String: String] = [:]) -> String {
     return out
 }
 
-final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
+// The bar under the toolbar: a tinted strip (redrawn for light and dark).
+final class Banner: NSStackView {
+    var tint: NSColor = .controlAccentColor { didSet { needsDisplay = true } }
+    override var wantsUpdateLayer: Bool { true }
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = tint.withAlphaComponent(0.12).cgColor }
+    }
+}
+
+extension NSToolbarItem.Identifier {
+    static let folder = Self("folder"), record = Self("record"), power = Self("power"), uninstall = Self("uninstall"), install = Self("install")
+}
+
+final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
     var web: WKWebView!
-    let status = NSTextField(wrappingLabelWithString: "")
+    // The window's toolbar: the mod's state in the subtitle, its buttons on the right.
+    var tools: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
     lazy var installButton = button(#selector(install))
-    lazy var uninstallButton = button(#selector(uninstall))
-    lazy var onOffButton = button(#selector(turnOnOff))
-    lazy var recordButton = button(#selector(recordLogs))
+    // A bar under the toolbar while something needs doing (no game, not installed, an update...).
+    let banner = Banner(), bannerLine = NSBox()
+    let bannerIcon = NSImageView()
+    let bannerText = NSTextField(wrappingLabelWithString: "")
     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
-    lazy var folderButton = button(#selector(showFolder))
-    lazy var bottleButton = button(#selector(chooseGame))
+    lazy var chooseButton = button(#selector(chooseGame))
+    lazy var actionButton: NSButton = { let b = button(#selector(bannerAction)); b.keyEquivalent = "\r"; return b }()
     lazy var setupButton = button(#selector(openSetupHelp))
     let res = Bundle.main.resourceURL!
+    #if SELFTEST
+    let support = URL(fileURLWithPath: ProcessInfo.processInfo.environment["WASDMOD_SUPPORT"] ?? NSTemporaryDirectory() + "wasdmod-test-support")
+    #else
     let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("wasdmod")
+    #endif
     var storeURL: URL { support.appendingPathComponent("editor.json") }
     var info: [String: String] = [:]
     var busy = false
@@ -118,40 +137,102 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
         let state = info["state"] ?? ""
         let found = !(info["game"] ?? "").isEmpty
         let installed = state == "current" || state == "older" || state == "off"
-        var text: String
+        // Short in the subtitle; the whole story (and what to click) in the bar.
+        var subtitle: String, text: String?, symbol = "info.circle.fill", tint = NSColor.controlAccentColor
         if !found {
+            subtitle = L("Game not found")
             text = L("Minecraft Dungeons II wasn't found in a CrossOver bottle. Set it up with MCD2 Crossover (Steam in CrossOver), or if it's somewhere else (a Minecraft Launcher copy…), click Choose Game Folder.")
+            symbol = "exclamationmark.triangle.fill"; tint = .systemOrange
         } else if state == "current" {
-            text = L("Installed and up to date.")
+            subtitle = L("Installed")
         } else if state == "older" {
+            subtitle = L("Update available")
             text = L("An older version is installed. Click Update.")
+            symbol = "arrow.down.circle.fill"
         } else if state == "off" {
+            subtitle = L("Turned off")
             text = L("Turned off: the game starts without wasdmod. Your layouts are kept; click Turn On to use it again.")
+            symbol = "power.circle.fill"; tint = .secondaryLabelColor
         } else if state == "other" {
+            subtitle = L("Not installed")
             text = L("The game folder has a different xinput1_4.dll (another mod?). Install replaces it and keeps a copy.")
+            symbol = "exclamationmark.triangle.fill"; tint = .systemOrange
         } else {
+            subtitle = L("Not installed")
             text = L("Not installed yet. Quit the game, then click Install.")
         }
-        if installed { text += "  " + L("Key layout in the game: {layout}.", ["layout": layoutName(info["layout"] ?? "")]) }
-        status.stringValue = text
-        installButton.title = state == "current" || state == "off" ? L("Reinstall") : state == "older" ? L("Update") : L("Install")
-        onOffButton.title = state == "off" ? L("Turn On") : L("Turn Off")
-        onOffButton.isHidden = !installed
-        recordButton.title = info["recording"] == "yes" ? L("Stop & Save Logs") : L("Record Logs")
-        recordButton.isHidden = !found
-        installButton.isHidden = !found
-        installButton.isEnabled = !busy
-        uninstallButton.isHidden = !installed
-        uninstallButton.isEnabled = !busy
-        folderButton.isHidden = !found
-        bottleButton.isHidden = found
+        if installed { subtitle += "  ·  " + L("Layout: {layout}", ["layout": layoutName(info["layout"] ?? "")]) }
+        if !busy { window?.subtitle = subtitle }
+        bannerText.stringValue = text ?? ""
+        bannerIcon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        bannerIcon.contentTintColor = tint
+        banner.tint = tint
+        banner.isHidden = text == nil
+        bannerLine.isHidden = text == nil
+        chooseButton.isHidden = found
         setupButton.isHidden = found
-        installButton.keyEquivalent = installed ? "" : "\r"
+
+        installButton.title = state == "current" || state == "off" ? L("Reinstall") : state == "older" ? L("Update") : L("Install")
+        // The bar's own button does what it says to do (blue, Return).
+        actionButton.title = state == "off" ? L("Turn On") : state == "older" ? L("Update") : L("Install")
+        actionButton.isHidden = !found || state == "current"
+        actionButton.isEnabled = !busy
+        installButton.isEnabled = !busy
+        let recording = info["recording"] == "yes"
+        tool(.folder, L("Game Folder"), "folder", shown: true)
+        (tools[.folder] as? NSMenuToolbarItem)?.menu = folderMenu()
+        tool(.record, recording ? L("Stop & Save Logs") : L("Record Logs"), recording ? "stop.circle" : "record.circle", shown: found)
+        tool(.power, state == "off" ? L("Turn On") : L("Turn Off"), "power", shown: installed)
+        tool(.uninstall, L("Uninstall"), "trash", shown: installed)
+        tool(.install, installButton.title, nil, shown: found)
+    }
+
+    // A toolbar button's text, icon, and whether it's there (greyed out before macOS 15).
+    func tool(_ id: NSToolbarItem.Identifier, _ label: String, _ symbol: String?, shown: Bool) {
+        guard let item = tools[id] else { return }
+        item.label = label; item.paletteLabel = label; item.toolTip = label
+        if let symbol { item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label) }
+        if #available(macOS 15.0, *) { item.isHidden = !shown; item.isEnabled = !busy }
+        else { item.isEnabled = shown && !busy }
+        installButton.isEnabled = !busy
+    }
+
+    func folderMenu() -> NSMenu {
+        let m = NSMenu()
+        m.autoenablesItems = false
+        let found = !(info["game"] ?? "").isEmpty
+        for (title, action, on) in [(L("Show in Finder"), #selector(showFolder), found), (L("Choose Game Folder…"), #selector(chooseGame), true),
+                                    (L("Find Game Automatically"), #selector(findGameAutomatically), gameDir != nil || bottle != nil)] {
+            let mi = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            mi.target = self; mi.isEnabled = on && !busy
+            m.addItem(mi)
+        }
+        return m
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [.folder, .record, .power, .uninstall, .space, .install] }
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarDefaultItemIdentifiers(toolbar) }
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        // The folder button is a menu: show the game folder, or pick another one.
+        let item = id == .folder ? NSMenuToolbarItem(itemIdentifier: id) : NSToolbarItem(itemIdentifier: id)
+        item.autovalidates = false
+        item.target = self
+        switch id {
+        case .folder: (item as? NSMenuToolbarItem)?.menu = folderMenu()
+        case .record: item.action = #selector(recordLogs)
+        case .power: item.action = #selector(turnOnOff)
+        case .uninstall: item.action = #selector(uninstall)
+        case .install: item.view = installButton
+        default: return nil
+        }
+        item.isBordered = true
+        tools[id] = item
+        return item
     }
 
     // Runs wasdmod.sh off the main thread (the CrossOver settings take a few seconds).
     func work(_ label: String, _ args: [String], _ extra: [String: String] = [:], done: @escaping (Bool, String) -> Void) {
-        busy = true; refresh(); status.stringValue = label
+        busy = true; refresh(); window.subtitle = label
         DispatchQueue.global().async {
             let r = self.sh(args, extra)
             DispatchQueue.main.async { self.busy = false; self.refresh(); done(r.ok, r.out) }
@@ -166,6 +247,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     }
 
     @objc func install() { runInstall(force: false) }
+    @objc func bannerAction() { info["state"] == "off" ? turnOnOff() : install() }
     func runInstall(force: Bool) {
         work(L("Installing…"), ["install"], force ? ["FORCE": "1"] : [:]) { ok, out in
             if ok {
@@ -227,6 +309,46 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
                : alert(L("Turned off."), L("From the next game start, the game runs without wasdmod. Your layouts are kept; click Turn On to use it again.\n\nIn a running game, the backtick key (`) turns it off right away."))
     }
 
+    // Check for Updates: the newest release on GitHub against this app's version.
+    @objc func checkForUpdates() {
+        let api = URL(string: "https://api.github.com/repos/Wanzho/mcd2-wasd/releases/latest")!
+        var request = URLRequest(url: api, timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            let json = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+            let tag = json?["tag_name"] as? String
+            let page = (json?["html_url"] as? String).flatMap(URL.init(string:))
+            let dmg = (json?["assets"] as? [[String: Any]])?.first { ($0["name"] as? String)?.hasSuffix(".dmg") == true }?["browser_download_url"] as? String
+            DispatchQueue.main.async {
+                guard let tag, (response as? HTTPURLResponse)?.statusCode == 200 else {
+                    _ = self.alert(L("Couldn't check for updates"), error?.localizedDescription ?? L("GitHub didn't answer. Try again later."), style: .warning)
+                    return
+                }
+                let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+                guard self.isNewer(latest, than: self.version) else {
+                    _ = self.alert(L("wasdmod is up to date"), L("{version} is the newest version.", ["version": self.version]))
+                    return
+                }
+                if self.alert(L("wasdmod {version} is available", ["version": latest]),
+                              L("You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.", ["version": self.version]),
+                              buttons: [L("Download"), L("Later")]) == .alertFirstButtonReturn,
+                   let url = dmg.flatMap(URL.init(string:)) ?? page {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }.resume()
+    }
+    // "1.10.0" > "1.9.2"; a test build ("dev") is never out of date.
+    func isNewer(_ a: String, than b: String) -> Bool {
+        let x = a.split(separator: ".").map { Int($0) ?? 0 }, y = b.split(separator: ".").compactMap { Int($0) }
+        if y.isEmpty { return false }
+        for i in 0..<max(x.count, y.count) {
+            let p = i < x.count ? x[i] : 0, q = i < y.count ? y[i] : 0
+            if p != q { return p > q }
+        }
+        return false
+    }
+
     // Getting the game itself to run in CrossOver (Steam, sign-in) is MCD2 Crossover's job.
     @objc func openSetupHelp() { NSWorkspace.shared.open(URL(string: "https://github.com/Wanzho/mcd2-crossover")!) }
 
@@ -239,7 +361,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
         panel.prompt = L("Use This")
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CrossOver/Bottles")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        status.stringValue = L("Looking for the game in {folder}…", ["folder": url.lastPathComponent])
+        window.subtitle = L("Looking for the game in {folder}…", ["folder": url.lastPathComponent])
         let r = sh(["locate", url.path])
         guard r.ok, let dir = fields(r.out)["game"], !dir.isEmpty else {
             refresh(); _ = alert(L("Minecraft Dungeons II wasn't found there."), L(r.out), style: .warning); return
@@ -256,6 +378,12 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     // window.wasdmodHost: the editor's saved layouts, and saving into the game.
     func hostScript() -> String {
         let saved = (try? Data(contentsOf: storeURL)) ?? Data("{}".utf8)
+        // The layout the game uses, so the editor can show it (and add it when it's not there).
+        if info.isEmpty { info = fields(sh(["status"]).out) }
+        var game = Data("null".utf8)
+        if let dir = info["game"], let file = info["layout"], !dir.isEmpty, !file.isEmpty,
+           let text = try? String(contentsOfFile: dir + "/" + file, encoding: .utf8),
+           let json = try? JSONSerialization.data(withJSONObject: ["file": file, "text": text]) { game = json }
         return """
         window.wasdmodHost = (() => {
           let store = {};
@@ -264,6 +392,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
           return {
             store,
             lang: "\(lang)",
+            app: "mac",
+            game: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("\(game.base64EncodedString())"), c => c.charCodeAt(0)))),
             set(k, v) { store[k] = v; post({ cmd: "store", value: JSON.stringify(store) }); },
             setLang(code) { post({ cmd: "lang", value: code }); },
             save(name, text) { return post({ cmd: "save", name, text }); }
@@ -311,13 +441,25 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
     // Keys go to the editor (for picking keys), not to the buttons at the top.
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { window.makeFirstResponder(webView) }
 
+    // The editor fades in once it's drawn, instead of flashing an empty page.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        showEditor()
+        #if SELFTEST
+        selfTest()
+        #endif
+    }
+    func showEditor() {
+        guard web.alphaValue < 1 else { return }
+        NSAnimationContext.runAnimationGroup { $0.duration = 0.15; web.animator().alphaValue = 1 }
+    }
+
     #if SELFTEST
     // Test build only (build with -D SELFTEST): runs WASDMOD_TEST_JS once the editor
     // has loaded, prints the result and the window number, and quits.
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    func selfTest() {
         guard let js = ProcessInfo.processInfo.environment["WASDMOD_TEST_JS"] else { return }
         print("window=\(window.windowNumber)"); fflush(stdout)
-        webView.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { r in
+        web.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { r in
             switch r {
             case .success(let v): print("result=\(v)")
             case .failure(let e): print("error=\(e)")
@@ -344,45 +486,61 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
 
     // The app's text in the current language (again when the editor picks another).
     func applyTexts() {
-        uninstallButton.title = L("Uninstall")
-        folderButton.title = L("Game Folder")
-        bottleButton.title = L("Choose Game Folder…")
+        chooseButton.title = L("Choose Game Folder…")
         setupButton.title = L("Get MCD2 Crossover")
-        window?.subtitle = L("Minecraft Dungeons II controller mod")
         buildMenu()
         refresh()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if SELFTEST
+        if ProcessInfo.processInfo.environment["WASDMOD_LIGHT"] != nil { NSApp.appearance = NSAppearance(named: .aqua) }
+        #endif
         let config = WKWebViewConfiguration()
         config.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "wasdmod")
         config.userContentController.addUserScript(WKUserScript(source: hostScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
         web.uiDelegate = self
+        web.allowsLinkPreview = false
+        web.alphaValue = 0
+        if #available(macOS 12.0, *) { web.underPageBackgroundColor = .windowBackgroundColor }
 
-        status.font = .systemFont(ofSize: 13)
-        status.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let bar = NSStackView(views: [status, setupButton, bottleButton, folderButton, recordButton, onOffButton, uninstallButton, installButton])
-        bar.orientation = .horizontal
-        bar.spacing = 8
-        bar.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
-        let line = NSBox(); line.boxType = .separator
-        let content = NSStackView(views: [bar, line, web])
+        // The bar under the toolbar.
+        bannerText.font = .systemFont(ofSize: 13)
+        bannerText.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        bannerText.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        bannerIcon.symbolConfiguration = .init(pointSize: 15, weight: .regular)
+        bannerIcon.setContentHuggingPriority(.required, for: .horizontal)
+        for v in [bannerIcon, bannerText, setupButton, chooseButton, actionButton] { banner.addArrangedSubview(v) }
+        banner.wantsLayer = true
+        banner.orientation = .horizontal
+        banner.alignment = .centerY
+        banner.spacing = 10
+        banner.edgeInsets = NSEdgeInsets(top: 9, left: 16, bottom: 9, right: 16)
+        bannerLine.boxType = .separator
+        let content = NSStackView(views: [banner, bannerLine, web])
         content.orientation = .vertical
         content.spacing = 0
         content.alignment = .leading
-        for v in [bar, line, web] as [NSView] { v.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true }
+        for v in [banner, bannerLine, web] as [NSView] { v.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true }
 
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 860),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "wasdmod"
         window.minSize = NSSize(width: 760, height: 520)
+        let toolbar = NSToolbar(identifier: "wasdmod")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
         window.contentView = content
         window.center()
         window.setFrameAutosaveName("wasdmod")
         applyTexts()
         web.loadFileURL(res.appendingPathComponent("Key Layout Editor.html"), allowingReadAccessTo: res)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self.showEditor() }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -404,7 +562,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandlerWithRepl
             }
             main.addItem(item)
         }
-        menu("wasdmod", [(L("About wasdmod"), #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""), ("-", nil, ""),
+        menu("wasdmod", [(L("About wasdmod"), #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""),
+                         (L("Check for Updates…"), #selector(checkForUpdates), ""), ("-", nil, ""),
                          (L("Choose Game Folder…"), #selector(chooseGame), "o"), (L("Find Game Automatically"), #selector(findGameAutomatically), ""), ("-", nil, ""),
                          (L("Hide wasdmod"), #selector(NSApplication.hide(_:)), "h"), ("-", nil, ""),
                          (L("Quit wasdmod"), #selector(NSApplication.terminate(_:)), "q")])

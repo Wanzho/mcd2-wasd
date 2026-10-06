@@ -1,7 +1,13 @@
 <title>Dungeons II Keybinder</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>
+// In the Mac app and the Windows setup's editor window the page is the app's window:
+// system font and the system's controls (.app, plus .win on Windows). Elsewhere it's
+// a web page with its own fonts.
+const appKind = window.wasdmodHost && window.wasdmodHost.app;
+if (appKind === "mac" || appKind === "win") document.documentElement.classList.add("app", appKind);
+else document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet",
+  href: "https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" }));
+</script>
 <style>
 /* Headings: "Mojang" by b.tenthousand (CC0 public domain), with the glyphs and spacing adjusted to
    match Minecraft's own lettering pixel for pixel, and Cyrillic, Polish, Turkish and Portuguese
@@ -146,9 +152,19 @@ ul.recs button { padding: 5px 9px; }
 .ingame button.stray { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
 .ingame .clear2, .ingame .add2 { padding: 4px 6px; border: 1px dashed var(--line); background: transparent; color: var(--muted); }
 .ingame .none { color: var(--muted); }
+.ingame .kbname { margin-left: 4px; }
+.menu-switch { margin: 0 0 12px; display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.menu-switch input { accent-color: var(--accent); margin-top: 3px; }
 .recs .note { display: block; font-size: 12px; color: var(--muted); }
 #recsCard.flash { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow .3s; }
 .row.flash { outline: 3px solid var(--danger); outline-offset: 3px; border-radius: 6px; }
+ul.recs li { cursor: pointer; }
+ul.recs li:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+.row.point { animation: point 1.8s ease-out; border-radius: 6px; }
+.ingame .point { animation: pointKey 1.8s ease-out; }
+@keyframes point { 0%, 60% { background: color-mix(in srgb, var(--accent) 16%, transparent); } }
+@keyframes pointKey { 0%, 70% { box-shadow: 0 0 0 3px var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .row.point, .ingame .point { animation-duration: .01s; } }
 /* output */
 pre.ini { margin: 10px 0 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font: 12px/1.45 var(--mono); max-height: 300px; overflow: auto; white-space: pre; }
 .out-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -182,6 +198,127 @@ code { font-family: var(--mono); font-size: .92em; }
 :is(:lang(zh), :lang(ja), :lang(ko)) h1 { font-size: 30px; }
 /* The title's bold (the letters again, one font pixel to the right) would fill the gaps in ш, ж, ы, ю. */
 :is(:lang(ru), :lang(uk)) h1 { text-shadow: none; }
+/* ---------------------------------------------------------------- in the Mac app
+   The window of a Mac app rather than a web page: system font and colours (light or dark,
+   with the system's accent colour), Mac buttons, pop-ups and segmented controls, and the
+   layout bar pinned under the toolbar. The title and intro are the app's own. */
+:root.app {
+  --bg: #f2f2f4; --panel: #ffffff; --panel-2: #f5f5f7; --line: #dcdcdf; --fg: #1d1d1f; --muted: #6e6e73;
+  --accent: #007aff; --accent-fg: #ffffff; --warn: #e88a00; --warn-bg: #fff4e0;
+  --cap: #ececee; --cap-edge: #b4b4b9; --cap-fg: #1d1d1f; --cap-empty: #f4f4f6;
+  --danger: #e0352b; --danger-bg: #fdecea; --ok: #28a745; --ok-fg: #ffffff;
+  --btn: #ffffff; --btn-edge: rgba(0, 0, 0, .16); --seg-bg: rgba(0, 0, 0, .06); --seg-on: #ffffff; --press: brightness(.93);
+  --display: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; --body: var(--display); --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root.app {
+  --bg: #1e1e1e; --panel: #282828; --panel-2: #313131; --line: #3c3c3e; --fg: #ececec; --muted: #98989d;
+  --accent: #0a84ff; --warn: #ff9f0a; --warn-bg: #3a2e14;
+  --cap: #d6d6d8; --cap-edge: #8e8e93; --cap-fg: #1c1c1e; --cap-empty: #2f2f31;
+  --danger: #ff453a; --danger-bg: #3a1d1d; --ok: #30d158; --ok-fg: #0f2414;
+  --btn: #5c5c5e; --btn-edge: rgba(255, 255, 255, .06); --seg-bg: rgba(255, 255, 255, .07); --seg-on: #636366; --press: brightness(1.2);
+  color-scheme: dark; } }
+@supports (color: -apple-system-control-accent) { :root.app { --accent: -apple-system-control-accent; } }
+.app { scroll-padding-top: calc(var(--bar-h, 80px) + 12px); }
+.app body { font: 13px/1.4 var(--body); -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; }
+.app :is(input, textarea, pre, .path) { -webkit-user-select: text; user-select: text; }
+.app .wrap { max-width: none; padding: 0 20px 28px; }
+/* the layout bar, pinned under the toolbar */
+.app header { position: sticky; top: 0; z-index: 5; display: block; margin: 0 -20px; padding: 9px 20px 7px; border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px); }
+.app header > div:first-child { display: none; }
+.app .layoutbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "label btns lang" "status status status"; align-items: center; gap: 4px 10px; justify-items: stretch; }
+.app .layoutbar .labelrow { display: contents; }
+.app .layoutbar .label { grid-area: label; font: 400 13px var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); }
+.app .layoutbar .btns { grid-area: btns; }
+.app button { white-space: nowrap; }
+@media (max-width: 720px) { .app .layoutbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label lang" "btns btns" "status status"; } }
+.app #downloadTop { margin-left: auto; }
+.app .langpick { grid-area: lang; }
+.app .langpick > span { display: none; }
+.app .layout-status { grid-area: status; font-size: 12px; min-height: 22px; }
+.app .layout-status .changed { color: var(--warn); }
+.app select { all: revert; font: 13px var(--body); }
+.app #layoutSel { min-width: 13rem; }
+.app .namebox { font: 13px var(--body); border-radius: 5px; padding: 3px 6px; background: var(--panel); outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
+/* buttons */
+:where(.app) button { font: 400 13px/16px var(--body); padding: 2px 10px 3px; border-radius: 6px; border: .5px solid var(--btn-edge); background: var(--btn); color: var(--fg);
+  box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .18); cursor: default; }
+:where(.app) button:hover { border-color: var(--btn-edge); }
+:where(.app) button:active:not(:disabled) { filter: var(--press); }
+.app :is(button, input, select, textarea, .k):focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 0; }
+.app .primary, .app .primary.save { background: var(--accent); color: #fff; border-color: transparent; }
+.app :is(.cap, .ingame) button, .app .add { box-shadow: none; }
+.app .cap button { border: 0; }
+.app .ingame button { border-width: 1px; border-radius: 5px; padding: 3px 7px; font: 500 12px/1 var(--body); }
+.app .ingame :is(button.unknown, button.stray) { color: var(--warn); border-color: var(--warn); }
+.app .add { border: 1px dashed var(--line); border-radius: 5px; padding: 3px 8px; }
+.app .add.listening { border: 1px solid var(--accent); }
+.app :is(summary, .seg label, .drop label, ul.recs li) { cursor: default !important; }
+/* groups */
+.app .grid { margin-top: 14px; gap: 14px; }
+.app .side { top: calc(var(--bar-h, 80px) + 14px); max-height: calc(100vh - var(--bar-h, 80px) - 28px); gap: 14px; }
+.app section.card { border-radius: 10px; padding: 12px 16px 14px; box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .06); }
+.app .card + .card { margin-top: 14px; }
+.app h2 { font: 600 13px/1.4 var(--body); letter-spacing: 0; text-shadow: none; margin-bottom: 4px; }
+.app h2 .dot { width: 8px; height: 8px; border-radius: 50%; }
+.app h3.group { font: 600 11px/1 var(--body); letter-spacing: .3px; }
+.app .lede, .app ul.recs li, .app ol.steps, .app .wheel-note { font-size: 12px; }
+.app .row { padding: 5px 0; }
+.app .name { font-weight: 500; }
+.app .sub, .app .note { font-size: 11px; }
+.app .badge { font: 500 11px/1 var(--body); padding: 4px 8px; }
+.app .cap { font: 500 12px/1 var(--body); border-radius: 5px; }
+.app ul.recs li { border-radius: 7px; }
+.app pre.ini, .app .path { font-size: 11px; border-radius: 7px; }
+.app .k { border-radius: 4px; }
+/* segmented controls */
+.app .seg { border: 0; background: var(--seg-bg); border-radius: 7px; padding: 2px; gap: 2px; }
+.app .seg label { border-radius: 5px; padding: 3px 10px; font: 500 12px/1 var(--body); color: var(--muted); text-decoration: none; }
+.app .seg label:not(:has(input:checked)) { text-decoration: none; }
+.app .menu-switch { font-size: 13px; }
+.app .seg label:has(input:checked) { background: var(--seg-on); color: var(--fg); box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .25); }
+/* notices */
+.app :is(.mismatch, .conflicts) { --tone: var(--warn); margin-top: 14px; border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background: color-mix(in srgb, var(--tone) 9%, var(--panel)); border-radius: 10px; padding: 10px 14px; gap: 2px 12px; }
+.app .conflicts { --tone: var(--danger); }
+.app :is(.mismatch, .conflicts) .icon { font: 700 13px/22px var(--body); text-shadow: none; width: 22px; height: 22px; border-radius: 50%; text-align: center;
+  background: var(--tone); color: #fff; align-self: start; }
+.app :is(.mismatch, .conflicts) h2 { font: 600 13px/1.4 var(--body); color: var(--fg); }
+.app :is(.mismatch, .conflicts) :is(p, ul) { font-size: 12px; color: var(--muted); }
+.app .mismatch button { background: var(--btn); color: var(--fg); border-color: var(--btn-edge); font-size: 13px; padding: 2px 10px 3px; }
+.app #recsCard.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 60%, transparent); }
+/* the "press a key" sheet */
+.app .capture { background: rgba(0, 0, 0, .22); }
+.app .capture .box { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35), 0 0 0 .5px var(--line); }
+.app .capture .box h3 { font: 600 15px var(--body); letter-spacing: 0; text-shadow: none; }
+/* a message that comes and goes (after saving) */
+.toast { position: fixed; left: 50%; bottom: 20px; z-index: 20; transform: translate(-50%, 8px); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  max-width: min(560px, calc(100vw - 32px)); padding: 8px 14px; border-radius: 10px; font-size: 13px; color: var(--fg);
+  background: color-mix(in srgb, var(--panel) 85%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border: .5px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, .3); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* On Windows (the setup's editor window): Windows 11's look instead of the Mac's. */
+:root.app.win {
+  --display: "Segoe UI Variable Text", "Segoe UI", sans-serif; --body: var(--display); --mono: "Cascadia Mono", Consolas, monospace;
+  --bg: #f3f3f3; --panel: #fbfbfb; --panel-2: #f6f6f6; --line: #e5e5e5; --fg: #1b1b1b; --muted: #606060;
+  --accent: #005fb8; --accent-fg: #ffffff; --btn: #fefefe; --btn-edge: #e5e5e5; --seg-bg: rgba(0, 0, 0, .05); --seg-on: #ffffff;
+}
+@media (prefers-color-scheme: dark) { :root.app.win {
+  --bg: #202020; --panel: #2b2b2b; --panel-2: #323232; --line: #1d1d1d; --fg: #ffffff; --muted: #c8c8c8;
+  --accent: #60cdff; --accent-fg: #000000; --btn: #373737; --btn-edge: #404040; --seg-bg: rgba(255, 255, 255, .06); --seg-on: #454545;
+  --cap-empty: #2f2f2f; } }
+.win body { font-size: 14px; }
+:where(.win) button { border-radius: 4px; border: 1px solid var(--btn-edge); border-bottom-color: color-mix(in srgb, var(--btn-edge) 70%, #000); box-shadow: none; padding: 4px 12px 5px; font-size: 14px; }
+.win .primary, .win .primary.save { color: var(--accent-fg); }
+.win section.card, .win :is(.mismatch, .conflicts) { border-radius: 8px; box-shadow: none; }
+.win .seg, .win .seg label { border-radius: 4px; }
+.win select { all: revert; font: 14px var(--body); color: var(--fg); background: var(--btn); border: 1px solid var(--btn-edge); border-radius: 4px; padding: 4px 8px; }
+.win :is(button, input, select, textarea, .k):focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+.win ::-webkit-scrollbar { width: 12px; height: 12px; }
+.win ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 6px; border: 4px solid transparent; background-clip: content-box; }
+.win ::-webkit-scrollbar-thumb:hover { border-width: 3px; }
+.win ::-webkit-scrollbar-track { background: transparent; }
 </style>
 
 <div class="wrap">
@@ -229,7 +366,7 @@ code { font-family: var(--mono); font-size: .92em; }
       <section class="card" id="recsCard"></section>
       <section class="card">
         <h2 data-t="Keyboard map"></h2>
-        <p class="lede" data-t="Grey keys do something. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does."></p>
+        <p class="lede" data-t="Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does."></p>
         <div class="kbd" id="kbd"></div>
         <div class="mouse" id="mouseMap"></div>
         <div class="hover-info" id="hoverInfo">&nbsp;</div>
@@ -259,6 +396,8 @@ code { font-family: var(--mono); font-size: .92em; }
     </aside>
   </div>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="capture" id="capture" hidden>
   <div class="box" role="dialog" aria-modal="true" aria-labelledby="capTitle">
@@ -346,6 +485,10 @@ const ACTIONS = [
 ];
 const ACT = Object.fromEntries(ACTIONS.map(a => [a.id, a]));
 const both = a => !!(a.pad && a.kb);
+// Keyboard or controller is a choice for the inventory (on the controller it shows the
+// mini inventory while you keep moving); the other menus and Teleport to player only
+// get it with "Allow controller input for menus" on.
+const padAllowed = (a, st) => a.id === "inventory" || !!st.opt.ControllerMenus;
 // The game's keys for an action: up to two (its two columns); null = empty column.
 const knownGame = arr => (arr || []).filter(k => k && k !== "?");
 const firstGame = (a, st) => a.fixedGame || knownGame(st.game[a.id])[0] || null;
@@ -463,9 +606,9 @@ Start=None
 LS=Mouse3
 RS=None
 DUp=E
-DDown=/
-DLeft=X
-DRight=V
+DDown=None
+DLeft=None
+DRight=None
 
 [Mouse]
 KeepCursorInWindow=1
@@ -477,10 +620,10 @@ BowAimsWithMouse=1
 [Keys]
 MenuKeys=M, G, K, Escape
 BackKeys=Escape
-MouseAfter=DUp, DDown
+MouseAfter=DUp
 MenuTapMs=300
 TypeKey=T
-PassKeys=Z, F1, F2, F3, F4
+PassKeys=X, Z, F1, F2, F3, F4
 DisabledKeys=1, I, J, U
 InstantKeys=
 Cursor=Alt
@@ -491,13 +634,15 @@ Legend=F9
 Tab=S
 B=U
 Mouse4=Mouse2
+V=J
+/=F
 [Modes]
 inventory=Controller
 map=Keyboard
 wheel=Keyboard
-quest=Controller
-social=Controller
-tpplayer=Controller
+quest=Keyboard
+social=Keyboard
+tpplayer=Keyboard
 emotes=Keyboard
 [Options]
 HideMouse=1
@@ -640,6 +785,9 @@ function stateFromIni(text) {
   for (const tu of TUNE) st.num[tu.key] = Number(val(tu.sec, tu.key));
   for (const o of TOGGLES) st.opt[o.key] = o.read(val(o.sec, o.key));
   st.optionsRaw = def.Options.map(([k]) => [k, val("Options", k)]);
+  // Files from before the switch existed: on when another menu already uses the controller.
+  const cm = get(ini, "Modes", "ControllerMenus");
+  st.opt.ControllerMenus = cm !== undefined ? cm === "1" : ACTIONS.some(a => both(a) && a.id !== "inventory" && st.mode[a.id] === "pad");
   return st;
 }
 
@@ -699,7 +847,7 @@ function iniText(st) {
   L.push("[Remap]", ...(remapLines.length ? remapLines : ["None=None"]), "");
   L.push("; Keyboard or controller for each menu (for the key layout editor), and the game's",
     "; own keyboard keys (Settings > Controls > Keyboard); the key list names converted keys from them.",
-    "[Modes]", ...ACTIONS.filter(both).map(a => a.id + "=" + (st.mode[a.id] === "pad" ? "Controller" : "Keyboard")), "");
+    "[Modes]", "ControllerMenus=" + (st.opt.ControllerMenus ? "1" : "0"), ...ACTIONS.filter(both).map(a => a.id + "=" + (st.mode[a.id] === "pad" ? "Controller" : "Keyboard")), "");
   const slotText = arr => { const a = (arr || []).slice(0, 2); while (a.length && !a[a.length - 1]) a.pop(); return a.length ? a.map(k => k || "-").join(", ") : "None"; };
   L.push("[GameKeys]", ...ACTIONS.filter(a => a.game).map(a => a.id + "=" + slotText(st.game[a.id])), "");
   L.push("[Options]", ...st.optionsRaw.map(([k, v]) => {
@@ -789,6 +937,7 @@ const navLang = () => (navigator.languages || [navigator.language]).map(matchLan
 lang = matchLang(store.get("d2kb-lang")) || (host && matchLang(host.lang)) || navLang() || "en";
 
 function routeCell(a) {
+  if (both(a) && !padAllowed(a, state)) return el("span", { class: "badge kb", text: t("Keyboard"), title: t("Sent to the game as its keyboard shortcut") });
   if (both(a)) {
     const name = "mode-" + a.id, seg = el("div", { class: "seg", role: "radiogroup", "aria-label": t("{action}: keyboard or controller", { action: t(a.label) }) });
     for (const [m, text] of [["kb", t("Keyboard")], ["pad", t("Controller")]]) {
@@ -823,9 +972,11 @@ function keysCell(keys, set, rowName, uses, opts = {}) {
 function gameCell(a) {
   const cell = el("div", { class: "ingame" }, t("in game"));
   if (a.fixedGame) { cell.append(el("span", { class: "fixed", text: pretty(a.fixedGame) })); return cell; }
-  // On the controller, the game gets its controller button.
-  if (both(a) && state.mode[a.id] === "pad") { cell.append(el("span", { class: "fixed", text: padName(a.pad), title: t("The controller button the mod presses") })); return cell; }
   if (!a.game) return el("div", { class: "ingame" });
+  // On the controller, the game gets its controller button while you fight; its keyboard
+  // key still counts in keyboard mode (menus, the cursor, the bow), so it's shown too.
+  if (both(a) && state.mode[a.id] === "pad") cell.append(el("span", { class: "fixed", text: padName(a.pad), title: t("The controller button the mod presses") }),
+    el("span", { class: "kbname", text: t("Keyboard") }));
   const g = state.game[a.id] || [], keys = state.keys[a.id], action = t(a.game), second = t("{action} (second key)", { action });
   // Both columns of the game's keyboard settings. A key that isn't one of yours is
   // struck through: the checklist asks to change it in the game.
@@ -834,7 +985,7 @@ function gameCell(a) {
     if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", text: "+", title: t("The game has a second key for {action}: add it", { action }), onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: second }, e.currentTarget) })); return; }
     const cls = !k ? "none" : k === "?" ? "unknown" : keys.includes(k) ? "match" : "stray";
     const vars = { action, key: k ? pretty(k) : t("none") };
-    cell.append(el("button", { type: "button", class: cls, text: k ? pretty(k) : "–",
+    cell.append(el("button", { type: "button", class: cls, "data-slot": i, text: k ? pretty(k) : "–",
       title: i ? t("Second key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars) : t("First key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars),
       "aria-label": i ? t("Second game key for {action}: {key}. Change", vars) : t("First game key for {action}: {key}. Change", vars),
       onclick: e => startCapture({ kind: "game", a, slot: i, rowName: i ? second : action }, e.currentTarget) }));
@@ -849,7 +1000,7 @@ function rowEl(a, uses, first) {
   const kbRoute = r === "kb", label = t(a.label);
   let note = null;
   if (kbRoute && !g && keys.length) note = t("set the game's key →");
-  return el("div", { class: "row" + (first ? " first" : "") },
+  return el("div", { class: "row" + (first ? " first" : ""), "data-action": a.id },
     el("div", { class: "name" }, label, a.sub ? el("span", { class: "sub", text: t(a.sub) }) : null),
     routeCell(a),
     keysCell(keys, v => state.keys[a.id] = v, label, uses, { kbRoute, sendsAs: kbRoute && g ? g : null, note, after: a.game || a.fixedGame ? gameCell(a) : null }));
@@ -894,6 +1045,13 @@ function renderTune() {
   s.append(tg);
 }
 
+// A checklist line clicked: the action's row, with the game key to change pointed out.
+function showGameKey(r) {
+  const row = document.querySelector(`.row[data-action="${r.a.id}"]`); if (!row) return;
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  const key = row.querySelector(`.ingame [data-slot="${r.slot}"]`) || row.querySelector(".ingame");
+  for (const x of [row, key]) if (x) { x.classList.remove("point"); void x.offsetWidth; x.classList.add("point"); setTimeout(() => x.classList.remove("point"), 1800); }
+}
 const applyRec = r => { const arr = state.game[r.a.id] = state.game[r.a.id] || []; arr[r.slot] = r.want; };
 function recLine(r) {
   const vars = { action: t(r.a.game), key: r.want ? pretty(r.want) : "" };
@@ -906,7 +1064,7 @@ function renderRecs() {
     el("p", { class: "lede", text: t("Change these in the game: Settings › Controls › Keyboard (both columns). Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Tick each one off here once it's done.") }));
   if (!recs.length) { card.append(el("p", { class: "allset", text: t("All set: the game's keyboard keys match yours, in both columns.") })); return; }
   const ul = el("ul", { class: "recs" });
-  for (const r of recs) ul.append(el("li", {},
+  for (const r of recs) ul.append(el("li", { title: t("Show"), onclick: e => { if (!e.target.closest("button")) showGameKey(r); } },
     el("span", {}, recLine(r),
       el("span", { class: "was", text: r.was ? t("now: {key}", { key: pretty(r.was) }) : t("now: empty") }), r.a.note ? el("span", { class: "note", text: t(r.a.note) }) : null),
     el("button", { type: "button", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
@@ -978,9 +1136,10 @@ function renderConflicts(uses) {
 
 function renderLayoutBar() {
   const sel = $("layoutSel");
+  const inGame = gameLayoutId(), mark = (id, name) => id === inGame ? t("{name} (installed)", { name }) : name;
   sel.replaceChildren(
-    el("optgroup", { label: t("Built in") }, ...Object.entries(BUILTIN).map(([id, b]) => el("option", { value: id, selected: cur === id }, t(b.name)))),
-    layouts.length ? el("optgroup", { label: t("Yours") }, ...layouts.map(l => el("option", { value: l.id, selected: cur === l.id }, l.name))) : null,
+    el("optgroup", { label: t("Built in") }, ...Object.entries(BUILTIN).map(([id, b]) => el("option", { value: id, selected: cur === id }, mark(id, t(b.name))))),
+    layouts.length ? el("optgroup", { label: t("Yours") }, ...layouts.map(l => el("option", { value: l.id, selected: cur === l.id }, mark(l.id, l.name)))) : null,
     el("option", { value: "__import" }, t("Import a file…")));
   sel.value = cur;
   $("resetBtn").disabled = !dirty();
@@ -1000,6 +1159,13 @@ function renderLayoutBar() {
     s.append(el("span", { class: "warn", text: t("Reset {name} to its saved version? Your changes will be lost.", { name: layoutName(cur) }) }),
       el("button", { type: "button", class: "primary", text: t("Reset"), onclick: resetLayout }),
       el("button", { type: "button", text: t("Cancel"), onclick: () => { confirmReset = false; renderLayoutBar(); } }));
+    return;
+  }
+  if (switchWarn && pendingSwitch && dirty()) {
+    s.append(el("span", { class: "warn", text: t("Save or discard your changes first.") }),
+      el("button", { type: "button", class: "primary save", text: BUILTIN[cur] ? t("Save as new layout…") : t("Save changes"), onclick: saveChanges }),
+      el("button", { type: "button", text: t("Discard"), onclick: discardAndSwitch }),
+      el("button", { type: "button", text: t("Cancel"), onclick: () => { switchWarn = false; pendingSwitch = null; renderLayoutBar(); } }));
     return;
   }
   if (switchWarn) s.append(el("span", { class: "warn", text: t("Save or discard your changes first.") }));
@@ -1031,9 +1197,17 @@ function render() {
     t("Always the controller: the game only sees controller input while you fight. \"{ingame}\" is the game's own keyboard key for the same action; match it to yours (see the checklist) so keyboard mode feels the same.", { ingame: t("in game") }),
     ACTIONS.filter(a => a.sec === "act"), uses);
   renderSection("sec-menu", "var(--menu)", t("Menus"),
-    t("For menus the game has both ways, pick one. {keyboard} (default): your keys send the game's own shortcut and switch to mouse mode. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the chosen way is active; the other stays off.", { keyboard: t("Keyboard"), controller: t("Controller") }),
+    state.opt.ControllerMenus ? t("For menus the game has both ways, pick one. {keyboard} (default): your keys send the game's own shortcut and switch to mouse mode. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the chosen way is active; the other stays off.", { keyboard: t("Keyboard"), controller: t("Controller") }) : t("Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving."),
     ACTIONS.filter(a => a.sec === "menu"), uses);
   renderWheelNote();
+  $("sec-menu").querySelector(".lede").after(el("label", { class: "menu-switch" },
+    el("input", { type: "checkbox", checked: !!state.opt.ControllerMenus, onchange: e => {
+      state.opt.ControllerMenus = e.target.checked;
+      if (!e.target.checked) for (const a of ACTIONS) if (both(a) && !padAllowed(a, state)) state.mode[a.id] = "kb";
+      changed();
+    } }),
+    el("span", {}, t("Allow controller input for menus"),
+      el("span", { class: "sub", text: t("menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can") }))));
   renderMod(uses); renderTune(); renderRecs(); renderMismatch(); renderMap(uses); renderConflicts(uses); renderLayoutBar(); renderOut();
 }
 
@@ -1114,16 +1288,23 @@ $("capCancel").addEventListener("click", e => { e.stopPropagation(); stopCapture
 let layouts = [];               // your layouts: [{ id, name, text }]
 let cur = "default", base = ""; // the selected layout, and its saved settings text
 let naming = null, switchWarn = false, confirmReset = false;
+let pendingSwitch = null; // the layout picked while there were unsaved changes: opened once they're saved or discarded
 const layoutName = id => BUILTIN[id] ? t(BUILTIN[id].name) : (layouts.find(l => l.id === id) || {}).name || t("Layout");
 const layoutText = id => BUILTIN[id] ? BUILTIN[id].text : (layouts.find(l => l.id === id) || {}).text;
 const dirty = () => iniText(state) !== base;
+// Which of the layouts here is the one in the game (the same settings), if any.
+function gameLayoutId() {
+  if (!host || !host.game || !host.game.text) return null;
+  const want = iniText(stateFromIni(host.game.text));
+  return [...Object.keys(BUILTIN), ...layouts.map(l => l.id)].find(id => iniText(stateFromIni(layoutText(id))) === want) || null;
+}
 function persist() { store.set("d2kb-ini", iniText(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur); }
 function save() { persist(); }
 function edited() { switchWarn = false; confirmReset = false; renderLayoutBar(); }
 function changed() { switchWarn = false; confirmReset = false; save(); render(); }
 function selectLayout(id) {
   const text = layoutText(id); if (!text) return;
-  state = stateFromIni(text); cur = id; base = iniText(state); naming = null; switchWarn = false;
+  state = stateFromIni(text); cur = id; base = iniText(state); naming = null; switchWarn = false; pendingSwitch = null;
   render(); persist();
 }
 function newLayout(name) {
@@ -1132,20 +1313,24 @@ function newLayout(name) {
   layouts.push({ id, name, text });
   cur = id; base = text; naming = null; switchWarn = false;
   render(); persist();
+  if (pendingSwitch) return selectLayout(pendingSwitch);
   $("saveStatus").textContent = host ? t("Saved \"{name}\". Save it to the game to use it.", { name }) : t("Saved \"{name}\". Download the file to use it in the game.", { name });
 }
 function saveChanges() {
   if (BUILTIN[cur]) { naming = "save"; renderLayoutBar(); return; } // built-in layouts stay as they are
   const l = layouts.find(x => x.id === cur); if (!l) return;
   l.text = iniText(state); base = l.text; switchWarn = false; render(); persist();
+  if (pendingSwitch) selectLayout(pendingSwitch);
 }
+// Leaving a changed layout for the one picked: its changes go, no second question.
+function discardAndSwitch() { const to = pendingSwitch; state = stateFromIni(base); confirmReset = false; selectLayout(to); }
 function resetLayout() { state = stateFromIni(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); }
 function askReset() { if (!dirty()) return; confirmReset = true; naming = null; switchWarn = false; renderLayoutBar(); }
 function deleteLayout() { layouts = layouts.filter(l => l.id !== cur); selectLayout("default"); }
 $("layoutSel").addEventListener("change", e => {
   const v = e.target.value;
   if (v === "__import") { $("importCard").hidden = false; $("importCard").scrollIntoView({ behavior: "smooth", block: "start" }); renderLayoutBar(); return; }
-  if (dirty()) { switchWarn = true; renderLayoutBar(); return; }
+  if (dirty()) { switchWarn = true; pendingSwitch = v; renderLayoutBar(); return; }
   selectLayout(v);
 });
 $("createBtn").addEventListener("click", () => { naming = "create"; switchWarn = false; confirmReset = false; renderLayoutBar(); });
@@ -1187,12 +1372,15 @@ async function downloadFile() {
     $("saveStatus").textContent = t("Saving…");
     try {
       const used = await host.save(name, text);
+      if (!used || used === name) host.game = { file: name, text };
+      renderLayoutBar();
       $("saveStatus").textContent = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. Restart the game to use it.", { file: name });
     } catch (e) {
       // "saved:" starts the app's messages for a file that was saved but can't be used yet.
       const m = String(e && e.message || e);
       $("saveStatus").textContent = m.startsWith("saved:") ? m.slice(6) : t("Not saved: {error}", { error: m });
     }
+    toast($("saveStatus").textContent);
     return;
   }
   if (downloads) {
@@ -1207,9 +1395,22 @@ async function downloadFile() {
   $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.", { file: name });
 }
 $("saveBtn").addEventListener("click", downloadFile);
-$("downloadTop").addEventListener("click", () => { downloadFile(); $("saveStatus").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+$("downloadTop").addEventListener("click", () => { downloadFile(); if (!inApp) $("saveStatus").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
 if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
 if (host) $("whereItGoes").hidden = true;
+// In the Mac app: a toast for what happened, no web page right-click menu, and the
+// pinned layout bar's height for the sticky side column.
+const inApp = document.documentElement.classList.contains("app");
+let toastTimer = 0;
+function toast(text) {
+  if (!inApp || !text) return;
+  const box = $("toast"); box.textContent = text; box.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => box.classList.remove("show"), 4000);
+}
+if (inApp) {
+  document.addEventListener("contextmenu", e => { if (!e.target.closest("input, textarea, pre, .path")) e.preventDefault(); });
+  new ResizeObserver(() => document.documentElement.style.setProperty("--bar-h", document.querySelector("header").offsetHeight + "px")).observe(document.querySelector("header"));
+}
 
 try { layouts = JSON.parse(store.get("d2kb-layouts") || "[]"); } catch (e) { layouts = []; }
 cur = store.get("d2kb-current") || "default";
@@ -1223,6 +1424,23 @@ if (!store.get("d2kb-layouts") && working) {
 if (!layoutText(cur)) cur = "default";
 base = iniText(stateFromIni(layoutText(cur)));
 state = stateFromIni(working || layoutText(cur));
+// The layout the game uses (host.game: its file and text, from the app): one made
+// outside this editor (an older version, a loaded file) joins your layouts, and the
+// editor opens on it unless there are unsaved changes on screen.
+let gameFound = "";
+if (host && host.game && host.game.text && /\[(Move|Buttons|Keys)\]/i.test(host.game.text)) {
+  const id = gameLayoutId();
+  if (!id) {
+    const name = String(host.game.file || "").replace(/\.(txt|ini)$/i, "") || t("My layout");
+    layouts.push({ id: "l" + Date.now().toString(36), name, text: host.game.text });
+    gameFound = name;
+  }
+  if (!dirty()) { const g = gameLayoutId(); if (g) { cur = g; base = iniText(stateFromIni(layoutText(g))); state = stateFromIni(layoutText(g)); } }
+}
 translatePage(); render(); persist();
+if (gameFound) {
+  $("saveStatus").textContent = t("Found {name} in the game folder and added it to your layouts.", { name: gameFound });
+  toast($("saveStatus").textContent);
+}
 }
 </script>

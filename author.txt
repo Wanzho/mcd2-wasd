@@ -1,6 +1,7 @@
 ; Recommended layout for the Minecraft Dungeons II controller mod.
-; Bow on side button 5; inventory (E), quests (V), social (/) and teleport (X) on
-; the controller so you can keep moving; Tab opens the menu wheel; Shift forward dodge.
+; Bow on side button 4; the inventory (E) on the controller so you can keep moving;
+; quests (V), social (/) and teleport (X) send the game's own keys; Tab opens the
+; menu wheel; Shift forward dodge.
 ; Only the keys you press change; the game's own keys stay at their defaults.
 ; Put this file in the game's Win64 folder (Windows setup: Load layout file) and
 ; restart the game. The newest of default.txt, author.txt and wasdmod*.txt is used.
@@ -33,9 +34,9 @@ Start=None
 LS=Mouse3
 RS=None
 DUp=E
-DDown=/
-DLeft=X
-DRight=V
+DDown=None
+DLeft=None
+DRight=None
 
 [Labels]
 A=Jump / interact
@@ -66,10 +67,10 @@ BowAimsWithMouse=1
 [Keys]
 MenuKeys=M, G, K, Escape
 BackKeys=Escape
-MouseAfter=DUp, DDown
+MouseAfter=DUp
 MenuTapMs=300
 TypeKey=T
-PassKeys=Z, F1, F2, F3, F4
+PassKeys=X, Z, F1, F2, F3, F4
 DisabledKeys=Mouse5, 1, I, J, U
 InstantKeys=
 Cursor=Alt
@@ -81,16 +82,18 @@ Legend=F9
 Tab=S
 B=U
 Mouse4=Mouse2
+V=J
+/=F
 
 ; Keybinder only (the mod ignores these): keyboard or controller for each menu,
 ; and the game's own keyboard keys (Settings > Controls > Keyboard).
 [Modes]
-tpplayer=Controller
+tpplayer=Keyboard
 inventory=Controller
 map=Keyboard
 wheel=Keyboard
-quest=Controller
-social=Controller
+quest=Keyboard
+social=Keyboard
 emotes=Keyboard
 
 [GameKeys]

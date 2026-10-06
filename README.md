@@ -99,6 +99,7 @@ The key layout editor is the main window of the Mac app. On Windows, click **Edi
 - Pick **Default** or **Recommended** under Layout, or click **+ Create** for your own. Click a key to change it.
 - Click **Save to game**, then restart the game.
 - Changing a built-in layout asks to save it as a new layout of yours. **Reset** goes back to the saved version.
+- Menus send the game's own keyboard shortcut. The inventory can use the controller instead: tap for the full inventory, hold for the mini inventory while you keep moving. **Allow controller input for menus** gives the other menus and Teleport to player that choice too.
 
 **Match the game's own keyboard settings.** The game reads its own keyboard settings in menus, with the cursor and while aiming the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
 
