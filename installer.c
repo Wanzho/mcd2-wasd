@@ -25,6 +25,7 @@ typedef long LONG;
 typedef unsigned int UINT;
 typedef int BOOL;
 typedef void *HANDLE;
+typedef unsigned short WCHAR;
 typedef long long LRESULT;
 typedef unsigned long long WPARAM;
 typedef long long LPARAM;
@@ -69,6 +70,9 @@ IMP BOOL CreateDirectoryA(const char *, void *);
 IMP void Sleep(DWORD);
 IMP DWORD GetLogicalDrives(void);
 IMP UINT GetDriveTypeA(const char *);
+IMP int MultiByteToWideChar(UINT, DWORD, const char *, int, WCHAR *, int);
+IMP int WideCharToMultiByte(UINT, DWORD, const WCHAR *, int, char *, int, const char *, BOOL *);
+IMP WORD GetUserDefaultUILanguage(void);
 // advapi32
 IMP LONG RegOpenKeyExA(HANDLE, const char *, DWORD, DWORD, HANDLE *);
 IMP LONG RegQueryValueExA(HANDLE, const char *, DWORD *, DWORD *, BYTE *, DWORD *);
@@ -76,21 +80,25 @@ IMP LONG RegCloseKey(HANDLE);
 IMP BYTE SystemFunction036(void *, DWORD); // RtlGenRandom
 // user32
 typedef LRESULT (*WNDPROC)(HANDLE, UINT, WPARAM, LPARAM);
-typedef struct { UINT style; WNDPROC proc; int clsExtra, wndExtra; HANDLE instance, icon, cursor, background; const char *menu, *className; } WNDCLASSA;
+typedef struct { UINT style; WNDPROC proc; int clsExtra, wndExtra; HANDLE instance, icon, cursor, background; const WCHAR *menu, *className; } WNDCLASSW;
 typedef struct { HANDLE hwnd; UINT message; WPARAM wParam; LPARAM lParam; DWORD time; LONG x, y; } MSG;
 typedef struct { LONG left, top, right, bottom; } RECT;
-IMP WORD RegisterClassA(const WNDCLASSA *);
-IMP HANDLE CreateWindowExA(DWORD, const char *, const char *, DWORD, int, int, int, int, HANDLE, HANDLE, HANDLE, void *);
-IMP LRESULT DefWindowProcA(HANDLE, UINT, WPARAM, LPARAM);
-IMP BOOL GetMessageA(MSG *, HANDLE, UINT, UINT);
+IMP WORD RegisterClassW(const WNDCLASSW *);
+IMP HANDLE CreateWindowExW(DWORD, const WCHAR *, const WCHAR *, DWORD, int, int, int, int, HANDLE, HANDLE, HANDLE, void *);
+IMP LRESULT DefWindowProcW(HANDLE, UINT, WPARAM, LPARAM);
+IMP BOOL GetMessageW(MSG *, HANDLE, UINT, UINT);
 IMP BOOL TranslateMessage(const MSG *);
-IMP LRESULT DispatchMessageA(const MSG *);
-IMP BOOL IsDialogMessageA(HANDLE, MSG *);
+IMP LRESULT DispatchMessageW(const MSG *);
+IMP BOOL IsDialogMessageW(HANDLE, MSG *);
 IMP BOOL PostMessageA(HANDLE, UINT, WPARAM, LPARAM);
 IMP void PostQuitMessage(int);
-IMP LRESULT SendMessageA(HANDLE, UINT, WPARAM, LPARAM);
-IMP BOOL SetWindowTextA(HANDLE, const char *);
-IMP int MessageBoxA(HANDLE, const char *, const char *, UINT);
+IMP LRESULT SendMessageW(HANDLE, UINT, WPARAM, LPARAM);
+IMP BOOL SetWindowTextW(HANDLE, const WCHAR *);
+IMP int GetWindowTextW(HANDLE, WCHAR *, int);
+IMP int MessageBoxW(HANDLE, const WCHAR *, const WCHAR *, UINT);
+IMP BOOL SetWindowPos(HANDLE, HANDLE, int, int, int, int, UINT);
+IMP int DrawTextW(HANDLE, const WCHAR *, int, void *, UINT);
+IMP BOOL InvalidateRect(HANDLE, const void *, BOOL);
 IMP BOOL EnableWindow(HANDLE, BOOL);
 IMP BOOL ShowWindow(HANDLE, int);
 IMP HANDLE LoadCursorA(HANDLE, const char *);
@@ -102,18 +110,19 @@ IMP BOOL SetProcessDPIAware(void);
 // gdi32
 IMP HANDLE CreateFontA(int, int, int, int, int, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, const char *);
 IMP int GetDeviceCaps(HANDLE, int);
+IMP HANDLE SelectObject(HANDLE, HANDLE);
 IMP int SetBkMode(HANDLE, int);
 IMP HANDLE GetSysColorBrush(int);
 // shell32 / comdlg32
 IMP HANDLE ShellExecuteA(HANDLE, const char *, const char *, const char *, const char *, int);
 IMP LONG SHGetFolderPathA(HANDLE, int, HANDLE, DWORD, char *);
 typedef struct {
-    DWORD size; HANDLE owner, instance; const char *filter; char *customFilter; DWORD maxCustomFilter, filterIndex;
-    char *file; DWORD maxFile; char *fileTitle; DWORD maxFileTitle; const char *initialDir, *title; DWORD flags;
-    WORD fileOffset, fileExtension; const char *defExt; LPARAM custData; void *hook; const char *templateName;
+    DWORD size; HANDLE owner, instance; const WCHAR *filter; WCHAR *customFilter; DWORD maxCustomFilter, filterIndex;
+    WCHAR *file; DWORD maxFile; WCHAR *fileTitle; DWORD maxFileTitle; const WCHAR *initialDir, *title; DWORD flags;
+    WORD fileOffset, fileExtension; const WCHAR *defExt; LPARAM custData; void *hook; const WCHAR *templateName;
     void *reserved1; DWORD reserved2, flagsEx;
-} OPENFILENAMEA;
-IMP BOOL GetOpenFileNameA(OPENFILENAMEA *);
+} OPENFILENAMEW;
+IMP BOOL GetOpenFileNameW(OPENFILENAMEW *);
 // ws2_32
 typedef unsigned long long SOCKET;
 typedef struct { WORD family, port; DWORD addr; BYTE zero[8]; } SOCKADDR_IN;
@@ -149,6 +158,45 @@ static int contains(const char *hay, unsigned n, const char *needle) {
     return 0;
 }
 static void join(char *out, const char *dir, const char *name) { scpy(out, PATHLEN, dir); cat(out, PATHLEN, "\\"); cat(out, PATHLEN, name); }
+
+// ---------------------------------------------------------------- language
+// The window in every language the game has (build/lang_setup.h, made by lang.py
+// from lang/*.json). English is the key: T("Install") is that text in the current
+// language, or the English if it has none. N_ marks text translated where it's shown.
+#define N_(s) s
+#include "build/lang_setup.h"
+static volatile int langIndex; // into LANG_CODE; 0 is English
+static int sameStr(const char *a, const char *b) { while (*a && *a == *b) a++, b++; return *a == *b; }
+static const char *T(const char *en) {
+    if (langIndex) for (int i = 0; i < TR_COUNT; i++) if (TR_KEY[i] && sameStr(TR_KEY[i], en)) return TR_TEXT[langIndex][i] ? TR_TEXT[langIndex][i] : en;
+    return en;
+}
+// "de", "de-DE", "pt_BR", "zh-Hant", "zh-TW"... -> its place in LANG_CODE, or -1.
+static int langOf(const char *tag) {
+    char t[16] = {0};
+    for (int i = 0; tag[i] && i < 15; i++) t[i] = low(tag[i] == '_' ? '-' : tag[i]);
+    if (t[0] == 'z' && t[1] == 'h' && (!t[2] || t[2] == '-')) { // Chinese: traditional for Taiwan, Hong Kong and Macau
+        int hant = sameTextN(t + 2, "-hant", 5) || sameTextN(t + 2, "-tw", 3) || sameTextN(t + 2, "-hk", 3) || sameTextN(t + 2, "-mo", 3);
+        scpy(t, sizeof(t), hant ? "zh-hant" : "zh-hans");
+    }
+    for (int i = 0; i < LANG_COUNT; i++) {
+        const char *c = LANG_CODE[i]; int k = 0;
+        while (c[k] && low(c[k]) == t[k]) k++;
+        if (!c[k] && (!t[k] || t[k] == '-')) return i;
+    }
+    return -1;
+}
+// Windows' display language.
+static const char *systemLang(void) {
+    WORD id = GetUserDefaultUILanguage();
+    switch (id & 0x3FF) {
+    case 0x04: return id == 0x0404 || id == 0x0C04 || id == 0x1404 || id == 0x7C04 ? "zh-Hant" : "zh-Hans";
+    case 0x07: return "de"; case 0x0A: return "es"; case 0x0C: return "fr"; case 0x10: return "it";
+    case 0x11: return "ja"; case 0x12: return "ko"; case 0x13: return "nl"; case 0x15: return "pl";
+    case 0x16: return "pt"; case 0x19: return "ru"; case 0x1D: return "sv"; case 0x1F: return "tr"; case 0x22: return "uk";
+    }
+    return "en";
+}
 
 // ---------------------------------------------------------------- files
 
@@ -328,11 +376,11 @@ static int putLayout(const char *dir, const char *name, const BYTE *d, DWORD n) 
 }
 
 enum { OK, ERR_RUNNING, ERR_OTHER_DLL, ERR_WRITE };
-static const char *errorText[] = {
+static const char *errorText[] = { // in English (the command line); the window translates them
     "",
-    "Minecraft Dungeons II is running. Close it, then try again.",
-    "The game folder already has a different xinput1_4.dll (another mod?).",
-    "Couldn't write to the game folder. Try running this installer as administrator.",
+    N_("Minecraft Dungeons II is running. Close it, then try again."),
+    N_("The game folder already has a different xinput1_4.dll (another mod?)."),
+    N_("Couldn't write to the game folder. Try running this installer as administrator."),
 };
 
 static int install(const char *dir, int replaceOther) {
@@ -410,7 +458,7 @@ static int useLayout(const char *dir, int which) {
 enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF, ID_RECORD };
 static HANDLE onOffBtn, recordBtn;
 static HANDLE mainWnd, fontNormal, fontTitle, fontSmall, statusWnd, pathWnd, installBtn, uninstallBtn, editorBtn, loadBtn, settingsBtn, layoutBtn[3];
-static char ownName[PATHLEN];
+static HANDLE titleWnd, introWnd, folderLabel, browseBtn, layoutLabel, recordHint, footerWnd;
 static char gameDir[PATHLEN];
 static int dpi = 96;
 static int S(int v) { return v * dpi / 96; }
@@ -424,6 +472,7 @@ static const char *TITLE = "wasdmod";
 // page keeps its layouts in %APPDATA%\wasdmod\editor.json and saves straight into
 // the game folder, while this window stays open.
 #define WM_EDITOR_SAVED 0x8001 // WM_APP + 1
+#define WM_LANGUAGE 0x8002     // WM_APP + 2: a language was picked in the editor
 #define MAXREQ (2 << 20)
 static WORD serverPort;
 static char token[33], savedName[PATHLEN];
@@ -460,7 +509,10 @@ static const char *HOST_C = "/\";\n"
     "  const send = (path, body) => fetch(base + path, { method: \"POST\", body });\n"
     "  return {\n"
     "    store,\n"
+    "    lang: \"";
+static const char *HOST_D = "\",\n"
     "    set(k, v) { store[k] = v; const body = JSON.stringify(store).replace(/</g, \"\\\\u003c\"); chain = chain.then(() => send(\"store\", body)).catch(() => {}); },\n"
+    "    setLang(code) { chain = chain.then(() => send(\"lang?\" + encodeURIComponent(code), \"\")).catch(() => {}); },\n"
     "    async save(name, text) { const r = await send(\"save?name=\" + encodeURIComponent(name), text); const t = await r.text(); if (!r.ok) throw new Error(t); return t; }\n"
     "  };\n"
     "})();\n"
@@ -471,8 +523,9 @@ static void servePage(SOCKET s) {
     if (saved && (storeN == 0 || saved[0] != '{' || contains(saved, storeN, "</"))) { HeapFree(GetProcessHeap(), 0, saved); saved = 0; }
     DWORD off = 0, size = sizeof(payloadEditor);
     for (int lines = 0; off < size && lines < 4; off++) if (payloadEditor[off] == '\n') lines++;
-    DWORD a = slen(HOST_A), b = slen(HOST_B), c = slen(HOST_C), st = saved ? storeN : 2;
-    DWORD total = off + a + st + b + 32 + c + (size - off);
+    const char *code = LANG_CODE[langIndex];
+    DWORD a = slen(HOST_A), b = slen(HOST_B), c = slen(HOST_C), d = slen(HOST_D), lc = slen(code), st = saved ? storeN : 2;
+    DWORD total = off + a + st + b + 32 + c + lc + d + (size - off);
     char *page = HeapAlloc(GetProcessHeap(), 0, total), *o = page;
     if (!page) { replyText(s, "500 Internal Server Error", "Out of memory."); if (saved) HeapFree(GetProcessHeap(), 0, saved); return; }
     memcpy(o, payloadEditor, off); o += off;
@@ -481,6 +534,8 @@ static void servePage(SOCKET s) {
     memcpy(o, HOST_B, b); o += b;
     memcpy(o, token, 32); o += 32;
     memcpy(o, HOST_C, c); o += c;
+    memcpy(o, code, lc); o += lc;
+    memcpy(o, HOST_D, d); o += d;
     memcpy(o, payloadEditor + off, size - off);
     reply(s, "200 OK", "text/html; charset=utf-8", page, total);
     HeapFree(GetProcessHeap(), 0, page);
@@ -498,14 +553,16 @@ static void serveSave(SOCKET s, const char *query, const char *body, DWORD n) {
     int safe = 1; for (unsigned i = 0; i < k; i++) if (name[i] == '\\' || name[i] == '/' || name[i] == ':' || (BYTE)name[i] < 32) safe = 0;
     int keep = safe && ((k > 11 && sameTextN(name, "wasdmod", 7) && sameText(name + k - 4, ".txt")) || sameText(name, "author.txt") || sameText(name, "default.txt"));
     if (!keep) scpy(name, sizeof(name), "wasdmod.txt");
-    if (!gameDir[0] || !isGameDir(gameDir)) return replyText(s, "409 Conflict", "The game folder wasn't found. Pick it in the setup window.");
-    if (!contains(body, n, "[Buttons]") && !contains(body, n, "[Move]")) return replyText(s, "400 Bad Request", "That isn't a key layout.");
-    if (!putLayout(gameDir, name, (const BYTE *)body, n)) return replyText(s, "500 Internal Server Error", errorText[ERR_WRITE]);
+    if (!gameDir[0] || !isGameDir(gameDir)) return replyText(s, "409 Conflict", T("The game folder wasn't found. Pick it in the setup window."));
+    if (!contains(body, n, "[Buttons]") && !contains(body, n, "[Move]")) return replyText(s, "400 Bad Request", T("That isn't a key layout."));
+    if (!putLayout(gameDir, name, (const BYTE *)body, n)) return replyText(s, "500 Internal Server Error", T(errorText[ERR_WRITE]));
     scpy(savedName, sizeof(savedName), name);
     if (mainWnd) PostMessageA(mainWnd, WM_EDITOR_SAVED, 0, 0);
+    // Saved but not in use yet: "saved:" tells the editor it isn't an error.
     int state = installState(gameDir);
-    if (state == TURNED_OFF) return replyText(s, "409 Conflict", "Saved, but wasdmod is turned off: click Turn on in the setup window.");
-    if (state != INSTALLED_LATEST && state != INSTALLED_OLDER) return replyText(s, "409 Conflict", "Saved, but the mod isn't installed yet: click Install in the setup window.");
+    char why[600] = "saved:";
+    if (state == TURNED_OFF) { cat(why, sizeof(why), T("Saved, but wasdmod is turned off: click Turn on in the setup window.")); return replyText(s, "409 Conflict", why); }
+    if (state != INSTALLED_LATEST && state != INSTALLED_OLDER) { cat(why, sizeof(why), T("Saved, but the mod isn't installed yet: click Install in the setup window.")); return replyText(s, "409 Conflict", why); }
     char active[PATHLEN]; activeSettings(gameDir, active);
     replyText(s, "200 OK", baseName(active));
 }
@@ -539,6 +596,12 @@ static DWORD serveOne(void *arg) {
             char p[PATHLEN]; storePath(p);
             if (n && body[0] == '{' && p[0] && writeAll(p, body, n)) replyText(s, "200 OK", "");
             else replyText(s, "500 Internal Server Error", "Couldn't keep the layouts.");
+        } else if (ours && post && sameTextN(rest, "lang?", 5)) {
+            char code[16] = {0}; unsigned k = 0;
+            for (const char *q = rest + 5; *q && *q != ' ' && k + 1 < sizeof(code); q++) code[k++] = *q;
+            int l = langOf(code);
+            if (l >= 0) { langIndex = l; if (mainWnd) PostMessageA(mainWnd, WM_LANGUAGE, 0, 0); }
+            replyText(s, "200 OK", "");
         } else if (ours && post && sameTextN(rest, "save?", 5)) {
             char *q = rest + 5; char *e = q; while (*e && *e != ' ') e++;
             *e = 0; serveSave(s, q, body, n);
@@ -666,117 +729,209 @@ static int openEditor(void) {
     return 1;
 }
 
+// Text for the window: translated text is UTF-8, paths are in the ANSI code page.
+static WCHAR *W(const char *s) { // a few at a time (a message box needs two)
+    static WCHAR buf[4][2048]; static int next;
+    WCHAR *w = buf[next++ & 3];
+    if (!MultiByteToWideChar(65001 /*CP_UTF8*/, 0, s, -1, w, 2048)) w[0] = 0;
+    return w;
+}
+static void setText(HANDLE c, const char *s) { SetWindowTextW(c, W(s)); }
+static void setPath(HANDLE c, const char *p) { WCHAR w[PATHLEN]; if (!MultiByteToWideChar(0 /*CP_ACP*/, 0, p, -1, w, PATHLEN)) w[0] = 0; SetWindowTextW(c, w); }
+static int ask(const char *text, UINT flags) { return MessageBoxW(mainWnd, W(text), W(TITLE), flags); }
+// "Saved {file} ..." with {file} filled in.
+static void fill(char *out, unsigned cap, const char *text, const char *value) {
+    out[0] = 0;
+    for (const char *p = text; *p; ) {
+        if (sameTextN(p, "{file}", 6)) { cat(out, cap, value); p += 6; continue; }
+        char c[2] = {*p++, 0}; cat(out, cap, c);
+    }
+}
+
+// Every control is placed for the text it has now (a translation can be longer):
+// buttons as wide as their labels, text wrapped, and the window as big as needed.
+static const DWORD WINDOW_STYLE = 0x00CA0000; // caption, system menu, minimize box
+static int measure(HANDLE c, int width, int *height) {
+    WCHAR text[1024]; int n = GetWindowTextW(c, text, 1024);
+    HANDLE dc = GetDC(c), old = SelectObject(dc, (HANDLE)SendMessageW(c, 0x31 /*WM_GETFONT*/, 0, 0));
+    RECT r = {0, 0, width ? width : 4000, 0};
+    DrawTextW(dc, text, n, &r, 0x400 /*DT_CALCRECT*/ | 0x800 /*DT_NOPREFIX*/ | (width ? 0x10 /*DT_WORDBREAK*/ : 0x20 /*DT_SINGLELINE*/));
+    SelectObject(dc, old); ReleaseDC(c, dc);
+    if (height) *height = r.bottom;
+    return r.right;
+}
+static int buttonWidth(HANDLE c, int least) { int w = measure(c, 0, 0) + S(28); return w > S(least) ? w : S(least); }
+static int textHeight(HANDLE c, int width, int least) { int h; measure(c, width, &h); return h > S(least) ? h : S(least); }
+static void place(HANDLE c, int x, int y, int w, int h) { SetWindowPos(c, 0, x, y, w, h, 0x4 /*SWP_NOZORDER*/ | 0x10 /*SWP_NOACTIVATE*/); }
+static void layout(void) {
+    if (!mainWnd || !footerWnd) return;
+    int m = S(20), gap = S(8), y = S(16);
+    int install = buttonWidth(installBtn, 150), remove = buttonWidth(uninstallBtn, 110), onOff = buttonWidth(onOffBtn, 110), browse = buttonWidth(browseBtn, 86);
+    int editor = buttonWidth(editorBtn, 156), load = buttonWidth(loadBtn, 156), settings = buttonWidth(settingsBtn, 152), record = buttonWidth(recordBtn, 156);
+    int inner = S(480);
+    if (install + remove + onOff + 2 * gap > inner) inner = install + remove + onOff + 2 * gap;
+    if (editor + load + settings + 2 * gap > inner) inner = editor + load + settings + 2 * gap;
+    if (record + gap + S(200) > inner) inner = record + gap + S(200);
+    place(titleWnd, m, y, inner, S(30)); y += S(32);
+    int h = textHeight(introWnd, inner, 18); place(introWnd, m, y, inner, h); y += h + S(16);
+    place(folderLabel, m, y, inner, S(20)); y += S(22);
+    place(pathWnd, m, y + 1, inner - browse - gap, S(26)); place(browseBtn, m + inner - browse, y, browse, S(28)); y += S(38);
+    h = textHeight(statusWnd, inner, 42); place(statusWnd, m, y, inner, h); y += h + S(8);
+    place(installBtn, m, y, install, S(34)); place(uninstallBtn, m + install + gap, y, remove, S(34));
+    place(onOffBtn, m + install + remove + 2 * gap, y, onOff, S(34)); y += S(52);
+    place(layoutLabel, m, y, inner, S(20)); y += S(22);
+    for (int i = 0; i < 3; i++) { place(layoutBtn[i], m + S(8), y, inner - S(8), S(22)); y += S(24); }
+    y += S(8);
+    place(editorBtn, m, y, editor, S(30)); place(loadBtn, m + editor + gap, y, load, S(30));
+    place(settingsBtn, m + editor + load + 2 * gap, y, settings, S(30)); y += S(44);
+    h = textHeight(recordHint, inner - record - gap, 30);
+    place(recordBtn, m, y, record, S(30)); place(recordHint, m + record + gap, y - S(2), inner - record - gap, h); y += (h > S(30) ? h : S(30)) + S(14);
+    h = textHeight(footerWnd, inner, 30); place(footerWnd, m, y, inner, h); y += h + S(8);
+    RECT r = {0, 0, inner + 2 * m, y}; AdjustWindowRect(&r, WINDOW_STYLE, 0);
+    SetWindowPos(mainWnd, 0, 0, 0, r.right - r.left, r.bottom - r.top, 0x2 /*SWP_NOMOVE*/ | 0x4 | 0x10);
+    InvalidateRect(mainWnd, 0, 1);
+}
+static void setStatus(const char *text) { setText(statusWnd, text); layout(); }
+
 static void refresh(void) {
-    char text[900] = "";
     int have = gameDir[0] != 0, state = have ? installState(gameDir) : NOT_INSTALLED;
-    SetWindowTextA(pathWnd, have ? gameDir : "(not found)");
-    unsigned end = slen(have ? gameDir : "(not found)");
-    SendMessageA(pathWnd, 0xB1 /*EM_SETSEL*/, end, end); // show the end of a long path
-    if (!have) scpy(text, sizeof(text), "Game not found in Steam or XboxGames. Click Browse and pick Dungeons-Win64-Shipping.exe (in Dungeons\\Binaries\\Win64) or Dungeons.exe.");
-    else if (state == INSTALLED_LATEST) scpy(text, sizeof(text), "Installed and up to date. Start (or restart) the game to use it.");
-    else if (state == INSTALLED_OLDER) scpy(text, sizeof(text), "An older version is installed. Click Update.");
-    else if (state == OTHER_DLL) scpy(text, sizeof(text), "The game folder has a different xinput1_4.dll (another mod?). Install replaces it and keeps a copy as xinput1_4.dll.other.");
-    else if (state == TURNED_OFF) scpy(text, sizeof(text), "Turned off: the game starts without wasdmod. Your layouts are kept; click Turn on to use it again.");
-    else scpy(text, sizeof(text), "Not installed yet.");
-    SetWindowTextA(statusWnd, text);
-    SetWindowTextA(installBtn, state == INSTALLED_OLDER ? "Update" : state == INSTALLED_LATEST || state == TURNED_OFF ? "Reinstall" : "Install");
+    if (have) setPath(pathWnd, gameDir); else setText(pathWnd, T("(not found)"));
+    const char *text = !have ? T("Game not found in Steam or XboxGames. Click Browse and pick Dungeons-Win64-Shipping.exe (in Dungeons\\Binaries\\Win64) or Dungeons.exe.")
+        : state == INSTALLED_LATEST ? T("Installed and up to date. Start (or restart) the game to use it.")
+        : state == INSTALLED_OLDER ? T("An older version is installed. Click Update.")
+        : state == OTHER_DLL ? T("The game folder has a different xinput1_4.dll (another mod?). Install replaces it and keeps a copy as xinput1_4.dll.other.")
+        : state == TURNED_OFF ? T("Turned off: the game starts without wasdmod. Your layouts are kept; click Turn on to use it again.")
+        : T("Not installed yet.");
+    setText(statusWnd, text);
+    setText(installBtn, state == INSTALLED_OLDER ? T("Update") : state == INSTALLED_LATEST || state == TURNED_OFF ? T("Reinstall") : T("Install"));
     EnableWindow(installBtn, have);
     int installed = have && (state == INSTALLED_LATEST || state == INSTALLED_OLDER || state == TURNED_OFF);
     EnableWindow(uninstallBtn, installed);
-    SetWindowTextA(onOffBtn, state == TURNED_OFF ? "Turn on" : "Turn off");
+    setText(onOffBtn, state == TURNED_OFF ? T("Turn on") : T("Turn off"));
     EnableWindow(onOffBtn, installed);
-    SetWindowTextA(recordBtn, have && recordingOn(gameDir) ? "Stop and save logs" : "Record logs");
+    setText(recordBtn, have && recordingOn(gameDir) ? T("Stop and save logs") : T("Record logs"));
     EnableWindow(recordBtn, have);
     EnableWindow(editorBtn, have);
     EnableWindow(loadBtn, installed);
     EnableWindow(settingsBtn, installed);
     // The layout in use (the newest settings file) is the checked one.
-    char active[PATHLEN] = "", own[PATHLEN];
+    char active[PATHLEN] = "", own[PATHLEN], ownName[PATHLEN];
     int hasOwn = have && findFiles(gameDir, "wasdmod*.txt", own, 0);
     if (installed) activeSettings(gameDir, active);
     const char *name = baseName(active);
     int current = !installed ? -1 : sameText(name, "default.txt") ? 0 : sameText(name, "author.txt") ? 1 : 2;
-    scpy(ownName, sizeof(ownName), "Your own (");
-    cat(ownName, sizeof(ownName), current == 2 ? name : hasOwn ? baseName(own) : "none saved yet");
-    cat(ownName, sizeof(ownName), ")");
-    SetWindowTextA(layoutBtn[2], ownName);
+    if (current == 2 || hasOwn) fill(ownName, sizeof(ownName), T("Your own ({file})"), current == 2 ? name : baseName(own));
+    else scpy(ownName, sizeof(ownName), T("Your own (none saved yet)"));
+    setText(layoutBtn[2], ownName);
     for (int i = 0; i < 3; i++) {
-        SendMessageA(layoutBtn[i], 0xF1 /*BM_SETCHECK*/, i == current, 0);
+        SendMessageW(layoutBtn[i], 0xF1 /*BM_SETCHECK*/, i == current, 0);
         EnableWindow(layoutBtn[i], installed && (i < 2 || hasOwn));
     }
+    layout();
+    // Show the end of a long path (once the box has its size).
+    SendMessageW(pathWnd, 0xB1 /*EM_SETSEL*/, 0, 0);
+    SendMessageW(pathWnd, 0xB1, 0x7FFFFFFF, 0x7FFFFFFF);
+    SendMessageW(pathWnd, 0xB7 /*EM_SCROLLCARET*/, 0, 0);
+}
+// All the window's text, in the current language (again after a change in the editor).
+static void applyTexts(void) {
+    setText(mainWnd, T("wasdmod - Minecraft Dungeons II controller mod"));
+    setText(introWnd, T("Play Minecraft Dungeons II with WASD, mouse and keys, as a controller."));
+    setText(folderLabel, T("Game folder"));
+    setText(browseBtn, T("Browse..."));
+    setText(layoutLabel, T("Key layout"));
+    setText(layoutBtn[0], T("Default (the game's own keys)"));
+    setText(layoutBtn[1], T("Recommended"));
+    setText(editorBtn, T("Edit key layout..."));
+    setText(loadBtn, T("Load layout file..."));
+    setText(settingsBtn, T("Open settings file"));
+    setText(uninstallBtn, T("Uninstall"));
+    setText(recordHint, T("Something not working? Record logs, play until it happens, then stop: a report file for GitHub."));
+    setText(footerWnd, T("Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on."));
+    refresh();
 }
 
-static int pickFile(const char *title, const char *filter, const char *initialDir, char *out) {
-    OPENFILENAMEA o; memset(&o, 0, sizeof(o));
-    out[0] = 0;
-    o.size = sizeof(o); o.owner = mainWnd; o.filter = filter; o.filterIndex = 1; o.file = out; o.maxFile = PATHLEN;
-    o.initialDir = initialDir; o.title = title; o.flags = 0x1000 | 0x800 | 0x4 | 0x8; // must exist, hide read-only, keep directory
-    return GetOpenFileNameA(&o);
+// A file to open, as an ANSI path (what the rest of the setup uses).
+static int pickFile(const char *title, const char *kind, const char *pattern, const char *initialDir, char *out) {
+    static WCHAR filter[600], file[PATHLEN], dir[PATHLEN], head[300]; // static: no stack probe without the C runtime
+    const char *parts[] = {kind, pattern, T("All files"), "*.*"};
+    int n = 0;
+    for (int i = 0; i < 4; i++) { int k = MultiByteToWideChar(65001, 0, parts[i], -1, filter + n, 599 - n); if (k <= 0) return 0; n += k; }
+    filter[n] = 0;
+    file[0] = 0; dir[0] = 0;
+    if (!MultiByteToWideChar(65001, 0, title, -1, head, 300)) head[0] = 0;
+    if (initialDir && !MultiByteToWideChar(0 /*CP_ACP*/, 0, initialDir, -1, dir, PATHLEN)) dir[0] = 0;
+    OPENFILENAMEW o; memset(&o, 0, sizeof(o));
+    o.size = sizeof(o); o.owner = mainWnd; o.filter = filter; o.filterIndex = 1; o.file = file; o.maxFile = PATHLEN;
+    o.initialDir = dir[0] ? dir : 0; o.title = head; o.flags = 0x1000 | 0x800 | 0x4 | 0x8; // must exist, hide read-only, keep directory
+    if (!GetOpenFileNameW(&o)) return 0;
+    BOOL lost = 0;
+    return WideCharToMultiByte(0 /*CP_ACP*/, 0, file, -1, out, PATHLEN, 0, &lost) > 0 && !lost;
 }
 
 static void onCommand(int id) {
     char p[PATHLEN];
     if (id == ID_BROWSE) {
-        if (!pickFile("Find Minecraft Dungeons II", "Minecraft Dungeons II (Dungeons*.exe)\0Dungeons*.exe\0All files\0*.*\0", 0, p)) return;
+        if (!pickFile(T("Find Minecraft Dungeons II"), T("Minecraft Dungeons II (Dungeons*.exe)"), "Dungeons*.exe", 0, p)) return;
         char dir[PATHLEN];
         if (dirFromPick(p, dir)) scpy(gameDir, sizeof(gameDir), dir);
-        else MessageBoxA(mainWnd, "That isn't the Minecraft Dungeons II folder. Pick Dungeons-Win64-Shipping.exe (in Dungeons\\Binaries\\Win64) or Dungeons.exe.", TITLE, 0x30);
+        else ask(T("That isn't the Minecraft Dungeons II folder. Pick Dungeons-Win64-Shipping.exe (in Dungeons\\Binaries\\Win64) or Dungeons.exe."), 0x30);
     } else if (id == ID_INSTALL) {
         int r = install(gameDir, 0);
-        if (r == ERR_OTHER_DLL && MessageBoxA(mainWnd, "The game folder already has a different xinput1_4.dll (probably another mod). Replace it? A copy is kept as xinput1_4.dll.other.", TITLE, 0x4 | 0x30) == 6) r = install(gameDir, 1);
-        if (r == OK) MessageBoxA(mainWnd, "Installed. Start (or restart) Minecraft Dungeons II.\n\nIn game: WASD moves, Tab opens the menu wheel (the game's own key, S, moves you now), F9 shows the key list, and the backtick key (`) turns the mod off and on.", TITLE, 0x40);
-        else if (r != ERR_OTHER_DLL) MessageBoxA(mainWnd, errorText[r], TITLE, 0x30);
+        if (r == ERR_OTHER_DLL && ask(T("The game folder already has a different xinput1_4.dll (probably another mod). Replace it? A copy is kept as xinput1_4.dll.other."), 0x4 | 0x30) == 6) r = install(gameDir, 1);
+        if (r == OK) ask(T("Installed. Start (or restart) Minecraft Dungeons II.\n\nIn game: WASD moves, Tab opens the menu wheel (the game's own key, S, moves you now), F9 shows the key list, and the backtick key (`) turns the mod off and on."), 0x40);
+        else if (r != ERR_OTHER_DLL) ask(T(errorText[r]), 0x30);
     } else if (id == ID_ONOFF) {
         int on = installState(gameDir) == TURNED_OFF, r = turnOn(gameDir, on);
-        if (r != OK) MessageBoxA(mainWnd, "Couldn't rename xinput1_4.dll in the game folder. Close the game, or run this setup as administrator.", TITLE, 0x30);
-        else MessageBoxA(mainWnd, on ? "Turned on. Start (or restart) the game to use wasdmod again."
-                                     : "Turned off. From the next game start, the game runs without wasdmod; your layouts are kept.\n\n(In a running game, the backtick key (`) turns it off right away.)", TITLE, 0x40);
+        if (r != OK) ask(T("Couldn't rename xinput1_4.dll in the game folder. Close the game, or run this setup as administrator."), 0x30);
+        else ask(on ? T("Turned on. Start (or restart) the game to use wasdmod again.")
+                    : T("Turned off. From the next game start, the game runs without wasdmod; your layouts are kept.\n\n(In a running game, the backtick key (`) turns it off right away.)"), 0x40);
     } else if (id == ID_RECORD) {
         if (!recordingOn(gameDir)) {
-            if (setRecording(gameDir, 1) != OK) MessageBoxA(mainWnd, errorText[ERR_WRITE], TITLE, 0x30);
-            else MessageBoxA(mainWnd, "Recording logs. Play until the problem happens, then come back here and click Stop and save logs.\n\nIf the game is running, recording starts within a second; otherwise it starts with the game. Nothing you type is recorded.", TITLE, 0x40);
+            if (setRecording(gameDir, 1) != OK) ask(T(errorText[ERR_WRITE]), 0x30);
+            else ask(T("Recording logs. Play until the problem happens, then come back here and click Stop and save logs.\n\nIf the game is running, recording starts within a second; otherwise it starts with the game. Nothing you type is recorded."), 0x40);
         } else {
             setRecording(gameDir, 0);
-            if (writeReport(gameDir, p) != OK) MessageBoxA(mainWnd, "Couldn't save the logs on the Desktop.", TITLE, 0x30);
+            if (writeReport(gameDir, p) != OK) ask(T("Couldn't save the logs on the Desktop."), 0x30);
             else {
                 char args[PATHLEN + 16] = "/select,\""; cat(args, sizeof(args), p); cat(args, sizeof(args), "\"");
                 ShellExecuteA(mainWnd, "open", "explorer.exe", args, 0, 1);
-                char msg[PATHLEN + 300] = "Saved "; cat(msg, sizeof(msg), baseName(p));
-                cat(msg, sizeof(msg), " on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?");
-                if (MessageBoxA(mainWnd, msg, TITLE, 0x4 | 0x40) == 6) ShellExecuteA(mainWnd, "open", "https://github.com/Wanzho/mcd2-wasd/issues/new", 0, 0, 1);
+                char msg[PATHLEN + 900];
+                fill(msg, sizeof(msg), T("Saved {file} on your Desktop. It has the mod's log, your key layout and your Windows version; nothing you type is recorded.\n\nOpen GitHub to report the problem (attach the file)?"), baseName(p));
+                if (ask(msg, 0x4 | 0x40) == 6) ShellExecuteA(mainWnd, "open", "https://github.com/Wanzho/mcd2-wasd/issues/new", 0, 0, 1);
             }
         }
     } else if (id == ID_UNINSTALL) {
-        int removeLayout = findLayouts(gameDir, 0, 0) && MessageBoxA(mainWnd, "Also delete your saved key layouts (author.txt, wasdmod*.txt)?", TITLE, 0x4 | 0x20) == 6;
+        int removeLayout = findLayouts(gameDir, 0, 0) && ask(T("Also delete your saved key layouts (author.txt, wasdmod*.txt)?"), 0x4 | 0x20) == 6;
         int r = uninstall(gameDir, removeLayout);
-        MessageBoxA(mainWnd, r == OK ? "Uninstalled. The game is back to how it was." : errorText[r], TITLE, r == OK ? 0x40 : 0x30);
+        ask(r == OK ? T("Uninstalled. The game is back to how it was.") : T(errorText[r]), r == OK ? 0x40 : 0x30);
     } else if (id == ID_DEFAULT || id == ID_RECOMMENDED || id == ID_OWN) {
         int r = useLayout(gameDir, id - ID_DEFAULT);
-        if (r != OK) MessageBoxA(mainWnd, errorText[r], TITLE, 0x30);
+        if (r != OK) ask(T(errorText[r]), 0x30);
         refresh();
-        if (r == OK) SetWindowTextA(statusWnd, "Key layout changed. Restart the game to use it.");
+        if (r == OK) setStatus(T("Key layout changed. Restart the game to use it."));
         return;
     } else if (id == ID_EDITOR) {
-        if (openEditor()) { SetWindowTextA(statusWnd, "The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open."); return; }
+        if (openEditor()) { setStatus(T("The key layout editor opened in its own window. Its Save to game button writes straight into the game folder while this window stays open.")); return; }
         // No local server (blocked?): the editor as a file, which downloads layouts instead.
         join(p, gameDir, "Key Layout Editor.html");
-        if (!sameAs(p, payloadEditor, sizeof(payloadEditor)) && !writeAll(p, payloadEditor, sizeof(payloadEditor))) { MessageBoxA(mainWnd, errorText[ERR_WRITE], TITLE, 0x30); return; }
+        if (!sameAs(p, payloadEditor, sizeof(payloadEditor)) && !writeAll(p, payloadEditor, sizeof(payloadEditor))) { ask(T(errorText[ERR_WRITE]), 0x30); return; }
         ShellExecuteA(mainWnd, "open", p, 0, 0, 1);
-        SetWindowTextA(statusWnd, "The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here.");
+        setStatus(T("The key layout editor opened in your browser. Pick or create a layout there and click Download file; then click \"Load layout file\" here."));
         return;
     } else if (id == ID_LOAD) {
         char downloads[PATHLEN] = "";
         if (GetEnvironmentVariableA("USERPROFILE", downloads, 300)) cat(downloads, sizeof(downloads), "\\Downloads");
-        if (!pickFile("Load a key layout", "Key layout (*.ini;*.txt)\0*.ini;*.txt\0All files\0*.*\0", downloads[0] ? downloads : 0, p)) return;
+        if (!pickFile(T("Load a key layout"), T("Key layout (*.ini;*.txt)"), "*.ini;*.txt", downloads[0] ? downloads : 0, p)) return;
         DWORD n; char *b = readAll(p, &n);
         int valid = b && (contains(b, n, "[Buttons]") || contains(b, n, "[Move]"));
         // Keep the editor's names (author.txt, default.txt, wasdmod-MMDDYY.txt); anything else becomes wasdmod.txt.
         const char *name = baseName(p); unsigned nl = slen(name);
         int keep = (nl > 11 && sameTextN(name, "wasdmod", 7) && sameText(name + nl - 4, ".txt")) || sameText(name, "author.txt") || sameText(name, "default.txt");
         char dest[PATHLEN]; join(dest, gameDir, keep ? name : "wasdmod.txt");
-        if (!valid) MessageBoxA(mainWnd, "That file isn't a key layout (it has no [Buttons] or [Move] section).", TITLE, 0x30);
-        else if (!writeAll(dest, b, n)) MessageBoxA(mainWnd, errorText[ERR_WRITE], TITLE, 0x30);
-        else MessageBoxA(mainWnd, "Key layout loaded. Restart the game to use it.", TITLE, 0x40);
+        if (!valid) ask(T("That file isn't a key layout (it has no [Buttons] or [Move] section)."), 0x30);
+        else if (!writeAll(dest, b, n)) ask(T(errorText[ERR_WRITE]), 0x30);
+        else ask(T("Key layout loaded. Restart the game to use it."), 0x40);
         if (b) HeapFree(GetProcessHeap(), 0, b);
     } else if (id == ID_SETTINGS) {
         activeSettings(gameDir, p);
@@ -787,36 +942,36 @@ static void onCommand(int id) {
     refresh();
 }
 
-static HANDLE control(const char *cls, const char *text, DWORD style, int x, int y, int w, int h, int id, HANDLE font) {
-    HANDLE c = CreateWindowExA(cls[0] == 'E' ? 0x200 /*WS_EX_CLIENTEDGE*/ : 0, cls, text, 0x50000000 /*WS_CHILD|WS_VISIBLE*/ | style,
-                               S(x), S(y), S(w), S(h), mainWnd, (HANDLE)(U64)id, GetModuleHandleA(0), 0);
-    SendMessageA(c, 0x30 /*WM_SETFONT*/, (WPARAM)font, 1);
+static HANDLE control(const char *cls, DWORD style, int id, HANDLE font) {
+    HANDLE c = CreateWindowExW(cls[0] == 'E' ? 0x200 /*WS_EX_CLIENTEDGE*/ : 0, W(cls), W(""), 0x50000000 /*WS_CHILD|WS_VISIBLE*/ | style,
+                               0, 0, 10, 10, mainWnd, (HANDLE)(U64)id, GetModuleHandleA(0), 0);
+    SendMessageW(c, 0x30 /*WM_SETFONT*/, (WPARAM)font, 1);
     return c;
 }
 
 static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == 0x01) { // WM_CREATE
         mainWnd = w;
-        control("STATIC", "wasdmod", 0, 20, 16, 480, 30, 0, fontTitle);
-        control("STATIC", "Play Minecraft Dungeons II with WASD, mouse and keys, as a controller.", 0, 20, 48, 480, 20, 0, fontSmall);
-        control("STATIC", "Game folder", 0, 20, 84, 200, 20, 0, fontNormal);
-        pathWnd = control("EDIT", "", 0x80 /*ES_AUTOHSCROLL*/ | 0x800 /*ES_READONLY*/, 20, 106, 386, 26, ID_PATH, fontNormal);
-        control("BUTTON", "Browse...", 0x10000 /*WS_TABSTOP*/, 414, 105, 86, 28, ID_BROWSE, fontNormal);
-        statusWnd = control("STATIC", "", 0, 20, 144, 480, 42, ID_STATUS, fontNormal);
-        installBtn = control("BUTTON", "Install", 0x10000 | 0x1 /*BS_DEFPUSHBUTTON*/, 20, 194, 150, 34, ID_INSTALL, fontNormal);
-        uninstallBtn = control("BUTTON", "Uninstall", 0x10000, 178, 194, 110, 34, ID_UNINSTALL, fontNormal);
-        onOffBtn = control("BUTTON", "Turn off", 0x10000, 296, 194, 110, 34, ID_ONOFF, fontNormal);
-        control("STATIC", "Key layout", 0, 20, 246, 200, 20, 0, fontNormal);
-        layoutBtn[0] = control("BUTTON", "Default (the game's own keys)", 0x10000 | 0x4 /*BS_RADIOBUTTON*/, 28, 268, 460, 22, ID_DEFAULT, fontNormal);
-        layoutBtn[1] = control("BUTTON", "Recommended", 0x10000 | 0x4, 28, 292, 460, 22, ID_RECOMMENDED, fontNormal);
-        layoutBtn[2] = control("BUTTON", "Your own", 0x10000 | 0x4, 28, 316, 460, 22, ID_OWN, fontNormal);
-        editorBtn = control("BUTTON", "Edit key layout...", 0x10000, 20, 348, 156, 30, ID_EDITOR, fontNormal);
-        loadBtn = control("BUTTON", "Load layout file...", 0x10000, 184, 348, 156, 30, ID_LOAD, fontNormal);
-        settingsBtn = control("BUTTON", "Open settings file", 0x10000, 348, 348, 152, 30, ID_SETTINGS, fontNormal);
-        recordBtn = control("BUTTON", "Record logs", 0x10000, 20, 392, 156, 30, ID_RECORD, fontNormal);
-        control("STATIC", "Something not working? Record logs, play until it happens, then stop: a report file for GitHub.", 0, 184, 390, 316, 36, 0, fontSmall);
-        control("STATIC", "Restart the game after any change. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on.", 0, 20, 436, 480, 36, 0, fontSmall);
-        refresh();
+        titleWnd = control("STATIC", 0, 0, fontTitle); setText(titleWnd, "wasdmod");
+        introWnd = control("STATIC", 0, 0, fontSmall);
+        folderLabel = control("STATIC", 0, 0, fontNormal);
+        pathWnd = control("EDIT", 0x80 /*ES_AUTOHSCROLL*/ | 0x800 /*ES_READONLY*/, ID_PATH, fontNormal);
+        browseBtn = control("BUTTON", 0x10000 /*WS_TABSTOP*/, ID_BROWSE, fontNormal);
+        statusWnd = control("STATIC", 0, ID_STATUS, fontNormal);
+        installBtn = control("BUTTON", 0x10000 | 0x1 /*BS_DEFPUSHBUTTON*/, ID_INSTALL, fontNormal);
+        uninstallBtn = control("BUTTON", 0x10000, ID_UNINSTALL, fontNormal);
+        onOffBtn = control("BUTTON", 0x10000, ID_ONOFF, fontNormal);
+        layoutLabel = control("STATIC", 0, 0, fontNormal);
+        layoutBtn[0] = control("BUTTON", 0x10000 | 0x4 /*BS_RADIOBUTTON*/, ID_DEFAULT, fontNormal);
+        layoutBtn[1] = control("BUTTON", 0x10000 | 0x4, ID_RECOMMENDED, fontNormal);
+        layoutBtn[2] = control("BUTTON", 0x10000 | 0x4, ID_OWN, fontNormal);
+        editorBtn = control("BUTTON", 0x10000, ID_EDITOR, fontNormal);
+        loadBtn = control("BUTTON", 0x10000, ID_LOAD, fontNormal);
+        settingsBtn = control("BUTTON", 0x10000, ID_SETTINGS, fontNormal);
+        recordBtn = control("BUTTON", 0x10000, ID_RECORD, fontNormal);
+        recordHint = control("STATIC", 0, 0, fontSmall);
+        footerWnd = control("STATIC", 0, 0, fontSmall);
+        applyTexts();
         return 0;
     }
     if (msg == 0x111 /*WM_COMMAND*/ && (wp >> 16) == 0 /*BN_CLICKED*/) { onCommand((int)(wp & 0xFFFF)); return 0; }
@@ -826,32 +981,48 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     }
     if (msg == WM_EDITOR_SAVED) {
         refresh();
-        char text[PATHLEN + 80] = "Saved "; cat(text, sizeof(text), savedName); cat(text, sizeof(text), " from the key layout editor. Restart the game to use it.");
-        SetWindowTextA(statusWnd, text);
+        char text[PATHLEN + 400]; fill(text, sizeof(text), T("Saved {file} from the key layout editor. Restart the game to use it."), savedName);
+        setStatus(text);
         return 0;
     }
+    if (msg == WM_LANGUAGE) { applyTexts(); return 0; } // picked in the key layout editor
     if (msg == 0x02) { PostQuitMessage(0); return 0; } // WM_DESTROY
-    return DefWindowProcA(w, msg, wp, lp);
+    return DefWindowProcW(w, msg, wp, lp);
 }
 
 static HANDLE createMain(void) {
     HANDLE inst = GetModuleHandleA(0);
     HANDLE dc = GetDC(0); dpi = GetDeviceCaps(dc, 88 /*LOGPIXELSX*/); ReleaseDC(0, dc);
     if (dpi < 96) dpi = 96;
+    // Segoe UI: Windows fills in Chinese, Japanese, Korean and other letters it lacks from its own fonts.
     fontNormal = CreateFontA(-S(15), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5 /*CLEARTYPE*/, 0, "Segoe UI");
     fontSmall = CreateFontA(-S(13), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
     fontTitle = CreateFontA(-S(22), 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
-    WNDCLASSA wc; memset(&wc, 0, sizeof(wc));
-    wc.proc = wndProc; wc.instance = inst; wc.className = "DungeonsControllerModSetup";
+    WNDCLASSW wc; memset(&wc, 0, sizeof(wc));
+    wc.proc = wndProc; wc.instance = inst; wc.className = L"DungeonsControllerModSetup";
     wc.icon = LoadIconA(inst, (const char *)1); wc.cursor = LoadCursorA(0, (const char *)32512 /*IDC_ARROW*/);
     wc.background = (HANDLE)(15 + 1); // COLOR_BTNFACE
-    RegisterClassA(&wc);
-    DWORD style = 0x00CA0000; // caption, system menu, minimize box
-    RECT r = {0, 0, S(520), S(480)}; AdjustWindowRect(&r, style, 0);
-    HANDLE w = CreateWindowExA(0, wc.className, "wasdmod - Minecraft Dungeons II controller mod", style, (int)0x80000000 /*CW_USEDEFAULT*/, (int)0x80000000,
+    RegisterClassW(&wc);
+    RECT r = {0, 0, S(520), S(480)}; AdjustWindowRect(&r, WINDOW_STYLE, 0);
+    HANDLE w = CreateWindowExW(0, wc.className, W("wasdmod"), WINDOW_STYLE, (int)0x80000000 /*CW_USEDEFAULT*/, (int)0x80000000,
                                r.right - r.left, r.bottom - r.top, 0, 0, inst, 0);
     ShowWindow(w, 1);
     return w;
+}
+
+// The language picked in the key layout editor (kept with its layouts), else Windows'.
+static void pickLanguage(void) {
+    char p[PATHLEN]; DWORD n = 0; char *b = 0;
+    storePath(p); if (p[0]) b = readAll(p, &n);
+    int l = -1;
+    for (DWORD i = 0; b && l < 0 && i + 13 < n; i++) if (sameTextN(b + i, "\"d2kb-lang\":\"", 13)) {
+        char code[16] = {0}; unsigned k = 0;
+        for (DWORD j = i + 13; j < n && b[j] != '"' && k + 1 < sizeof(code); j++) code[k++] = b[j];
+        l = langOf(code); break;
+    }
+    if (b) HeapFree(GetProcessHeap(), 0, b);
+    if (l < 0) l = langOf(systemLang());
+    langIndex = l < 0 ? 0 : l;
 }
 
 // ---------------------------------------------------------------- entry
@@ -905,8 +1076,9 @@ void start(void) {
         ExitProcess(code);
     }
     findGame(gameDir);
+    pickLanguage();
     HANDLE w = createMain();
     MSG m;
-    while (GetMessageA(&m, 0, 0, 0) > 0) if (!IsDialogMessageA(w, &m)) { TranslateMessage(&m); DispatchMessageA(&m); }
+    while (GetMessageW(&m, 0, 0, 0) > 0) if (!IsDialogMessageW(w, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     ExitProcess(0);
 }

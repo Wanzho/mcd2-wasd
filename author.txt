@@ -128,6 +128,7 @@ DetectTextBoxes=1
 TypedCharacters=0
 Legend=1
 LegendSeconds=15
+Language=Auto
 RequireFocus=1
 AlwaysConnected=1
 Log=1

@@ -160,6 +160,10 @@ TypedCharacters=0
 ; the game starts (0 = only on F9).
 Legend=1
 LegendSeconds=15
+; Language of the key list and the typing banner: Auto follows the game's own
+; language setting (else the system's), or pick one: en, de, es, fr, it, ja, ko, nl,
+; pl, pt, ru, sv, tr, uk, zh-Hans, zh-Hant.
+Language=Auto
 RequireFocus=1
 AlwaysConnected=1
 Log=1

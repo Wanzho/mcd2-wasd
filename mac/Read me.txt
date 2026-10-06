@@ -27,6 +27,10 @@ now), F9 shows the key list (fn + F9 on most Mac keyboards), hold Option for
 the cursor, T starts typing (Esc ends it), and the backtick key (`) turns the
 mod off and on.
 
+Languages: wasdmod starts in your Mac's language if it's one of the game's 16;
+change it with the globe menu at the top of the editor. The in-game key list
+follows the language you set in the game.
+
 Something not working? Click Record Logs in wasdmod, play until it happens,
 then click Stop & Save Logs: attach the file from your Desktop to a report on
 https://github.com/Wanzho/mcd2-wasd/issues

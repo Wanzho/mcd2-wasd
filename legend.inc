@@ -30,16 +30,18 @@ IMP HANDLE CreateFontA(int, int, int, int, int, DWORD, DWORD, DWORD, DWORD, DWOR
 IMP HANDLE SelectObject(HANDLE, HANDLE);
 IMP DWORD SetTextColor(HANDLE, DWORD);
 IMP int SetBkMode(HANDLE, int);
-IMP BOOL TextOutA(HANDLE, int, int, const char *, int);
+IMP BOOL TextOutW(HANDLE, int, int, const WCHAR *, int);
 IMP HANDLE CreateSolidBrush(DWORD);
-IMP BOOL GetTextExtentPoint32A(HANDLE, const char *, int, SIZE *);
+IMP BOOL GetTextExtentPoint32W(HANDLE, const WCHAR *, int, SIZE *);
+IMP int GetTextFaceA(HANDLE, int, char *);
 IMP BOOL SetCursorPos(int, int);
 IMP BOOL ClipCursor(const RECT *);
 IMP BOOL DeleteObject(HANDLE);
 
 #define RGB(r, g, b) ((DWORD)(r) | ((DWORD)(g) << 8) | ((DWORD)(b) << 16))
 #define LEGEND_LINES 32
-static char legendText[LEGEND_LINES][96];
+#define LINE_BYTES 200 // UTF-8, with room for the longer languages
+static char legendText[LEGEND_LINES][LINE_BYTES];
 static int legendCount, legendW, legendH, lineH = 18;
 static HANDLE legendWnd, legendFont, legendBrush;
 static int legendShown;
@@ -47,21 +49,59 @@ static int legendShown;
 static void addLine(const char *key, const char *what) {
     if (legendCount >= LEGEND_LINES) return;
     char *l = legendText[legendCount++]; l[0] = 0;
-    append(l, 96, key); append(l, 96, "  ");
-    append(l, 96, what);
+    append(l, LINE_BYTES, key); append(l, LINE_BYTES, "  ");
+    append(l, LINE_BYTES, what);
+}
+// The text is UTF-8; Windows draws it as UTF-16.
+static int widen(const char *s, WCHAR *out, int cap) { int n = MultiByteToWideChar(65001 /*CP_UTF8*/, 0, s, -1, out, cap); return n > 0 ? n - 1 : 0; }
+static void textOut(HANDLE dc, int x, int y, const char *s) { WCHAR w[LINE_BYTES]; TextOutW(dc, x, y, w, widen(s, w, LINE_BYTES)); }
+static BOOL textSize(HANDLE dc, const char *s, SIZE *sz) { WCHAR w[LINE_BYTES]; return GetTextExtentPoint32W(dc, w, widen(s, w, LINE_BYTES), sz); }
+// A translated "{action} (sends the game's {key})" with its parts filled in.
+static void fill(char *out, unsigned cap, const char *text, const char *action, const char *key) {
+    out[0] = 0;
+    for (const char *p = text; *p; ) {
+        if (startsWith(p, "{action}")) { append(out, cap, action); p += 8; continue; }
+        if (startsWith(p, "{key}")) { append(out, cap, key); p += 5; continue; }
+        char c[2] = {*p++, 0}; append(out, cap, c);
+    }
+}
+// The system's own font for Chinese, Japanese and Korean (the names on Windows, then
+// on a Mac and on Linux), Arial for the rest.
+static HANDLE makeFont(int height, int weight) {
+    static const struct { const char *code; DWORD charset; const char *faces[6]; } cjk[] = {
+        {"zh-Hans", 134 /*GB2312*/, {"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC"}},
+        {"zh-Hant", 136 /*BIG5*/, {"Microsoft JhengHei UI", "Microsoft JhengHei", "PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Source Han Sans TC"}},
+        {"ja", 128 /*SHIFTJIS*/, {"Meiryo UI", "Yu Gothic UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Source Han Sans"}},
+        {"ko", 129 /*HANGUL*/, {"Malgun Gothic", "Apple SD Gothic Neo", "AppleGothic", "Noto Sans CJK KR", "Source Han Sans K", 0}},
+    };
+    for (unsigned i = 0; i < sizeof(cjk) / sizeof(*cjk); i++) {
+        if (!sameStr(cjk[i].code, LANG_CODE[langIndex])) continue;
+        HANDLE dc = GetDC(0);
+        for (int f = 0; f < 6 && cjk[i].faces[f]; f++) {
+            HANDLE font = CreateFontA(height, 0, 0, 0, weight, 0, 0, 0, cjk[i].charset, 0, 0, 5 /*CLEARTYPE*/, 0, cjk[i].faces[f]);
+            char got[64] = {0}; HANDLE old = SelectObject(dc, font); GetTextFaceA(dc, sizeof(got), got); SelectObject(dc, old);
+            int k = 0; while (got[k] && lower(got[k]) == lower(cjk[i].faces[f][k])) k++;
+            if (!got[k] && !cjk[i].faces[f][k]) { ReleaseDC(0, dc); return font; }
+            DeleteObject(font);
+        }
+        ReleaseDC(0, dc);
+        return CreateFontA(height, 0, 0, 0, weight, 0, 0, 0, cjk[i].charset, 0, 0, 5, 0, ""); // any font with these letters
+    }
+    return CreateFontA(height, 0, 0, 0, weight, 0, 0, 0, 1 /*DEFAULT_CHARSET*/, 0, 0, 5, 0, "Arial");
 }
 
 // The game action a converted key presses, from the layout's [GameKeys] (the
-// game's own keyboard keys, written by the key layout editor): S -> "Menu wheel".
+// game's own keyboard keys, written by the key layout editor): S -> "Menu wheel"
+// (in English; the key list translates it).
 static const char *gameActionFor(BYTE vk) {
     static const char *names[][2] = {
-        {"wheel", "Menu wheel"}, {"inventory", "Inventory"}, {"map", "World map"}, {"quest", "Quests"},
-        {"social", "Social menu"}, {"emotes", "Emotes"}, {"collect", "Collectibles"}, {"events", "Event log"},
-        {"tpplayer", "Teleport to player"}, {"statue", "Teleport statue"}, {"tp1", "Teleport to player 1"},
-        {"tp2", "Teleport to player 2"}, {"tp3", "Teleport to player 3"}, {"tp4", "Teleport to player 4"},
-        {"ranged", "Bow"}, {"potion", "Health potion"}, {"jump", "Jump"}, {"melee", "Melee"},
-        {"dodge", "Directional dodge"}, {"fdodge", "Forward dodge"}, {"art1", "Artifact 1"}, {"art2", "Artifact 2"},
-        {"art3", "Artifact 3"}, {"trail", "Guidance trail"}, {"heavy", "Heavy jump attack"}, {"root", "Root"},
+        {"wheel", N_("Menu wheel")}, {"inventory", N_("Inventory")}, {"map", N_("World map")}, {"quest", N_("Quests")},
+        {"social", N_("Social menu")}, {"emotes", N_("Emotes")}, {"collect", N_("Collectibles")}, {"events", N_("Event log")},
+        {"tpplayer", N_("Teleport to player")}, {"statue", N_("Teleport statue")}, {"tp1", N_("Teleport to player 1")},
+        {"tp2", N_("Teleport to player 2")}, {"tp3", N_("Teleport to player 3")}, {"tp4", N_("Teleport to player 4")},
+        {"ranged", N_("Bow")}, {"potion", N_("Health potion")}, {"jump", N_("Jump")}, {"melee", N_("Melee")},
+        {"dodge", N_("Directional dodge")}, {"fdodge", N_("Forward dodge")}, {"art1", N_("Artifact 1")}, {"art2", N_("Artifact 2")},
+        {"art3", N_("Artifact 3")}, {"trail", N_("Guidance trail")}, {"heavy", N_("Heavy jump attack")}, {"root", N_("Root")},
     };
     static char sec[2048];
     if (!GetPrivateProfileSectionA("GameKeys", sec, sizeof(sec), ini)) return 0;
@@ -94,28 +134,26 @@ static void buildLegend(void) {
     append(move, sizeof(move), moveLeft.text); append(move, sizeof(move), " ");
     append(move, sizeof(move), moveDown.text); append(move, sizeof(move), " ");
     append(move, sizeof(move), moveRight.text);
-    addLine(move, "Move");
-    if (dodgeMouse.text[0]) addLine(dodgeMouse.text, "Click: dodge. Click + drag: roll that way");
+    addLine(move, T("Move"));
+    if (dodgeMouse.text[0]) addLine(dodgeMouse.text, T("Click: dodge. Click + drag: roll that way"));
     for (int i = 0; i < NBTN; i++) {
         if (!btn[i].text[0]) continue;
-        char what[64] = {0}; append(what, sizeof(what), btnLabel[i]);
+        char what[LINE_BYTES] = {0}; append(what, sizeof(what), T(btnLabel[i]));
         append(what, sizeof(what), "  ["); append(what, sizeof(what), btnName[i]); append(what, sizeof(what), "]");
         addLine(btn[i].text, what);
     }
     // Converted keys, named after what they do: "Tab  Menu wheel (sends the game's S)".
     for (int i = 0; i < remapCount; i++) {
-        char what[96] = {0}; const char *name = gameActionFor(remapList[i].toVk);
-        if (name) { append(what, sizeof(what), name); append(what, sizeof(what), " (sends the game's "); }
-        else append(what, sizeof(what), "Sends the game's ");
-        append(what, sizeof(what), remapList[i].to);
-        if (name) append(what, sizeof(what), ")");
+        char what[LINE_BYTES]; const char *name = gameActionFor(remapList[i].toVk);
+        if (name) fill(what, sizeof(what), T("{action} (sends the game's {key})"), T(name), remapList[i].to);
+        else fill(what, sizeof(what), T("Sends the game's {key}"), "", remapList[i].to);
         addLine(remapList[i].from, what);
     }
-    if (typeText[0]) addLine(typeText, "Type (Esc to stop)");
-    if (cursorKey.text[0]) addLine(cursorKey.text, "Hold: mouse cursor");
-    if (menuText[0]) addLine(menuText, "Game menus (mouse mode; move or fight to leave)");
-    if (toggleKey.text[0]) addLine(toggleKey.text, "Keyboard & mouse on/off");
-    if (legendKey.text[0]) addLine(legendKey.text, "Show / hide this list");
+    if (typeText[0]) addLine(typeText, T("Type (Esc to stop)"));
+    if (cursorKey.text[0]) addLine(cursorKey.text, cfg.cursorToggle ? T("Press: mouse cursor on / off") : T("Hold: mouse cursor"));
+    if (menuText[0]) addLine(menuText, T("Game menus (mouse mode; move or fight to leave)"));
+    if (toggleKey.text[0]) addLine(toggleKey.text, T("Keyboard & mouse on/off"));
+    if (legendKey.text[0]) addLine(legendKey.text, T("Show / hide this list"));
 }
 
 // The game's main window: the largest visible window of this process that
@@ -156,9 +194,9 @@ static LRESULT legendProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         RECT r = {0, 0, legendW, legendH}; FillRect(dc, &r, legendBrush);
         SelectObject(dc, legendFont); SetBkMode(dc, 1 /*TRANSPARENT*/);
         SetTextColor(dc, RGB(255, 214, 102));
-        TextOutA(dc, 10, 8, "Keyboard controls", 17);
+        textOut(dc, 10, 8, T("Keyboard controls"));
         SetTextColor(dc, RGB(240, 240, 240));
-        for (int i = 0; i < legendCount; i++) TextOutA(dc, 10, 8 + (i + 1) * lineH + 4, legendText[i], len(legendText[i]));
+        for (int i = 0; i < legendCount; i++) textOut(dc, 10, 8 + (i + 1) * lineH + 4, legendText[i]);
         EndPaint(w, &ps);
         return 0;
     }
@@ -176,15 +214,14 @@ static HANDLE tickWnd;
 // over the game every tick makes CrossOver stutter).
 static HANDLE typeWnd, typeFont, typeBrush, typeEdge;
 static int typeW, typeH, typeShown;
-static const char TYPE_TEXT[] = "TYPING  -  Esc to finish";
 static LRESULT typeProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == 0x0F) { // WM_PAINT
         PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
         RECT r = {0, 0, typeW, typeH}; FillRect(dc, &r, typeEdge);
         RECT in = {3, 3, typeW - 3, typeH - 3}; FillRect(dc, &in, typeBrush);
         SelectObject(dc, typeFont); SetBkMode(dc, 1 /*TRANSPARENT*/); SetTextColor(dc, RGB(255, 214, 102));
-        SIZE sz; GetTextExtentPoint32A(dc, TYPE_TEXT, sizeof(TYPE_TEXT) - 1, &sz);
-        TextOutA(dc, (typeW - sz.cx) / 2, (typeH - sz.cy) / 2, TYPE_TEXT, sizeof(TYPE_TEXT) - 1);
+        const char *text = T("TYPING  -  Esc to finish"); SIZE sz;
+        if (textSize(dc, text, &sz)) textOut(dc, (typeW - sz.cx) / 2, (typeH - sz.cy) / 2, text);
         EndPaint(w, &ps);
         return 0;
     }
@@ -238,13 +275,14 @@ static DWORD legendThread(void *unused) {
     WNDCLASSA wc; memset(&wc, 0, sizeof(wc));
     wc.proc = legendProc; wc.instance = self; wc.className = "WasdModLegend";
     RegisterClassA(&wc);
-    legendFont = CreateFontA(-14, 0, 0, 0, 500, 0, 0, 0, 0, 0, 0, 5 /*CLEARTYPE*/, 0, "Arial");
+    legendFont = makeFont(-14, 500);
     legendBrush = CreateSolidBrush(RGB(20, 22, 28));
     // Size the panel to its text.
     HANDLE dc = GetDC(0); SelectObject(dc, legendFont);
     int w = 160; SIZE s;
-    for (int i = 0; i < legendCount; i++) if (GetTextExtentPoint32A(dc, legendText[i], len(legendText[i]), &s) && s.cx > w) w = s.cx;
-    if (GetTextExtentPoint32A(dc, "Ag", 2, &s)) lineH = s.cy + 2;
+    if (textSize(dc, T("Keyboard controls"), &s) && s.cx > w) w = s.cx;
+    for (int i = 0; i < legendCount; i++) if (textSize(dc, legendText[i], &s) && s.cx > w) w = s.cx;
+    if (textSize(dc, "Ag", &s)) lineH = s.cy + 2;
     ReleaseDC(0, dc);
     legendW = w + 20; legendH = (legendCount + 1) * lineH + 20;
     legendWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TRANSPARENT|TOPMOST|TOOLWINDOW|NOACTIVATE*/,
@@ -257,10 +295,10 @@ static DWORD legendThread(void *unused) {
         WNDCLASSA tc; memset(&tc, 0, sizeof(tc));
         tc.proc = typeProc; tc.instance = self; tc.className = "WasdModTyping";
         RegisterClassA(&tc);
-        typeFont = CreateFontA(-22, 0, 0, 0, 700, 0, 0, 0, 0, 0, 0, 5 /*CLEARTYPE*/, 0, "Arial");
+        typeFont = makeFont(-22, 700);
         typeBrush = CreateSolidBrush(RGB(20, 22, 28)); typeEdge = CreateSolidBrush(RGB(255, 214, 102));
         HANDLE tdc = GetDC(0); SelectObject(tdc, typeFont); SIZE ts;
-        if (!GetTextExtentPoint32A(tdc, TYPE_TEXT, sizeof(TYPE_TEXT) - 1, &ts)) { ts.cx = 260; ts.cy = 26; }
+        if (!textSize(tdc, T("TYPING  -  Esc to finish"), &ts)) { ts.cx = 260; ts.cy = 26; }
         ReleaseDC(0, tdc);
         typeW = ts.cx + 40; typeH = ts.cy + 18;
         typeWnd = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TRANSPARENT|TOPMOST|TOOLWINDOW|NOACTIVATE*/,

@@ -10,9 +10,9 @@ if [ -z "$LLD" ]; then
 fi
 [ -x "$LLD" ] || { echo "lld-link not found; set LLD=/path/to/lld-link"; exit 1; }
 mkdir -p build
-printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime > build/kernel32.def
-printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush > build/user32.def
-printf 'LIBRARY GDI32.dll\nEXPORTS\n%s\n' CreateFontA SelectObject SetTextColor SetBkMode TextOutA CreateSolidBrush GetTextExtentPoint32A CreatePen Ellipse GetStockObject DeleteObject Polygon GetDeviceCaps > build/gdi32.def
+printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage > build/kernel32.def
+printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW > build/user32.def
+printf 'LIBRARY GDI32.dll\nEXPORTS\n%s\n' CreateFontA SelectObject SetTextColor SetBkMode TextOutA CreateSolidBrush GetTextExtentPoint32A CreatePen Ellipse GetStockObject DeleteObject Polygon GetDeviceCaps TextOutW GetTextExtentPoint32W GetTextFaceA > build/gdi32.def
 printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext > build/imm32.def
 "$LLD" /lib /machine:x64 /def:build/kernel32.def /out:build/kernel32.lib >/dev/null
 "$LLD" /lib /machine:x64 /def:build/user32.def /out:build/user32.lib >/dev/null
@@ -20,19 +20,19 @@ printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext >
 "$LLD" /lib /machine:x64 /def:build/gdi32.def /out:build/gdi32.lib >/dev/null
 printf 'LIBRARY ADVAPI32.dll\nEXPORTS\n%s\n' RegOpenKeyExA RegQueryValueExA RegCloseKey SystemFunction036 > build/advapi32.def
 printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA SHGetFolderPathA > build/shell32.def
-printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameA > build/comdlg32.def
+printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameW > build/comdlg32.def
 printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept getsockname setsockopt recv send closesocket > build/ws2_32.def
 for l in advapi32 shell32 comdlg32 ws2_32; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
-VERSION=1.0.1 # shown in the apps, the log and the release
+VERSION=1.1.0 # shown in the apps, the log and the release
+# The translations (lang/*.json) as C tables for the mod and the Windows setup, a
+# file for the Mac app, and Keybinder.html (the key layout editor with every language).
+python3 lang.py
 CFLAGS="-DVERSION=\"$VERSION\" --target=x86_64-pc-windows-msvc -O2 -fno-stack-protector -fno-builtin -Wall -Wno-incompatible-pointer-types -Wno-int-conversion"
-clang $CFLAGS -c xinput_wasd.c -o build/xinput_wasd.obj
+clang $CFLAGS -Ibuild -c xinput_wasd.c -o build/xinput_wasd.obj
 "$LLD" /dll /brepro /nodefaultlib /entry:DllMain /machine:x64 /def:xinput1_4.def /out:build/xinput1_4.dll build/xinput_wasd.obj build/kernel32.lib build/user32.lib build/gdi32.lib
 clang $CFLAGS -c test_load.c -o build/test_load.obj
 "$LLD" /nodefaultlib /entry:mainCRTStartup /subsystem:console /machine:x64 /out:build/test_load.exe build/test_load.obj build/kernel32.lib build/user32.lib build/imm32.lib
 rm -f build/*.obj build/*.exp build/xinput1_4.lib
-# Offline copy of the key configurator (the published page gets its document
-# wrapper from the host; a local file needs its own doctype).
-{ printf '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n'; cat configurator.html; } > "Keybinder.html"
 # Windows installer: one exe with the DLL, both layouts and the editor inside.
 python3 pack.py
 clang $CFLAGS -c installer.c -o build/installer.obj
@@ -66,9 +66,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>Minecraft Dungeons II controller mod. Not affiliated with Mojang or Microsoft.</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleAllowMixedLocalizations</key><true/>
+  <key>CFBundleLocalizations</key><array>$(python3 -c 'import json; print("".join("<string>%s</string>" % ("pt-BR" if c == "pt" else c) for c in json.load(open("build/lang.json"))["order"]))')</array>
 </dict></plist>
 PLIST
 cp build/xinput1_4.dll default.txt author.txt mac/wasdmod.sh LICENSE "$APP/Contents/Resources/"
+cp build/lang.json "$APP/Contents/Resources/lang.json"
 cp Keybinder.html "$APP/Contents/Resources/Key Layout Editor.html"
 iconutil -c icns build/wasdmod.iconset -o "$APP/Contents/Resources/wasdmod.icns"
 # Signed ad hoc: without a valid signature macOS calls a

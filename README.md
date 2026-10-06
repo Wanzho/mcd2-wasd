@@ -4,6 +4,8 @@ Play **Minecraft Dungeons II (Minecraft Dungeons 2)** with **WASD, mouse and key
 
 wasdmod turns your keys into a virtual controller, so you get the game's full controller controls: smooth movement, dodges, artifacts and the menu wheel. Menus, the cursor and chat still work with the mouse and keyboard. The game itself isn't modified.
 
+**Languages:** English, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Svenska, Türkçe, Русский, Українська, 日本語, 한국어, 简体中文 and 繁體中文, the same languages as the game. See [Languages](#languages).
+
 ![The wasdmod app on a Mac: install at the top, the key layout editor below](docs/wasdmod-mac.png)
 
 **Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Windows.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Mac.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
@@ -100,6 +102,15 @@ The key layout editor is the main window of the Mac app. On Windows, click **Edi
 
 **Match the game's own keyboard settings.** The game reads its own keyboard settings in menus, with the cursor and while aiming the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
 
+## Languages
+
+The apps, the key layout editor and the on-screen key list come in the game's 16 languages.
+
+- The Mac app, the editor and the Windows installer start in your system's language. Change it with the 🌐 menu at the top of the editor; the app follows.
+- The on-screen key list follows the language set in the game. To pick another one, set `Language=` under `[Options]` in your layout file (`en`, `de`, `es`, `fr`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `ru`, `sv`, `tr`, `uk`, `zh-Hans`, `zh-Hant`, or `Auto`).
+
+The translations were written with AI help, so some wording may sound off, and the names of the game's own settings may not match the game exactly. Corrections are very welcome: each language is one file in [`lang/`](lang) (English on the left, the translation on the right). Edit it and open a pull request, or open an issue with the fix.
+
 ## Troubleshooting
 
 ### Nothing changes in game
@@ -191,11 +202,13 @@ Tried and dropped: patching the game's `GetCursorPos` import (the game quits 20�
 `./build.sh` (Apple clang, the lld-link from a Rust toolchain, and Xcode's Swift for the Mac app) builds:
 
 - `build/xinput1_4.dll` and `build/test_load.exe`;
-- `Keybinder.html` (from `configurator.html`);
+- `Keybinder.html` (from `configurator.html`, with every language from `lang/` built in);
 - the downloads in `dist/`:
   - `wasdmod-Windows.exe` (`installer.c`);
   - `wasdmod-Mac.dmg` (`mac/main.swift` over `mac/wasdmod.sh`);
   - `wasdmod.zip`.
+
+`lang.py` builds the translations into each part; `python3 lang.py --check` lists text that a language doesn't translate yet. In the code, English text is the key: `t("…")` in the editor, `L("…")` in the Mac app, `T("…")` in the DLL and the installer.
 
 No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` install from the source folder.
 
@@ -205,7 +218,7 @@ No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` i
 
 [MIT](LICENSE).
 
-Headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain), with some glyphs and the spacing adjusted to match Minecraft's lettering.
+Headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain), with some glyphs and the spacing adjusted to match Minecraft's lettering, and Cyrillic, Polish, Turkish and Portuguese letters added on the same pixel grid.
 
 Unofficial project. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with CodeWeavers or Valve.
 

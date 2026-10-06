@@ -4,3 +4,5 @@ personal-wasdmod.txt
 *.log
 .DS_Store
 backup/
+video/
+promo/

@@ -50,6 +50,9 @@ IMP DWORD GetFileAttributesA(const char *);
 IMP BOOL MoveFileExA(const char *, const char *, DWORD);
 typedef struct { WORD year, month, weekday, day, hour, minute, second, ms; } SYSTEMTIME;
 IMP void GetLocalTime(SYSTEMTIME *);
+IMP DWORD GetEnvironmentVariableA(const char *, char *, DWORD);
+IMP WORD GetUserDefaultUILanguage(void);
+IMP int MultiByteToWideChar(UINT, DWORD, const char *, int, WCHAR *, int);
 // user32
 IMP SHORT GetAsyncKeyState(int);
 IMP HANDLE GetForegroundWindow(void);
@@ -97,7 +100,11 @@ static const WORD btnBit[NBTN] = {0x1000, 0x2000, 0x4000, 0x8000, 0x100, 0x200, 
 // For a setting a layout leaves out: default.txt's value (the game's own keyboard
 // keys played as a controller). Directional dodge (right stick) is under [Move].
 static const char *btnDefaultKeys[NBTN] = {"Space", "2", "Mouse1", "1", "Mouse5", "3", "E", "Mouse2", "None", "None", "Mouse3", "None", "None", "None", "None", "None"};
-static const char *btnDefaultLabel[NBTN] = {"Jump / interact", "Artifact 2", "Melee (in the air: heavy jump attack)", "Artifact 1", "Forward dodge", "Artifact 3", "Health potion", "Ranged (bow)", "World map", "Menu wheel / event log", "Guidance trail", "Emotes", "Inventory (tap: full, hold: mini)", "Social menu", "Teleport to player", "Track quest / quest log"};
+// Translated where they're shown (see T below); a layout's [Labels] can change them.
+#define N_(s) s
+static const char *btnDefaultLabel[NBTN] = {N_("Jump / interact"), N_("Artifact 2"), N_("Melee (in the air: heavy jump attack)"), N_("Artifact 1"), N_("Forward dodge"), N_("Artifact 3"),
+    N_("Health potion"), N_("Ranged (bow)"), N_("World map"), N_("Menu wheel / event log"), N_("Guidance trail"), N_("Emotes"), N_("Inventory (tap: full, hold: mini)"), N_("Social menu"),
+    N_("Teleport to player"), N_("Track quest / quest log")};
 
 #define MAXKEYS 3
 typedef struct { BYTE vk[MAXKEYS]; char text[48]; } Binding;
@@ -156,6 +163,69 @@ static void logline(const char *s) {
     stamp[9] = (char)('0' + t.ms / 100 % 10); two(stamp + 10, t.ms % 100);
     DWORD w; WriteFile(h, stamp, 13, &w, 0); WriteFile(h, s, len(s), &w, 0); WriteFile(h, "\r\n", 2, &w, 0); CloseHandle(h);
     logBytes += 15 + len(s);
+}
+
+// ---------------------------------------------------------------- language
+// The key list and the typing banner come in every language the game has
+// (build/lang_game.h, made by lang.py from lang/*.json). English is the key:
+// T("Move") is that text in the chosen language, or the English if it has none.
+#include "lang_game.h"
+static int langIndex; // into LANG_CODE; 0 is English
+static int sameStr(const char *a, const char *b) { while (*a && *a == *b) a++, b++; return *a == *b; }
+static int startsWith(const char *s, const char *p) { while (*p) if (*s++ != *p++) return 0; return 1; }
+static const char *T(const char *en) {
+    if (langIndex) for (int i = 0; i < TR_COUNT; i++) if (sameStr(TR_KEY[i], en)) return TR_TEXT[langIndex][i] ? TR_TEXT[langIndex][i] : en;
+    return en;
+}
+// "de", "de-DE", "pt_BR", "zh-Hant", "zh-TW"... -> its place in LANG_CODE, or -1.
+static int langOf(const char *tag) {
+    char t[16] = {0};
+    for (int i = 0; tag[i] && i < 15; i++) t[i] = (char)lower(tag[i] == '_' ? '-' : tag[i]);
+    if (t[0] == 'z' && t[1] == 'h' && (!t[2] || t[2] == '-')) { // Chinese: traditional for Taiwan, Hong Kong and Macau
+        int hant = startsWith(t + 2, "-hant") || startsWith(t + 2, "-tw") || startsWith(t + 2, "-hk") || startsWith(t + 2, "-mo");
+        memset(t, 0, sizeof(t)); append(t, sizeof(t), hant ? "zh-hant" : "zh-hans");
+    }
+    for (int i = 0; i < LANG_COUNT; i++) {
+        const char *c = LANG_CODE[i]; int k = 0;
+        while (c[k] && lower(c[k]) == t[k]) k++;
+        if (!c[k] && (!t[k] || t[k] == '-')) return i;
+    }
+    return -1;
+}
+// The system's display language (Windows, or what Wine takes from macOS/Linux).
+static const char *systemLang(void) {
+    WORD id = GetUserDefaultUILanguage();
+    switch (id & 0x3FF) {
+    case 0x04: return id == 0x0404 || id == 0x0C04 || id == 0x1404 || id == 0x7C04 ? "zh-Hant" : "zh-Hans";
+    case 0x07: return "de"; case 0x0A: return "es"; case 0x0C: return "fr"; case 0x10: return "it";
+    case 0x11: return "ja"; case 0x12: return "ko"; case 0x13: return "nl"; case 0x15: return "pl";
+    case 0x16: return "pt"; case 0x19: return "ru"; case 0x1D: return "sv"; case 0x1F: return "tr"; case 0x22: return "uk";
+    }
+    return "en";
+}
+// [Options] Language: Auto (the default) follows the game's own language setting,
+// which it keeps in GameUserSettings.ini, else the system's.
+static void pickLanguage(void) {
+    char want[32] = {0}, line[160] = "Key list language: ";
+    const char *from = " (from the layout)";
+    GetPrivateProfileStringA("Options", "Language", "Auto", want, sizeof(want), ini);
+    if (!want[0] || named(want, "auto")) {
+        const char *sub[] = {"Windows", "WinGDK"};
+        want[0] = 0; from = " (the game's setting)";
+        for (int i = 0; i < 2 && !want[0]; i++) {
+            char path[1100] = {0};
+            if (!GetEnvironmentVariableA("LOCALAPPDATA", path, 900)) break;
+            append(path, sizeof(path), "\\Dungeons2\\Saved\\Config\\"); append(path, sizeof(path), sub[i]);
+            append(path, sizeof(path), "\\GameUserSettings.ini");
+            GetPrivateProfileStringA("Internationalization", "Language", "", want, sizeof(want), path);
+        }
+        if (!want[0]) { append(want, sizeof(want), systemLang()); from = " (the system's)"; }
+    }
+    int i = langOf(want);
+    langIndex = i < 0 ? 0 : i;
+    append(line, sizeof(line), LANG_CODE[langIndex]); append(line, sizeof(line), from);
+    if (i < 0) { append(line, sizeof(line), "; not one of ours: "); append(line, sizeof(line), want); }
+    logline(line);
 }
 
 // A letter/digit ("W"), a key name ("Space", "Mouse1", "F5"), "None", or a
@@ -437,6 +507,7 @@ static void init(void) {
     logline(line);
     { unsigned n = len(ini); const char *f = ini + n; while (f > ini && f[-1] != '\\') f--;
       char l2[128] = "Settings file: "; append(l2, sizeof(l2), f); logline(l2); }
+    pickLanguage();
     startLegend(); // overlay thread: key list, typing banner, the game window position, keeping the cursor inside
 }
 

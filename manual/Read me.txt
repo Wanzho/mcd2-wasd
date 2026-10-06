@@ -42,6 +42,14 @@ own, and click "Download file". Put the file in the same Win64 folder and
 restart the game. The mod uses the newest of default.txt, author.txt and
 wasdmod*.txt.
 
+Languages
+---------
+The editor and the in-game key list come in the game's 16 languages. The editor
+starts in your system's language (change it with the globe menu at the top);
+the key list follows the language set in the game, or Language= under [Options]
+in the layout file (en, de, es, fr, it, ja, ko, nl, pl, pt, ru, sv, tr, uk,
+zh-Hans, zh-Hant).
+
 Problems
 --------
 Attach wasdmod.log (in the same Win64 folder) to a report on
