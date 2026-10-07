@@ -1,3 +1,4 @@
+
 # wasdmod — WASD controls for Minecraft Dungeons II
 
 Play **Minecraft Dungeons II (Minecraft Dungeons 2)** with **WASD, mouse and keyboard** instead of click-to-move, on Windows, Mac (CrossOver) and Linux.
@@ -6,7 +7,7 @@ wasdmod turns your keys into a virtual controller, so you get the game's full co
 
 **Languages:** English, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Svenska, Türkçe, Русский, Українська, 日本語, 한국어, 简体中文 and 繁體中文, the same languages as the game. See [Languages](#languages).
 
-![The wasdmod app on a Mac: install at the top, the key layout editor below](docs/wasdmod-mac.png)
+![The wasdmod app on a Mac: install at the top, the key layout editor below]<img width="1195" height="842" alt="Screenshot 2026-10-07 at 09 20 48" src="https://github.com/user-attachments/assets/1981122e-0cc5-4fd2-8cdc-e3d5f431381d" />
 
 **Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Windows.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod-Mac.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/latest/download/wasdmod.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
 
