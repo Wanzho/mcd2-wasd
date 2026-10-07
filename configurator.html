@@ -150,6 +150,36 @@ h3.group { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spaci
   border: solid var(--line); border-width: 0 1px 1px 0; transform: rotate(45deg); }
 .ktip.below::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
 .ktip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.ktip .hint { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.ktip .hint:empty { display: none; }
+/* moving keys on the map: drag a lit key (or click it, then another key); the targets
+   light up, the keys it can't go to step back, and a keycap follows the pointer */
+.k.movable { cursor: grab; }
+.kbd, .mouse { -webkit-user-select: none; user-select: none; }
+.lede .drag-hint { display: block; margin-top: 4px; }
+#mapCard.picking .k { cursor: pointer; transition: opacity .2s, transform .2s, filter .2s; }
+#mapCard.dragging, #mapCard.dragging .k { cursor: grabbing; }
+#mapCard.picking .k.nodrop { opacity: .25; cursor: not-allowed; }
+#mapCard.picking .k.lifted { opacity: .4; outline: 1px dashed var(--muted); outline-offset: -1px; }
+#mapCard.picking .k.hit { z-index: 3; opacity: 1; transform: scale(1.08); outline: 2px solid var(--pick, var(--accent)); outline-offset: 2px; }
+#mapCard.picking .mouse .k.hit:is([data-k="Mouse1"], [data-k="Mouse2"]) { transform: none; outline-offset: -3px; }
+#mapCard[data-pick="move"] { --pick: var(--move); } #mapCard[data-pick="action"] { --pick: var(--action); }
+#mapCard[data-pick="menu"] { --pick: var(--menu); } #mapCard[data-pick="mod"] { --pick: var(--mod); }
+@keyframes k-land { 0% { transform: scale(1.16); filter: brightness(1.7); } }
+.k.landed { animation: k-land .5s cubic-bezier(.22, .8, .24, 1); }
+.kghost { position: fixed; left: 0; top: 0; z-index: 40; display: grid; justify-items: center; gap: 2px; min-width: 64px; max-width: 240px; padding: 8px 14px 9px;
+  border-radius: 10px; background: var(--panel); border: 1px solid var(--pick, var(--line)); box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+  color: var(--fg); text-align: center; pointer-events: none; font: 500 12px/1.3 var(--body); }
+.kghost:not(.show) { display: none; }
+.kghost b { font-size: 16px; font-weight: 700; line-height: 1.15; }
+.kghost span { color: var(--muted); }
+.kghost i { font-style: normal; color: var(--fg); }
+.kghost i:empty { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .k.landed { animation: none; } #mapCard.picking .k { transition: none; } }
+/* render() keeps the view where it was by itself (see keepView); the browser's own scroll
+   anchoring would move it a second time */
+html, .side { overflow-anchor: none; }
 /* game settings checklist */
 ul.recs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.recs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; font-size: 13.5px; }
@@ -199,6 +229,7 @@ ol.steps { margin: 6px 0 0; padding-left: 20px; font-size: 13.5px; } ol.steps li
 @media (max-width: 560px) { .tune { grid-template-columns: minmax(0, 1fr) 4.5rem; } .tune input[type=range] { grid-column: 1 / -1; } }
 .tune input[type=range] { width: 100%; accent-color: var(--accent); }
 .tune output { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.tune label.unused, .tune input:disabled, .tune input:disabled + output { opacity: .5; }
 .toggles { display: grid; gap: 8px; margin-top: 12px; }
 .toggles label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 .toggles input { accent-color: var(--accent); margin-top: 3px; }
@@ -563,6 +594,29 @@ code { font-family: var(--mono); font-size: .92em; }
 .app .ktip.below::after { top: -7px; bottom: auto; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .app .ktip .dot { display: none; }
 .app .ktip b { font-weight: 600; color: color-mix(in srgb, var(--cat, #fff) 72%, #fff); }
+.app .ktip .hint { margin-top: 4px; font-size: var(--fs-xs); color: var(--soft); }
+/* moving keys: the targets light up in the picked key's colour, the rest step back; the
+   keycap that follows the pointer is a lit key in dark glass */
+.app .k.movable { cursor: grab; }
+.app #mapCard.picking .k { transition: filter .2s, transform .2s var(--ease), opacity .2s; }
+.app #mapCard.picking .k.nodrop { opacity: .2; filter: saturate(.4); }
+.app #mapCard.picking .k:not(.nodrop):not(.lifted) { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), 0 1px 0 #000; }
+.app #mapCard.picking .k.lifted { opacity: .35; filter: saturate(.3); outline: 1px dashed rgba(255, 255, 255, .4); outline-offset: -1px; }
+.app #mapCard.picking .k.hit { filter: brightness(1.4); transform: scale(1.08); outline: 2px solid var(--pick); outline-offset: 2px;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--pick) 70%, transparent); }
+.app #mapCard.picking .mouse .k.hit:is([data-k="Mouse1"], [data-k="Mouse2"]) { transform: none; }
+.app .k.landed { animation: app-land .5s var(--ease); }
+.app .k.landed::before { animation: app-lit .9s var(--ease) both; }
+@keyframes app-land { 0% { transform: scale(1.18); filter: brightness(1.9); } }
+.app .kghost { gap: 3px; padding: 9px 14px 10px; border: 0; border-radius: 14px; color: var(--fg); font: 500 var(--fs-s)/1.3 var(--body);
+  background: linear-gradient(color-mix(in srgb, var(--pick, #888) 22%, transparent), color-mix(in srgb, var(--pick, #888) 10%, transparent)), linear-gradient(180deg, #2c2c2f, #1f1f22);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pick, #888) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12),
+    0 0 24px color-mix(in srgb, var(--pick, #888) 30%, transparent), 0 18px 40px rgba(0, 0, 0, .55); }
+.app .kghost.show { animation: app-pop .18s var(--ease); }
+@keyframes app-pop { from { opacity: 0; scale: .8; } }
+.app .kghost b { font-size: 17px; font-weight: 600; }
+.app .kghost span { color: color-mix(in srgb, var(--pick, #fff) 60%, #fff); }
+.app .kghost i { color: var(--muted); }
 
 /* ---- sheets: "press a key" and the settings file, dark glass over a dimmed window ---- */
 .app .capture { background: rgba(0, 0, 0, .45); animation: app-fade .18s ease-out; }
@@ -640,7 +694,7 @@ code { font-family: var(--mono); font-size: .92em; }
   <header>
     <div>
       <h1 data-t="Dungeons II Keybinder"></h1>
-      <p data-t="Choose which keys and mouse buttons do what in the WASD controller mod for Minecraft Dungeons II. Fights always go through the mod's virtual controller; menus can use the game's own keyboard shortcuts or the controller. Save the settings file into the game folder and restart the game."></p>
+      <p data-t="Choose which keys and mouse buttons do what in the WASD controller mod for Minecraft Dungeons II. Fights always go through the mod's virtual controller; menus can use the game's own keyboard shortcuts or the controller. Save the settings file into the game folder: a running game switches to it within a second."></p>
     </div>
     <div class="layoutbar">
       <div class="labelrow">
@@ -651,7 +705,7 @@ code { font-family: var(--mono); font-size: .92em; }
         <select id="layoutSel"></select>
         <button type="button" id="createBtn" data-t="+ Create" data-t-title="A new layout of your own, starting from what's on screen"></button>
         <button type="button" id="resetBtn" data-t="Reset" data-t-title="Back to this layout's saved version"></button>
-        <button type="button" id="exportBtn" data-t="Export…"></button>
+        <button type="button" id="exportBtn" data-t="Export…" data-t-title="See the settings file, to copy it or save it somewhere else"></button>
         <button type="button" class="primary save" id="downloadTop"></button>
       </div>
       <div class="layout-status" id="layoutStatus" aria-live="polite"></div>
@@ -687,7 +741,7 @@ code { font-family: var(--mono); font-size: .92em; }
             <label><input type="radio" name="kbdKind" value="win">Windows</label><label><input type="radio" name="kbdKind" value="mac">Mac</label>
           </div>
         </div>
-        <p class="lede" data-t="Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does."></p>
+        <p class="lede" id="mapLede"></p>
         <div class="kbd" id="kbd"></div>
         <div class="mouse" id="mouseMap"></div>
         <div class="legend-row">
@@ -701,6 +755,8 @@ code { font-family: var(--mono); font-size: .92em; }
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div id="saveStatus" hidden></div>
 <div class="ktip" id="ktip" aria-hidden="true"></div>
+<div class="kghost" id="kghost" aria-hidden="true"><b></b><span></span><i></i></div>
+<div class="sr" id="mapSay" aria-live="polite"></div>
 
 <div class="capture" id="capture" hidden>
   <div class="box" role="dialog" aria-modal="true" aria-labelledby="capTitle">
@@ -726,7 +782,7 @@ code { font-family: var(--mono); font-size: .92em; }
         <li><span data-tx="Mac: the <b>wasdmod</b> app has this editor built in and saves straight into the game. Or put the file yourself in (CrossOver, default Steam bottle):"></span>
           <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
           <button id="copyPath" type="button" data-t="Copy folder path"></button> <span class="note" data-t="In Finder: Go › Go to Folder (⇧⌘G), paste."></span></li>
-        <li data-tx="The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins. Restart the game."></li>
+        <li data-tx="The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins, and a running game switches to it within a second."></li>
       </ol>
     </details>
     <pre class="ini" id="iniOut"></pre>
@@ -779,11 +835,11 @@ const ACTIONS = [
   { id: "left", sec: "act", cat: "move", label: _("Move left"), move: "Left", badge: _("L-stick") },
   { id: "down", sec: "act", cat: "move", label: _("Move down"), move: "Down", badge: _("L-stick") },
   { id: "right", sec: "act", cat: "move", label: _("Move right"), move: "Right", badge: _("L-stick") },
-  { id: "dodge", sec: "act", cat: "move", label: _("Directional dodge"), sub: _("click: dodge the way you're moving · click, drag, release: roll that way"), move: "DodgeMouse", badge: _("R-stick"), game: _("Directional Dodge") },
+  { id: "dodge", sec: "act", cat: "move", label: _("Directional dodge"), sub: _("tap: dodge the way you're moving · hold, move the mouse, let go: dodge that way"), move: "DodgeMouse", badge: _("R-stick"), game: _("Directional Dodge") },
   { id: "fdodge", sec: "act", cat: "move", label: _("Forward dodge"), sub: _("quick dodge the way you face"), pad: "LB", game: _("Forward Dodge") },
   { id: "jump", sec: "act", cat: "action", label: _("Jump / interact"), pad: "A", game: _("Jump") },
   { id: "melee", sec: "act", cat: "action", label: _("Melee"), sub: _("in the air: heavy jump attack"), pad: "X", game: _("Interact, Melee Attack") },
-  { id: "ranged", sec: "act", cat: "action", label: _("Ranged (bow)"), sub: _("hold a mouse button to aim with the mouse"), pad: "RT", game: _("Ranged Attack") },
+  { id: "ranged", sec: "act", cat: "action", label: _("Ranged (bow)"), sub: _("on a mouse button: hold it to aim at the cursor"), pad: "RT", game: _("Ranged Attack") },
   { id: "art1", sec: "act", cat: "action", label: _("Artifact 1"), pad: "Y", game: _("Artifact 1") },
   { id: "art2", sec: "act", cat: "action", label: _("Artifact 2"), pad: "B", game: _("Artifact 2") },
   { id: "art3", sec: "act", cat: "action", label: _("Artifact 3"), pad: "RB", game: _("Artifact 3") },
@@ -1033,27 +1089,46 @@ function parseIni(text) {
 }
 const get = (ini, sec, key) => { const e = (ini[sec] || []).filter(([k]) => k.toLowerCase() === key.toLowerCase()); return e.length ? e[e.length - 1][1] : undefined; };
 
+// Sliders: what they do, with what lower and higher values mean for the player.
 const TUNE = [
-  { sec: "Movement", key: "AccelMs", label: _("Speed-up time"), sub: _("time to reach full speed"), min: 0, max: 200, step: 5, unit: "ms" },
-  { sec: "Movement", key: "DecelMs", label: _("Stopping time"), sub: _("time to come to a stop"), min: 0, max: 200, step: 5, unit: "ms" },
+  { sec: "Movement", key: "AccelMs", label: _("Speed-up time"), sub: _("how long your movement keys take to get to full speed. 0 ms = full speed at once; higher = a softer start"), min: 0, max: 200, step: 5, unit: "ms" },
+  { sec: "Movement", key: "DecelMs", label: _("Stopping time"), sub: _("how long you keep gliding after you let go. 0 ms = stop at once; higher = a softer stop"), min: 0, max: 200, step: 5, unit: "ms" },
   { sec: "Movement", key: "TurnMs", label: _("Turn time"), sub: _("a full 180° turn (90° takes half). 0 ms = sharpest; higher = smoother, but it can feel less responsive"), min: 0, max: 1000, step: 10, unit: "ms" },
-  { sec: "Move", key: "DodgeDragPx", label: _("Drag to roll"), sub: _("mouse travel that turns a dodge click into a roll"), min: 10, max: 150, step: 5, unit: "px" },
-  { sec: "Move", key: "DodgeFlickMs", label: _("Dodge flick"), sub: _("how long each dodge holds the stick"), min: 30, max: 200, step: 10, unit: "ms" },
-  { sec: "Mouse", key: "MouseModeOnMovePx", label: _("Mouse wakes the cursor"), sub: _("mouse travel (after letting go of WASD) that switches to mouse mode"), min: 0, max: 150, step: 5, unit: "px" },
-  { sec: "Mouse", key: "BumpNudgePct", label: _("Bump correction"), sub: _("light right-stick nudge that undoes a small mouse bump; lower it if it ever makes you dodge, 0 = off"), min: 0, max: 60, step: 5, unit: "%" },
-  { sec: "Keys", key: "MenuTapMs", label: _("Tap vs hold"), sub: _("shorter = tap (full menu), longer = hold (quick overlay)"), min: 100, max: 600, step: 25, unit: "ms" },
-  { sec: "Options", key: "LegendSeconds", label: _("Key list at start"), sub: _("seconds the on-screen list shows when the game starts (0 = only on its key)"), min: 0, max: 60, step: 5, unit: "s" },
+  { sec: "Move", key: "DodgeDragPx", label: _("Dodge drag distance"), sub: _("while you hold Directional dodge, moving the mouse this far dodges that way instead of the way you're moving. Lower = a small move is enough; higher = it takes a bigger move"), min: 10, max: 150, step: 5, unit: "px" },
+  { sec: "Move", key: "DodgeFlickMs", label: _("Dodge stick time"), sub: _("how long each dodge pushes the controller's right stick. Lower = quicker dodges back to back, but too short and the game can miss one; higher = more reliable"), min: 30, max: 200, step: 10, unit: "ms" },
+  { sec: "Mouse", key: "MouseModeOnMovePx", label: _("Mouse move that brings back the cursor"), sub: _("how far you move the mouse, while not walking, before the cursor comes back. Lower = a small move does it; higher = it takes a bigger move, so bumps don't. 0 = never (and no bump correction)"), min: 0, max: 150, step: 5, unit: "px" },
+  { sec: "Mouse", key: "BumpNudgePct", label: _("Bump correction"), sub: _("a small mouse bump can switch the game's button prompts to keyboard; once the mouse stops, the mod pushes the right stick lightly to switch them back. Lower = a lighter push (lower it if it ever makes you dodge); 0 = off"), min: 0, max: 60, step: 5, unit: "%" },
+  { sec: "Keys", key: "MenuTapMs", label: _("Tap vs hold"), sub: _("menu keys: a press shorter than this is a tap (the menu opens and the cursor stays), a longer one a hold (a quick overlay like the mini inventory, gone when you let go). Higher = longer presses still count as taps"), min: 100, max: 600, step: 25, unit: "ms" },
+  { sec: "Options", key: "LegendSeconds", label: _("Key list at start"), sub: _("how long the on-screen key list shows when the game starts. 0 = only when you press {legend}"), min: 0, max: 60, step: 5, unit: "s" },
 ];
 const flag = { read: v => v === "1", write: b => b ? "1" : "0" };
+// On / off options, each with what happens when it's on and when it's off (only the one
+// that matches is shown). {cursor}, {toggle}, {legend} and {bow} are filled in where shown.
 const TOGGLES = [
-  { sec: "Mouse", key: "MouseMoveSwitches", label: _("Moving the mouse switches to mouse mode"), sub: _("off: only the cursor key (Alt), menus or the toggle key give you the mouse"), read: v => v !== "0", write: flag.write },
-  { sec: "Keys", key: "CursorMode", label: _("Cursor key toggles the cursor"), sub: _("on: press once to show the cursor, again to hide it; off: shows only while held, like Genshin"), read: v => /^toggle$/i.test(String(v).trim()), write: b => b ? "Toggle" : "Hold" },
-  { sec: "Mouse", key: "CursorFromMiddle", label: _("Cursor comes back in the middle"), sub: _("when moving the mouse brings the cursor back, it starts from the middle of the window; off: where the mouse moved it"), ...flag },
-  { sec: "Mouse", key: "BowAimsWithMouse", label: _("Aim the bow with the mouse"), sub: _("holding a mouse button bound to the bow switches to keyboard mode until you let go"), ...flag },
-  { sec: "Mouse", key: "KeepCursorInWindow", label: _("Keep the mouse inside the game window while playing"), sub: _("so a click can't land in another app"), ...flag },
-  { sec: "Options", key: "BlockOtherKeys", label: _("Block keys that aren't used"), sub: _("a stray key can't flip the game into keyboard mode"), ...flag },
-  { sec: "Options", key: "HideMouse", label: _("Hide mouse movement from the game while playing"), sub: _("keeps the game in controller mode"), ...flag },
-  { sec: "Options", key: "Legend", label: _("On-screen key list"), ...flag },
+  { sec: "Mouse", key: "MouseMoveSwitches", label: _("Moving the mouse brings back the cursor"), read: v => v !== "0", write: flag.write,
+    on: _("move the mouse while you're not walking and the cursor comes back, so you can click; walking or a fight key hides it again"),
+    off: _("moving the mouse never brings back the cursor; only the cursor key ({cursor}), a menu key or the mod on / off key ({toggle}) do") },
+  { sec: "Keys", key: "CursorMode", label: _("Cursor key toggles the cursor"), read: v => /^toggle$/i.test(String(v).trim()), write: b => b ? "Toggle" : "Hold",
+    on: _("press {cursor} once to show the cursor, and again to hide it and go back to the controller (an open menu keeps it)"),
+    off: _("the cursor shows only while you hold {cursor}; letting go hides it and goes back to the controller, like Genshin (an open menu keeps it)") },
+  { sec: "Mouse", key: "CursorFromMiddle", label: _("Cursor comes back in the middle"), ...flag,
+    on: _("when moving the mouse brings the cursor back, it appears in the middle of the game window"),
+    off: _("when moving the mouse brings the cursor back, it appears where the mouse moved it (menus and the cursor key always put it in the middle)") },
+  { sec: "Mouse", key: "BowAimsWithMouse", label: _("Aim the bow with the mouse"), ...flag,
+    on: _("holding a mouse button that's on {bow} switches the game to keyboard and mouse, so the bow aims at the cursor; your movement keys wait until you let go"),
+    off: _("a mouse button on {bow} presses the controller's RT like any other key, so the bow aims the way your character faces") },
+  { sec: "Mouse", key: "KeepCursorInWindow", label: _("Keep the mouse inside the game window while playing"), ...flag,
+    on: _("while you play, the hidden cursor can't leave the game window (and is put back in the middle while you walk), so a click can't land in another app"),
+    off: _("the hidden cursor can drift out of the game window, so a click can land in another app or on the desktop") },
+  { sec: "Options", key: "BlockOtherKeys", label: _("Block keys that aren't used"), ...flag,
+    on: _("while you play, keys this layout doesn't use never reach the game, so a stray press can't switch it to keyboard mode"),
+    off: _("keys this layout doesn't use reach the game, and pressing one can switch it to keyboard mode") },
+  { sec: "Options", key: "HideMouse", label: _("Hide mouse movement from the game while playing"), ...flag,
+    on: _("the game doesn't see your mouse move while you play, so it stays in controller mode"),
+    off: _("the game sees mouse movement while you play, which can switch it to keyboard mode") },
+  { sec: "Options", key: "Legend", label: _("On-screen key list"), ...flag,
+    on: _("a list of your keys shows over the game when it starts, for a moment after you save a layout, and when you press {legend}"),
+    off: _("no key list over the game, not even with {legend}") },
 ];
 const TG = key => TOGGLES.find(o => o.key === key);
 
@@ -1124,8 +1199,9 @@ function iniText(st) {
   const j = a => a.length ? a.join(", ") : "None";
   const L = [];
   L.push("; Keyboard & mouse as a controller for Minecraft Dungeons II.",
-    "; Made with Dungeons II Keybinder. Put this file in the game's Win64 folder and",
-    "; restart the game. The mod uses the newest of default.txt, author.txt and wasdmod*.txt.", "");
+    "; Made with Dungeons II Keybinder. Put this file in the game's Win64 folder: a running",
+    "; game switches to it within a second. The mod uses the newest of default.txt, author.txt",
+    "; and wasdmod*.txt.", "");
   const moveKeys = m => st.keys[ACTIONS.find(a => a.move === m).id];
   L.push("[Move]", ...["Up", "Left", "Down", "Right"].map(k => k + "=" + j(moveKeys(k))), "DodgeMouse=" + j(moveKeys("DodgeMouse")),
     "DodgeDragPx=" + st.num.DodgeDragPx, "DodgeFlickMs=" + st.num.DodgeFlickMs, "");
@@ -1213,12 +1289,14 @@ function usage(st) {
   return map;
 }
 const MOD_ROWS = [
-  { id: "TypeKey", label: _("Typing mode"), sub: _("every key goes to the game until Esc"), max: 3, get: st => st.mod.TypeKey, set: (st, v) => st.mod.TypeKey = v },
-  { id: "Cursor", label: _("Cursor key"), sub: _("shows the normal mouse (hold or toggle: see options)"), max: 3, get: st => st.mod.Cursor, set: (st, v) => st.mod.Cursor = v },
-  { id: "Toggle", label: _("Mod on / off"), max: 3, get: st => st.mod.Toggle, set: (st, v) => st.mod.Toggle = v },
-  { id: "Legend", label: _("On-screen key list"), max: 3, get: st => st.mod.Legend, set: (st, v) => st.mod.Legend = v },
-  { id: "PassKeys", label: _("Always send to the game"), sub: _("these keys reach the game as they are"), max: 8, get: st => st.extraPass, set: (st, v) => st.extraPass = v },
-  { id: "OtherMenus", label: _("Other menu shortcuts"), sub: _("sent to the game; switch to mouse mode"), max: 8, get: st => st.extraMenuKeys, set: (st, v) => st.extraMenuKeys = v },
+  // keyOnly: the mod only notices these as key presses, so a mouse button can't be one.
+  { id: "TypeKey", label: _("Typing mode"), sub: _("for chat: every key goes to the game until you press Esc"), keyOnly: true, max: 3, get: st => st.mod.TypeKey, set: (st, v) => st.mod.TypeKey = v },
+  // The cursor key's sub follows "Cursor key toggles the cursor" (subToggle when it's on).
+  { id: "Cursor", label: _("Cursor key"), sub: _("hold it to show the mouse cursor"), subToggle: _("press it to show the mouse cursor, again to hide it"), keyOnly: true, max: 3, get: st => st.mod.Cursor, set: (st, v) => st.mod.Cursor = v },
+  { id: "Toggle", label: _("Mod on / off"), sub: _("turns the mod off until you press it again; your keys then reach the game as they are"), max: 3, get: st => st.mod.Toggle, set: (st, v) => st.mod.Toggle = v },
+  { id: "Legend", label: _("On-screen key list"), sub: _("shows or hides the list of your keys over the game"), max: 3, get: st => st.mod.Legend, set: (st, v) => st.mod.Legend = v },
+  { id: "PassKeys", label: _("Always send to the game"), sub: _("these reach the game as they are, without bringing back the cursor"), max: 8, get: st => st.extraPass, set: (st, v) => st.extraPass = v },
+  { id: "OtherMenus", label: _("Other menu shortcuts"), sub: _("sent to the game as they are; the cursor comes back so you can click"), max: 8, get: st => st.extraMenuKeys, set: (st, v) => st.extraMenuKeys = v },
 ];
 
 // =================================================================== the game's own keyboard settings file
@@ -1368,12 +1446,12 @@ function keysCell(keys, set, rowName, uses, opts = {}) {
   const box = el("div", { class: "keys" });
   for (const k of keys) {
     const u = uses.get(k) || [], clash = u.length > 1;
-    const cap = el("span", { class: "cap" + (clash ? " conflict" : ""), title: clash ? t("Also used by: {names}", { names: u.map(r => r.name).filter(n => n !== rowName).join(", ") }) : "" }, pretty(k));
+    const cap = el("span", { class: "cap" + (clash ? " conflict" : ""), "data-key": "cap:" + k, title: clash ? t("Also used by: {names}", { names: u.map(r => r.name).filter(n => n !== rowName).join(", ") }) : "" }, pretty(k));
     if (opts.sendsAs && opts.sendsAs !== k) cap.append(el("span", { class: "arrow", title: t("The mod sends the game's key {key}", { key: pretty(opts.sendsAs) }) }, tx("as <b>{key}</b>", { key: pretty(opts.sendsAs) })));
-    cap.append(el("button", { type: "button", "aria-label": t("Remove {key} from {row}", { key: pretty(k), row: rowName }), text: "×", onclick: () => { set(keys.filter(x => x !== k)); changed(); } }));
+    cap.append(el("button", { type: "button", "data-key": "rm", "aria-label": t("Remove {key} from {row}", { key: pretty(k), row: rowName }), text: "×", onclick: () => { set(keys.filter(x => x !== k)); changed(); } }));
     box.append(cap);
   }
-  if (keys.length < (opts.max || 3)) box.append(el("button", { class: "add", type: "button", text: t("+ key"), onclick: e => startCapture({ kind: "keys", keys, set, rowName, kbRoute: opts.kbRoute }, e.currentTarget) }));
+  if (keys.length < (opts.max || 3)) box.append(el("button", { class: "add", type: "button", "data-key": "add", text: t("+ key"), onclick: e => startCapture({ kind: "keys", keys, set, rowName, kbRoute: opts.kbRoute, keyOnly: opts.keyOnly }, e.currentTarget) }));
   if (opts.note) box.append(el("span", { class: "note", text: opts.note }));
   if (opts.after) box.append(opts.after);
   return box;
@@ -1392,14 +1470,14 @@ function gameCell(a) {
   // yellow: the checklist asks to change it in the game.
   [0, 1].forEach(i => {
     const k = g[i];
-    if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", text: "+", title: t("The game has a second key for {action}: add it", { action }), onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: second }, e.currentTarget) })); return; }
+    if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", "data-key": "add2", text: "+", title: t("Add the second key the game has for {action}", { action }), onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: second }, e.currentTarget) })); return; }
     const cls = !k ? "none" : k === "?" ? "unknown" : keys.includes(k) ? "match" : "stray";
     const vars = { action, key: k ? pretty(k) : t("none") };
-    cell.append(el("button", { type: "button", class: cls, "data-slot": i, text: k ? pretty(k) : "–",
+    cell.append(el("button", { type: "button", class: cls, "data-slot": i, "data-key": "game" + i, text: k ? pretty(k) : "–",
       title: i ? t("Second key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars) : t("First key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars),
       "aria-label": i ? t("Second game key for {action}: {key}. Change", vars) : t("First game key for {action}: {key}. Change", vars),
       onclick: e => startCapture({ kind: "game", a, slot: i, rowName: i ? second : action }, e.currentTarget) }));
-    if (i === 1) cell.append(el("button", { type: "button", class: "clear2", text: "×", title: t("The game has no second key for this"), "aria-label": t("Clear the second game key for {action}", { action }), onclick: () => { state.game[a.id][1] = null; changed(); } }));
+    if (i === 1) cell.append(el("button", { type: "button", class: "clear2", "data-key": "clear2", text: "×", title: t("Clear it: the game has no second key for {action}", { action }), "aria-label": t("Clear the second game key for {action}", { action }), onclick: () => { state.game[a.id][1] = null; changed(); } }));
   });
   return cell;
 }
@@ -1410,8 +1488,9 @@ function rowEl(a, uses, first) {
   const kbRoute = r === "kb", label = t(a.label);
   let note = null;
   if (kbRoute && !g && keys.length) note = t("set the game's key →");
+  const sub = a.id === "ranged" && !state.opt.BowAimsWithMouse ? null : a.sub;
   return el("div", { class: "row" + (first ? " first" : ""), "data-action": a.id, "data-cat": a.cat },
-    el("div", { class: "name" }, label, a.sub ? el("span", { class: "sub", text: t(a.sub) }) : null),
+    el("div", { class: "name" }, label, sub ? el("span", { class: "sub", text: t(sub) }) : null),
     routeCell(a),
     keysCell(keys, v => state.keys[a.id] = v, label, uses, { kbRoute, sendsAs: kbRoute && g ? g : null, note, after: a.game || a.fixedGame ? gameCell(a) : null }));
 }
@@ -1420,37 +1499,55 @@ function renderSection(id, color, title, lede, list, uses) {
   const s = $(id); s.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:" + color }), title), el("p", { class: "lede", text: lede }));
   let first = true;
   for (const a of list) {
-    if (a.group) { s.append(el("h3", { class: "group", text: t(a.group) })); first = true; }
+    if (a.group) { s.append(el("h3", { class: "group", "data-key": "group:" + a.id, text: t(a.group) })); first = true; }
     s.append(rowEl(a, uses, first)); first = false;
   }
 }
 
 function renderMod(uses) {
   const s = $("sec-mod");
+  const vars = { row: t("Always send to the game"), block: t(TG("BlockOtherKeys").label) };
   s.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--mod)" }), t("Mod keys")),
-    el("p", { class: "lede", text: t("Keys for the mod itself. Every other key is blocked while you play, unless it's listed under \"{row}\".", { row: t("Always send to the game") }) }));
-  MOD_ROWS.forEach((m, i) => s.append(el("div", { class: "row" + (i === 0 ? " first" : ""), "data-cat": "mod" },
-    el("div", { class: "name" }, t(m.label), m.sub ? el("span", { class: "sub", text: t(m.sub) }) : null),
-    el("span", { class: "badge kb", text: t("Mod") }),
-    keysCell(m.get(state), v => m.set(state, v), t(m.label), uses, { max: m.max, kbRoute: m.id === "OtherMenus" || m.id === "PassKeys" }))));
+    el("p", { class: "lede", text: state.opt.BlockOtherKeys
+      ? t("Keys for the mod itself. While you play, keys this layout doesn't use are blocked (\"{block}\"); put keys under \"{row}\" to let them through.", vars)
+      : t("Keys for the mod itself. Keys this layout doesn't use reach the game (\"{block}\" is off).", vars) }));
+  MOD_ROWS.forEach((m, i) => {
+    const sub = m.subToggle && state.opt.CursorMode ? m.subToggle : m.sub;
+    s.append(el("div", { class: "row" + (i === 0 ? " first" : ""), "data-cat": "mod", "data-mod": m.id },
+      el("div", { class: "name" }, t(m.label), sub ? el("span", { class: "sub", text: t(sub) }) : null),
+      el("span", { class: "badge kb", text: t("Mod") }),
+      keysCell(m.get(state), v => m.set(state, v), t(m.label), uses, { max: m.max, kbRoute: m.id === "OtherMenus" || m.id === "PassKeys", keyOnly: m.keyOnly })));
+  });
 }
 
+// The keys an option's text names ({cursor}, {toggle}, {legend}) as they're set now (the row's
+// name when it has none), and the bow's row.
+function optionVars() {
+  const keys = (list, row) => list.length ? list.map(pretty).join(" / ") : t(row);
+  return { cursor: keys(state.mod.Cursor, "Cursor key"), toggle: keys(state.mod.Toggle, "Mod on / off"), legend: keys(state.mod.Legend, "On-screen key list"), bow: t(ACT.ranged.label) };
+}
 function renderTune() {
   const s = $("sec-tune"); s.replaceChildren();
   s.append(el("h2", {}, el("span", { class: "dot", style: "background:var(--muted)" }), t("Feel & options")),
-    el("p", { class: "lede", text: t("Smoothing makes WASD speed up, stop and turn gradually instead of snapping. Set a slider to 0 for instant.") }));
-  const g = el("div", { class: "tune" });
+    el("p", { class: "lede", text: t("The first three sliders smooth your movement keys: speeding up, stopping and turning take a moment instead of snapping (0 = instant). The rest fine-tune dodging, the mouse, menus and the key list.") }));
+  const vars = optionVars(), g = el("div", { class: "tune" });
   for (const tu of TUNE) {
     const id = "t-" + tu.key, out = el("output", { for: id, text: state.num[tu.key] + " " + tu.unit });
-    g.append(el("label", { for: id }, t(tu.label), el("span", { class: "sub", text: t(tu.sub) })),
-      el("input", { id, type: "range", min: tu.min, max: tu.max, step: tu.step, value: state.num[tu.key], oninput: e => { state.num[tu.key] = +e.target.value; out.textContent = e.target.value + " " + tu.unit; edited(); save(); renderOut(); } }), out);
+    // How far the mouse has to move only counts while moving the mouse brings back the cursor.
+    const unused = tu.key === "MouseModeOnMovePx" && !state.opt.MouseMoveSwitches;
+    const sub = unused ? t("not used while \"{option}\" is off", { option: t(TG("MouseMoveSwitches").label) }) : t(tu.sub, vars);
+    g.append(el("label", { for: id, class: unused ? "unused" : null }, t(tu.label), el("span", { class: "sub", text: sub })),
+      el("input", { id, type: "range", min: tu.min, max: tu.max, step: tu.step, value: state.num[tu.key], disabled: unused,
+        oninput: e => { state.num[tu.key] = +e.target.value; out.textContent = e.target.value + " " + tu.unit; edited(); save(); renderOut(); } }), out);
   }
   s.append(g);
+  // Each option shows what happens in its current state, and swaps that text the moment it's ticked.
   const tg = el("div", { class: "toggles" });
   for (const o of TOGGLES) {
-    const id = "o-" + o.key;
-    tg.append(el("label", { for: id }, el("input", { id, type: "checkbox", checked: !!state.opt[o.key], onchange: e => { state.opt[o.key] = e.target.checked; changed(); } }),
-      el("span", {}, t(o.label), o.sub ? el("span", { class: "sub", text: t(o.sub) }) : null)));
+    const id = "o-" + o.key, sub = el("span", { class: "sub", text: t(state.opt[o.key] ? o.on : o.off, vars) });
+    tg.append(el("label", { for: id, "data-key": "opt:" + o.key }, el("input", { id, type: "checkbox", checked: !!state.opt[o.key], onchange: e => {
+      state.opt[o.key] = e.target.checked; sub.textContent = t(e.target.checked ? o.on : o.off, vars); changed();
+    } }), el("span", {}, t(o.label), sub)));
   }
   s.append(tg);
 }
@@ -1477,7 +1574,7 @@ async function readControls() {
   controls = ctl;
   if (JSON.stringify(next) === JSON.stringify(realGame)) return;
   realGame = next;
-  if (realGame) await syncReal(); else renderRecs();
+  if (realGame) await syncReal(); else keepView(renderRecs);
 }
 // The game's real keys into what's on screen (not counted as a change). The layout in
 // the game sends some keys on to the game's own keys; when those moved, it's saved
@@ -1515,28 +1612,31 @@ function recLine(r) {
 function renderRecs() {
   const recs = recommendations(state), card = $("recsCard");
   card.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--accent)" }), t("Make the game's keyboard keys match yours")),
-    el("p", { class: "lede", text: t("Change these in the game: Settings › Controls › Keyboard (both columns). Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Tick each one off here once it's done.") }));
+    el("p", { class: "lede", text: t("Change these in the game: Settings › Controls › Keyboard (both columns). Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Click Done on each one once you've changed it.") }));
   const move = moveKeys(), clashes = gameClashes.filter(c => (state.game[c.a.id] || []).includes(c.k) && move.has(c.k));
   if (clashes.length) card.append(el("div", { class: "clash", role: "alert" }, el("b", { text: t("Change in the game") }),
     el("ul", {}, ...clashes.map(c => el("li", { text: clashText(c) })))));
   if (!recs.length) card.append(el("p", { class: "allset", text: t("All set: the game's keyboard keys match yours, in both columns.") }));
   else {
     const ul = el("ul", { class: "recs" });
-    for (const r of recs) ul.append(el("li", { title: t("Show"), onclick: e => { if (!e.target.closest("button")) showGameKey(r); } },
+    for (const r of recs) ul.append(el("li", { title: t("Show"), "data-key": "rec:" + r.a.id + ":" + r.slot, onclick: e => { if (!e.target.closest("button")) showGameKey(r); } },
       el("span", {}, recLine(r),
         el("span", { class: "was", text: r.was ? t("now: {key}", { key: pretty(r.was) }) : t("now: empty") }), r.a.note ? el("span", { class: "note", text: t(r.a.note) }) : null),
-      el("button", { type: "button", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
-    card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: t("Mark all as done"), onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
+      el("button", { type: "button", "data-key": "done", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
+    card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", "data-key": "markall", text: t("Mark all as done"), onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
   }
   // In the apps, both ways: the game's own settings set to this layout (the rows the file
   // has names for), or this layout set to the game's keys.
-  if (controls && host && host.writeGameControls)
+  if (controls && host && host.writeGameControls) {
+    const apply = t("Apply to the game's controls"), use = t("Use the game's keys in this layout");
     card.append(el("div", { class: "apply-game" },
       el("div", { class: "out-actions" },
-        el("button", { type: "button", class: "primary", text: t("Apply to the game's controls"), disabled: !recs.some(r => GAME_ACTIONS[r.a.id]), onclick: applyControls }),
-        el("button", { type: "button", text: t("Use the game's keys in this layout"), onclick: useGameKeys })),
-      el("span", { class: "note", text: t("Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.") }),
-      el("span", { class: "note", text: t("Takes the keys from the game's keyboard settings into this layout. Keys the game shares with your movement keys are left out.") })));
+        el("button", { type: "button", class: "primary", "data-key": "apply", text: apply, disabled: !recs.some(r => GAME_ACTIONS[r.a.id]), onclick: applyControls,
+          title: t("Changes the game's keyboard settings to this layout, for you") }),
+        el("button", { type: "button", "data-key": "usegame", text: use, onclick: useGameKeys, title: t("Changes this layout to the keys in the game's keyboard settings") })),
+      el("span", { class: "note" }, tx("{apply} changes the game's keyboard settings to this layout, for every key it can (the rest stay in the list). Close the game first; the original settings file is kept as a backup.", { apply: el("b", { text: apply }) })),
+      el("span", { class: "note" }, tx("{use} does the opposite: this layout takes the game's keys, except keys you move with.", { use: el("b", { text: use }) }))));
+  }
 }
 // "Use the game's keys": each row takes the game's keys (both columns), except keys you
 // move with. Those stay yours, and the game needs another key there: its own menu wheel
@@ -1569,8 +1669,8 @@ function renderMismatch() {
   box.replaceChildren(el("div", { class: "mismatch", role: "alert" },
     el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
     el("h2", { text: tn("Change {n} setting in the game, or you're playing with two layouts", "Change {n} settings in the game, or you're playing with two layouts", n) }),
-    el("button", { type: "button", text: t("Show what to change"), onclick: () => { const c = $("recsCard"); c.scrollIntoView({ behavior: "smooth", block: "start" }); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1500); } }),
-    el("p", { text: t("The mod turns your keys into the controller only while you fight. In menus, with the cursor, and when aiming the bow, the game reads its own keyboard settings, so its old keys still work there and yours may not; its on-screen button prompts show its keys too. The mod blocks the leftover keys in the meantime, but only changing them in the game (Settings › Controls › Keyboard) makes both modes one layout.") })));
+    el("button", { type: "button", "data-key": "showrecs", text: t("Show what to change"), onclick: () => { const c = $("recsCard"); c.scrollIntoView({ behavior: "smooth", block: "start" }); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1500); } }),
+    el("p", { text: t("The mod turns your keys into controller buttons only while you play. In menus, with the cursor, and while aiming the bow with the mouse, the game reads its own keyboard settings: there your keys may do nothing, and its button prompts show its own keys. The mod blocks the game's old keys in the meantime; changing them in the game (Settings › Controls › Keyboard) makes both work the same.") })));
 }
 
 // Keyboard map: a Windows or a Mac keyboard (only the bottom row differs). The
@@ -1601,35 +1701,55 @@ for (const r of document.querySelectorAll("#kbdKind input")) {
   r.checked = r.value === kbdKind;
   r.addEventListener("change", () => { kbdKind = r.value; store.set("d2kb-kbd", kbdKind); render(); });
 }
+// What a key on the map does, for its bubble and for screen readers.
 function describe(k, uses) {
   if (k === "cmd") return kbdKind === "win" ? t("Windows key: while held, no key registers. It can't be bound.") : t("⌘ Command (Windows key on a PC): while held, no key registers. It can't be bound.");
   const u = uses.get(k);
-  if (!u || !u.length) return state.opt.BlockOtherKeys ? t("{key}: blocked while playing", { key: pretty(k) }) : t("{key}: blocked while playing (off: sent to the game)", { key: pretty(k) });
-  return pretty(k) + ": " + u.map(r => r.name).join(" · ") + (u.length > 1 ? "  ⚠ " + t("conflict") : "");
+  if (u && u.length) return pretty(k) + ": " + u.map(r => r.name).join(" · ") + (u.length > 1 ? "  ⚠ " + t("conflict") : "");
+  // Not yours: the game's own key for an action you moved is blocked in every mode (left click aside).
+  const moved = k === "Mouse1" ? [] : ACTIONS.filter(a => gameSlots(a, state).includes(k)).map(a => t(a.game));
+  if (moved.length) return t("{key}: not used. It's the game's key for {action}, so the mod blocks it in every mode.", { key: pretty(k), action: andList(moved) });
+  if (isMouse(k)) return t("{key}: not used", { key: pretty(k) });
+  return state.opt.BlockOtherKeys ? t("{key}: not used, so it's blocked while you play", { key: pretty(k) }) : t("{key}: not used, so it reaches the game", { key: pretty(k) });
 }
-// The bubble over a hovered (or focused) key: above it, or below when there's no room.
-function showKeyTip(c, k, uses) {
-  const tip = $("ktip"), s = describe(k, uses), name = pretty(k) + ":";
+// The bubble over a key (hovered or focused): what it does ("Key: text", the key name in its
+// colour) and a hint under it. Above the key, or below when there's no room.
+let tipQuietUntil = 0; // render() just moved the scroll position back: that scroll isn't the player's
+function showKeyTip(c, k, s, hint = "") {
+  const tip = $("ktip"), name = pretty(k), named = s.startsWith(name) && /^[:：]/.test(s.slice(name.length)); // "Key:" (or "Key：")
   const cat = c.style.getPropertyValue("--cat");
   tip.style.setProperty("--cat", cat); // the key's colour, for its name in the bubble
   tip.replaceChildren(...(cat ? [el("span", { class: "dot", style: "background:" + cat })] : []),
-    ...(s.startsWith(name) ? [el("b", { text: name }), s.slice(name.length)] : [s]));
+    ...(named ? [el("b", { text: s.slice(0, name.length + 1) }), s.slice(name.length + 1)] : [s]), el("span", { class: "hint", text: hint }));
   const r = c.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
   const x = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)), below = r.top - h - 10 < 8;
   tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(below ? r.bottom + 10 : r.top - h - 10)}px)`;
   tip.style.setProperty("--ax", Math.round(r.left + r.width / 2 - x) + "px");
   tip.classList.toggle("below", below); tip.classList.add("show");
+  clearTimeout(showKeyTip.timer);
 }
-const hideKeyTip = () => $("ktip").classList.remove("show");
-addEventListener("scroll", hideKeyTip, true);
+const hideKeyTip = () => { clearTimeout(showKeyTip.timer); $("ktip").classList.remove("show"); };
+const hideKeyTipLater = ms => { clearTimeout(showKeyTip.timer); showKeyTip.timer = setTimeout(hideKeyTip, ms); };
+addEventListener("scroll", () => { if (performance.now() > tipQuietUntil) hideKeyTip(); }, true);
+const DRAG_HINT = _("Drag it onto another key to move it there, or click it and then the other key.");
 let litBefore = null; // the lit keys (key -> category) the map showed last time
+// One tab stop for the keyboard and one for the mouse; the arrow keys go from key to key.
+const rove = { kbd: "k:W:0", mouseMap: "k:Mouse1:0" };
 function renderMap(uses) {
-  const cat = { move: "var(--move)", action: "var(--action)", menu: "var(--menu)", mod: "var(--mod)" };
+  const cat = CAT_COLOR;
+  endPick(); // what's picked up is from the old map
   hideKeyTip();
-  const lit = new Map();
-  const cell = (k, text, w) => {
-    const u = uses.get(k) || [];
-    const c = el("div", { class: "k" + (w ? " " + w : "") + (u.length ? " used" : " off") + (u.length > 1 ? " conflict" : ""), tabindex: "0", "data-k": k, text: text || k, "aria-label": describe(k, uses) });
+  $("mapLede").replaceChildren(state.opt.BlockOtherKeys
+    ? t("Keys with a coloured line do something; the colour says what. Hatched keys aren't used and are blocked while you play, so they can't switch the game to keyboard mode. Hover over a key to see what it does.")
+    : t("Keys with a coloured line do something; the colour says what. Hatched keys aren't used and reach the game as they are. Hover over a key to see what it does."),
+    el("span", { class: "drag-hint", text: t("Drag a key onto another one to move what it does (if both do something, they swap), or click one key and then the other.") }));
+  const lit = new Map(), seen = new Map(), rows = mapRows();
+  const cell = (k, text, w, group) => {
+    const u = uses.get(k) || [], n = seen.get(k) || 0, key = "k:" + k + ":" + n;
+    seen.set(k, n + 1);
+    const movable = !pickRule(k, rows), about = describe(k, uses);
+    const c = el("div", { class: "k" + (w ? " " + w : "") + (u.length ? " used" : " off") + (u.length > 1 ? " conflict" : "") + (movable ? " movable" : ""),
+      tabindex: rove[group] === key ? "0" : "-1", role: "button", "data-k": k, "data-key": key, text: text || k, "aria-label": movable ? about + ". " + t(DRAG_HINT) : about });
     if (u.length) {
       c.style.setProperty("--cat", cat[u[0].cat]);
       lit.set(k, u[0].cat);
@@ -1637,24 +1757,238 @@ function renderMap(uses) {
     }
     if (k === "cmd") { c.classList.remove("off"); c.style.opacity = ".6"; }
     if (k === "cmd" && kbdKind === "win") c.replaceChildren(winLogo());
-    const show = () => showKeyTip(c, k, uses);
-    c.addEventListener("mouseenter", show); c.addEventListener("focus", show);
-    c.addEventListener("mouseleave", hideKeyTip); c.addEventListener("blur", hideKeyTip);
+    // While a key is picked up, pointing at another one says what dropping it there would do.
+    const show = () => pick ? setOver(c) : landed && landed.at === key && performance.now() < landed.until ? null : showKeyTip(c, k, about, movable ? t(DRAG_HINT) : "");
+    c.addEventListener("mouseenter", () => { if (!pd) show(); });
+    c.addEventListener("focus", () => { rove[group] = key; for (const o of $(group).querySelectorAll(".k")) o.tabIndex = o === c ? 0 : -1; show(); });
+    // A bubble saying what a drop did stays up for a moment, unless the pointer leaves that key.
+    const held = () => landed && performance.now() < landed.until && landed.at !== key;
+    c.addEventListener("mouseleave", () => { if (!pick) { if (!held()) hideKeyTip(); } else if (pick.how !== "keys" && pick.over === c) setOver(null); });
+    c.addEventListener("blur", () => { if (!pick && !held()) hideKeyTip(); });
     return c;
   };
   // In the apps the map is drawn like a real keyboard (the backslash key fills the Tab row)
   // and a mouse: left and right on its body, the wheel, side buttons 5 (front) and 4 (back).
-  const rows = [...KBD, KBD_BOTTOM[kbdKind]];
-  if (inApp) rows[2] = [...rows[2], ["\\"]];
+  const kbRows = [...KBD, KBD_BOTTOM[kbdKind]];
+  if (inApp) kbRows[2] = [...kbRows[2], ["\\"]];
   $("kbd").dataset.kind = kbdKind;
-  $("kbd").replaceChildren(...rows.map(r => el("div", { class: "krow" }, ...r.map(([k, text, w]) => cell(k, text, w)))));
-  const mouse = ["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k)));
+  $("kbd").replaceChildren(...kbRows.map(r => el("div", { class: "krow" }, ...r.map(([k, text, w]) => cell(k, text, w, "kbd")))));
+  const mouse = ["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k), null, "mouseMap"));
   if (inApp) {
     mouse.forEach((c, i) => { c.textContent = i === 3 ? "4" : i === 4 ? "5" : ""; });
     $("mouseMap").replaceChildren(el("div", { class: "mbody" }, mouse[0], mouse[1]), mouse[2], mouse[4], mouse[3]);
   } else $("mouseMap").replaceChildren(...mouse);
   litBefore = lit;
 }
+
+// ---------------------------------------------------------------- moving keys on the map
+// As on the website: drag a key that does something (a mouse button too) onto another key,
+// and what it does moves there; onto a key that does something else, the two swap. Without
+// dragging: click the key, then the other one (or Enter on it, the arrow keys, Enter). Esc or
+// a click elsewhere cancels. It edits the rows exactly as changing their keys would (then
+// changed()), with the editor's rules: a row that sends the game a keyboard shortcut can't
+// take a mouse button (nor = or ;), the Windows / Command key and \ can't be bound, Esc stays
+// the game menu key, and a key in a custom remap from the settings file stays put. Only the
+// key dragged moves (a row's other keys stay), and a key that does two things moves both.
+const CAT_COLOR = { move: "var(--move)", action: "var(--action)", menu: "var(--menu)", mod: "var(--mod)" };
+const mapRows = () => [
+  ...ACTIONS.filter(a => !a.hidden).map(a => ({ id: a.id, name: t(a.label), cat: a.cat, kb: route(a, state) === "kb", get: () => state.keys[a.id], set: v => { state.keys[a.id] = v; } })),
+  ...MOD_ROWS.map(m => ({ id: m.id, name: t(m.label), cat: "mod", kb: m.id === "OtherMenus" || m.id === "PassKeys", keyOnly: !!m.keyOnly, get: () => m.get(state), set: v => m.set(state, v) })),
+];
+const rowsOn = (rows, k) => rows.filter(r => r.get().includes(k));
+const rowNames = rows => rows.map(r => r.name).join(" · ");
+const inRemap = k => state.extraRemaps.some(([f]) => f === k);
+const remapWhy = k => t("{key} is part of a custom remap from the settings file, so it stays where it is.", { key: pretty(k) });
+const escWhy = () => t("Esc always stays the game menu key. You can add more keys on its row.");
+// Why a key can't be picked up: "" when it can, "-" when it does nothing.
+function pickRule(k, rows) {
+  const on = rowsOn(rows, k);
+  if (!on.length) return "-";
+  if (inRemap(k)) return remapWhy(k);
+  if (k === "Escape" && on.some(r => r.id === "esc")) return escWhy();
+  return "";
+}
+// Moving what's on key S to key T: { from, to } (the rows on S, and the rows on T, which
+// swap back to S), or { why } it can't.
+function dropPlan(S, T, rows) {
+  if (T === "cmd") return { why: kbdKind === "mac" ? t("⌘ Command is kept for system shortcuts and can't be bound.") : t("The Windows key is kept for system shortcuts and can't be bound.") };
+  if (T === "\\") return { why: t("The mod can't use {key}. Try another key.", { key: T }) };
+  const from = rowsOn(rows, S), to = rowsOn(rows, T).filter(r => !from.includes(r));
+  const same = from.find(r => r.get().includes(T));
+  if (same) return { why: t("{row} already uses {key}.", { row: same.name, key: pretty(T) }) };
+  if (inRemap(T)) return { why: remapWhy(T) };
+  for (const [list, key, old] of [[from, T, S], [to, S, T]]) for (const r of list) {
+    if (r.id === "esc" && old === "Escape") return { why: escWhy() };
+    if (r.kb && isMouse(key)) return { why: t("{row} sends the game a keyboard shortcut, so it needs a key, not a mouse button.", { row: r.name }) };
+    if (r.keyOnly && isMouse(key)) return { why: t("{row} needs a key on the keyboard: the mod doesn't notice a mouse button for it.", { row: r.name }) };
+    if (r.kb && (key === "=" || key === ";")) return { why: t("{row} can't send {key} to the game.", { row: r.name, key: pretty(key) }) };
+  }
+  return { from, to };
+}
+let landed = null; // the key a drop just went to (or was refused at), and until when its bubble says what happened: { at, until }
+let pick = null;   // the key picked up: { key, at (its data-key), rows, how: "drag" | "click" | "keys", over, plans }
+let pd = null;     // a press on a key that may become a drag: { el, id, x, y (where), lx, ly (last), on (dragging), touch, timer }
+let suppressClick = false;
+const mapKeys = () => [...document.querySelectorAll("#kbd .k, #mouseMap .k")];
+const sayMap = text => { const s = $("mapSay"); s.textContent = ""; setTimeout(() => { s.textContent = text; }, 30); };
+function startPick(c, how) {
+  const rows = mapRows(), k = c.dataset.k, on = rowsOn(rows, k), card = $("mapCard");
+  hideKeyTip();
+  pick = { key: k, at: c.dataset.key, rows, how, over: null, plans: new Map() };
+  card.classList.add("picking"); card.classList.toggle("dragging", how === "drag"); card.dataset.pick = on[0].cat;
+  c.classList.add("lifted");
+  for (const o of mapKeys()) if (o !== c) {
+    const p = dropPlan(k, o.dataset.k, rows);
+    pick.plans.set(o.dataset.key, p);
+    o.classList.toggle("nodrop", !!p.why);
+  }
+  const g = $("kghost");
+  if (how === "drag") {
+    g.style.setProperty("--pick", CAT_COLOR[on[0].cat]);
+    g.children[0].textContent = pretty(k); g.children[1].textContent = rowNames(on); g.children[2].textContent = "";
+    g.classList.add("show");
+  } else showKeyTip(c, k, pretty(k) + ": " + rowNames(on), how === "keys" ? t("Arrow keys choose a key, Enter puts it there, Esc cancels.") : t("Now click the key to move it to. Esc cancels."));
+  sayMap(t("Picked up {what}.", { what: rowNames(on) }) + (how === "keys" ? " " + t("Arrow keys choose a key, Enter puts it there, Esc cancels.") : ""));
+}
+// Pointing at (or arrowing to) a key while one is picked up: what dropping it there would do.
+function setOver(c) {
+  if (!pick) return;
+  if (c && (c.dataset.key === pick.at || !c.isConnected)) c = null;
+  if (pick.over && pick.over !== c) pick.over.classList.remove("hit");
+  pick.over = c;
+  let hint = "";
+  if (c) {
+    const p = pick.plans.get(c.dataset.key) || dropPlan(pick.key, c.dataset.k, pick.rows);
+    c.classList.toggle("hit", !p.why);
+    hint = p.why || (p.to.length ? t("Swap with {other}", { other: rowNames(p.to) }) : t("Move {what} here", { what: rowNames(p.from) }));
+    if (pick.how !== "drag") showKeyTip(c, c.dataset.k, pretty(c.dataset.k) + ": " + hint);
+  } else if (pick.how !== "drag") hideKeyTip();
+  if (pick.how === "drag") $("kghost").children[2].textContent = hint;
+}
+function endPick() {
+  if (!pick) return;
+  const card = $("mapCard");
+  card.classList.remove("picking", "dragging"); delete card.dataset.pick;
+  for (const o of mapKeys()) o.classList.remove("lifted", "nodrop", "hit");
+  $("kghost").classList.remove("show");
+  pick = null;
+}
+function cancelPick() {
+  if (!pick) return;
+  const how = pick.how, from = document.querySelector(`#mapCard [data-key="${CSS.escape(pick.at)}"]`);
+  endPick(); hideKeyTip();
+  if (how === "keys" && from) from.focus();
+  sayMap(t("Move cancelled."));
+}
+function dropOn(c) {
+  if (!pick) return;
+  if (!c || c.dataset.key === pick.at) return cancelPick();
+  const p = pick.plans.get(c.dataset.key) || dropPlan(pick.key, c.dataset.k, pick.rows), how = pick.how;
+  if (p.why) {
+    // A drag ends; a click or keyboard pick stays up, so another key can be tried.
+    if (how === "drag") { endPick(); landed = { at: c.dataset.key, until: performance.now() + 3200 }; showKeyTip(c, c.dataset.k, pretty(c.dataset.k) + ": " + p.why); hideKeyTipLater(3200); }
+    else setOver(c);
+    sayMap(p.why);
+    return;
+  }
+  const S = pick.key, T = c.dataset.k, at = [c.dataset.key, pick.at];
+  endPick();
+  for (const r of [...p.from, ...p.to]) r.set(uniq(r.get().map(k => k === S ? T : k === T ? S : k)));
+  const text = p.to.length ? t("Swapped: {what} is now on {key}, {other} on {key2}.", { what: rowNames(p.from), key: pretty(T), other: rowNames(p.to), key2: pretty(S) })
+    : t("{what} is now on {key}.", { what: rowNames(p.from), key: pretty(T) });
+  changed();
+  // The keys just changed settle in, and the bubble says what happened.
+  const now = at.slice(0, p.to.length ? 2 : 1).map(k => document.querySelector(`#mapCard [data-key="${CSS.escape(k)}"]`)).filter(Boolean);
+  for (const o of now) { o.classList.remove("landed"); void o.offsetWidth; o.classList.add("landed"); setTimeout(() => o.classList.remove("landed"), 600); }
+  if (now[0]) { const ms = how === "keys" ? 6000 : 3200; landed = { at: at[0], until: performance.now() + ms }; showKeyTip(now[0], T, describe(T, usage(state)), text); hideKeyTipLater(ms); }
+  sayMap(text);
+}
+// The keycap rides just above the pointer (higher above a finger), so the key under it stays in sight.
+function moveGhost(x, y) { $("kghost").style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, calc(-100% - ${pd && pd.touch ? 44 : 18}px))`; }
+function lift() {
+  if (!pd || pd.on) return;
+  pd.on = true; startPick(pd.el, "drag"); moveGhost(pd.lx, pd.ly);
+  try { pd.el.setPointerCapture(pd.id); } catch (err) {}
+}
+function endPointer() {
+  if (!pd) return;
+  clearTimeout(pd.timer);
+  try { pd.el.releasePointerCapture(pd.id); } catch (e) {}
+  removeEventListener("pointermove", onMapMove, true); removeEventListener("pointerup", onMapUp, true); removeEventListener("pointercancel", onMapCancel, true);
+  pd = null;
+}
+function onMapMove(e) {
+  if (!pd || e.pointerId !== pd.id) return;
+  pd.lx = e.clientX; pd.ly = e.clientY;
+  if (!pd.on) {
+    // A mouse or pen drags at once; a finger picks the key up after a short hold, so a swipe still scrolls.
+    const far = Math.hypot(e.clientX - pd.x, e.clientY - pd.y);
+    if (pd.touch) { if (far > 10) endPointer(); return; }
+    if (far < 5) return;
+    lift();
+  }
+  e.preventDefault();
+  moveGhost(e.clientX, e.clientY);
+  setOver(keyUnder(e.clientX, e.clientY));
+}
+const keyUnder = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.closest ? e.closest("#kbd .k, #mouseMap .k") : null; };
+function onMapUp(e) {
+  if (!pd || e.pointerId !== pd.id) return;
+  const dragged = pd.on;
+  endPointer();
+  if (!dragged || !pick) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 0);
+  setOver(keyUnder(e.clientX, e.clientY)); // where it's let go counts, even if the last move hasn't arrived
+  dropOn(pick.over);
+}
+function onMapCancel(e) { if (pd && e.pointerId === pd.id) { if (pd.on) cancelPick(); endPointer(); } }
+// Up / down / left / right from a key: the nearest key that way (keyboard and mouse apart).
+function neighbour(c, dir) {
+  const group = c.closest("#kbd, #mouseMap"), a = c.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  const horiz = dir === "ArrowLeft" || dir === "ArrowRight", sign = dir === "ArrowLeft" || dir === "ArrowUp" ? -1 : 1;
+  let best = null, bestScore = Infinity;
+  for (const o of group.querySelectorAll(".k")) {
+    if (o === c) continue;
+    const b = o.getBoundingClientRect(), dx = b.left + b.width / 2 - ax, dy = b.top + b.height / 2 - ay;
+    const along = horiz ? dx : dy, across = horiz ? Math.max(0, Math.abs(dy) - b.height / 2) : Math.max(0, Math.abs(dx) - b.width / 2);
+    if (along * sign <= 2 || (horiz && across > a.height * .3)) continue;
+    const score = Math.abs(along) * (horiz ? 1 : 3) + across * 2;
+    if (score < bestScore) { bestScore = score; best = o; }
+  }
+  return best;
+}
+for (const id of ["kbd", "mouseMap"]) {
+  const box = $(id);
+  box.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || pd || capturing || (pick && pick.how !== "drag")) return;
+    const c = e.target.closest(".k");
+    if (!c || !c.classList.contains("movable")) return;
+    pd = { el: c, id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, on: false, touch: e.pointerType === "touch" };
+    if (pd.touch) pd.timer = setTimeout(lift, 250);
+    addEventListener("pointermove", onMapMove, true); addEventListener("pointerup", onMapUp, true); addEventListener("pointercancel", onMapCancel, true);
+  });
+  box.addEventListener("touchmove", e => { if (pd && pd.on) e.preventDefault(); }, { passive: false }); // no scrolling mid-drag
+  box.addEventListener("contextmenu", e => { if (pd) e.preventDefault(); });
+  box.addEventListener("click", e => {
+    if (suppressClick) return;
+    const c = e.target.closest(".k"); if (!c) return;
+    if (pick) return c.dataset.key === pick.at ? cancelPick() : dropOn(c);
+    if (c.classList.contains("movable")) startPick(c, "click");
+    else { const why = pickRule(c.dataset.k, mapRows()); if (why && why !== "-") { showKeyTip(c, c.dataset.k, pretty(c.dataset.k) + ": " + why); hideKeyTipLater(3200); } }
+  });
+  box.addEventListener("keydown", e => {
+    const c = e.target.closest && e.target.closest(".k"); if (!c) return;
+    if (/^Arrow/.test(e.key)) { e.preventDefault(); const n = neighbour(c, e.key); if (n) n.focus(); }
+    else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (pick) c.dataset.key === pick.at ? cancelPick() : dropOn(c);
+      else if (c.classList.contains("movable")) startPick(c, "keys");
+    }
+  });
+  box.addEventListener("focusout", e => { if (pick && pick.how === "keys" && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("#kbd .k, #mouseMap .k"))) cancelPick(); });
+}
+addEventListener("keydown", e => { if (e.key === "Escape" && pick && !capturing) { e.preventDefault(); e.stopPropagation(); cancelPick(); } }, true);
+document.addEventListener("pointerdown", e => { if (pick && pick.how !== "drag" && !(e.target.closest && e.target.closest("#kbd, #mouseMap"))) cancelPick(); }, true);
 // After a save into the game, the map's lit keys light up in a wave from WASD.
 function wave() {
   const card = $("mapCard"), from = $("kbd").querySelector('[data-k="S"]');
@@ -1685,8 +2019,8 @@ function renderConflicts(uses) {
     el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
     el("h2", { text: tn("{n} key does two things", "{n} keys do two things", n) }),
     el("p", { text: tn("Pressing this key does both jobs at once. Give each job its own key: the clashing keys have a red outline below.", "Pressing one of these keys does both jobs at once. Give each job its own key: the clashing keys have a red outline below.", n) }),
-    el("ul", {}, ...bad.map(([k, u]) => el("li", {}, el("b", { text: pretty(k) }), " — " + andList(u.map(r => r.name)),
-      el("button", { type: "button", text: t("Show"), onclick: () => show(k) }))))));
+    el("ul", {}, ...bad.map(([k, u]) => el("li", { "data-key": "clash:" + k }, el("b", { text: pretty(k) }), " — " + andList(u.map(r => r.name)),
+      el("button", { type: "button", "data-key": "show", text: t("Show"), onclick: () => show(k) }))))));
 }
 
 function renderLayoutBar() {
@@ -1753,26 +2087,124 @@ function renderWheelNote() {
   const moves = ["up", "left", "down", "right"].find(d => (state.keys[d] || []).includes(game[0]));
   const vars = { key: pretty(mine[0]), game: pretty(game[0]), action: t(ACT.wheel.game), move: moves ? t(ACT[moves].label) : "" };
   $("sec-menu").querySelector(".lede").after(el("p", { class: "wheel-note" }, moves
-    ? tx("<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, which is \"{move}\" here, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and tick it off in the checklist; this note then goes away.", vars)
-    : tx("<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and tick it off in the checklist; this note then goes away.", vars)));
+    ? tx("<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, which is \"{move}\" here, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and click Done on it in the checklist; this note then goes away.", vars)
+    : tx("<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and click Done on it in the checklist; this note then goes away.", vars)));
 }
-function render() {
+// ---------------------------------------------------------------- the view stays put
+// render() rebuilds every section, and that must never move what you're looking at. Two
+// things would. In WebKit (the Mac app's window) a card that is a size container (the
+// container-type that gives narrow cards their layout) is laid out twice when its content
+// changes, the first time without its content: the page is briefly shorter and its scroll
+// position is cut to fit, to the very top when every card is rebuilt, and it stays there.
+// And a notice that opens or closes above the view pushes everything below it (WebKit has
+// no scroll anchoring; the browser's own is turned off in the CSS, as this does the job).
+// So render() notes the page's and the side column's scroll positions, one element in view
+// to hold still (the one just clicked or focused, else the first one in view), and the
+// focused control, each by a stable key (keyPath), and puts them all back.
+let lastPressed = null; // WebKit doesn't focus a clicked button or checkbox, so the press tells what was used
+addEventListener("pointerdown", e => { lastPressed = e.target; }, true);
+// A selector for an element that finds it again after a rebuild: from the nearest id,
+// through the keyed elements around it (data-key, data-action, data-mod, a radio's name and value).
+function keyPath(node) {
+  const steps = [];
+  for (let e = node; e && e.nodeType === 1 && e !== document.body; e = e.parentElement) {
+    if (e.id) { steps.unshift("#" + CSS.escape(e.id)); break; }
+    const step = e.dataset.key != null ? `[data-key="${CSS.escape(e.dataset.key)}"]`
+      : e.dataset.action ? `[data-action="${CSS.escape(e.dataset.action)}"]`
+      : e.dataset.mod ? `[data-mod="${CSS.escape(e.dataset.mod)}"]`
+      : e.type === "radio" && e.name ? `input[name="${CSS.escape(e.name)}"][value="${CSS.escape(e.value)}"]`
+      : !steps.length ? e.tagName.toLowerCase() + (e.classList[0] ? "." + CSS.escape(e.classList[0]) : "") : null;
+    if (step) steps.unshift(step);
+  }
+  return steps.length && steps[0][0] === "#" ? steps : null;
+}
+// The element a path leads to, or the nearest one around it that's still there (and how deep that is).
+function findPath(steps) {
+  for (let n = steps ? steps.length : 0; n > 0; n--) {
+    let e = null; try { e = document.querySelector(steps.slice(0, n).join(" ")); } catch (err) {}
+    if (e) return { e, n };
+  }
+  return null;
+}
+const FLOW = "main, #conflicts, #mismatch, #importCard"; // what moves with the page (the header and the side column are pinned)
+const HOLD = "main [data-action], main [data-mod], main h2, main h3, main .lede, main .wheel-note, main .menu-switch, main .tune > *, main .toggles > label, #conflicts li, #mismatch .mismatch";
+const SIDE_HOLD = "#recsCard h2, #recsCard li, #recsCard .clash, #recsCard .allset, #recsCard .apply-game, #mapCard .map-head, #kbd, #mouseMap";
+let keeping = false;
+// One element to hold still in an area: the one just focused or pressed if it's there and in
+// view, else the first of `list` in view; with where each element on its path is on screen.
+function pickHold(inArea, list, top, bottom) {
+  const inView = e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.bottom > top && r.top < bottom; };
+  const ae = document.activeElement !== document.body ? document.activeElement : null;
+  const e = [ae, lastPressed].find(x => x && x.isConnected && x.closest && inArea(x) && inView(x))
+    || [...document.querySelectorAll(list)].find(x => inView(x) && x.getBoundingClientRect().top >= top) || [...document.querySelectorAll(list)].find(inView);
+  const steps = e && keyPath(e);
+  if (!steps) return null;
+  const tops = [];
+  for (let n = 1; n <= steps.length; n++) { const f = findPath(steps.slice(0, n)); tops.push(f && f.n === n ? f.e.getBoundingClientRect().top : null); }
+  return { steps, tops };
+}
+// How far the held element moved on screen (0 when it can't be found).
+function holdShift(h) {
+  const f = h && findPath(h.steps);
+  return f && h.tops[f.n - 1] != null ? f.e.getBoundingClientRect().top - h.tops[f.n - 1] : 0;
+}
+function keepView(build) {
+  if (keeping) return build();
+  const page = document.scrollingElement || document.documentElement, side = document.querySelector(".side");
+  const top = page.scrollTop, sideTop = side ? side.scrollTop : 0;
+  const header = document.querySelector("header"), viewTop = Math.max(0, header ? header.getBoundingClientRect().bottom : 0);
+  // The side column is pinned beside the cards (and scrolls by itself); in a narrow window it's
+  // under them and moves with the page.
+  const pinned = !!side && getComputedStyle(side).position === "sticky";
+  const pageArea = e => !!e.closest(pinned ? FLOW : FLOW + ", .side");
+  const focused = document.activeElement && document.activeElement !== document.body && document.activeElement.closest(".wrap") ? document.activeElement : null;
+  const focusSteps = focused && keyPath(focused);
+  const pageHold = top > 0 ? pickHold(pageArea, pinned ? HOLD : HOLD + ", " + SIDE_HOLD, viewTop, innerHeight) : null; // at the very top, stay there: a notice that opens should be seen
+  let sideHold = null;
+  if (pinned) { const r = side.getBoundingClientRect(); sideHold = pickHold(e => !!e.closest(".side"), SIDE_HOLD, Math.max(r.top, viewTop), Math.min(r.bottom, innerHeight)); }
+  keeping = true;
+  try { build(); } finally { keeping = false; }
+  if (side) side.scrollTop = sideTop;
+  page.scrollTop = top; // reading the layout here lets WebKit finish it; then the old position fits again
+  if (pageHold) page.scrollTop = top + holdShift(pageHold);
+  if (sideHold) side.scrollTop = sideTop + holdShift(sideHold);
+  tipQuietUntil = performance.now() + 250;
+  // Focus back on the same control; if it's gone or can't be used now (a key removed, a line
+  // ticked off, a button greyed out), on the nearest control where it was.
+  if (focused && !focused.isConnected) {
+    const f = findPath(focusSteps);
+    const to = f && (f.n === focusSteps.length && !f.e.disabled ? f.e : nearControl(f.e));
+    if (to) to.focus({ preventScroll: true });
+  }
+}
+function nearControl(e) {
+  for (let p = e; p && p !== document.body; p = p.parentElement) {
+    const c = p.querySelector('[data-key="add"]') || p.querySelector('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]');
+    if (c) return c;
+    if (p.id) break;
+  }
+  return null;
+}
+function render() { keepView(renderAll); }
+function renderAll() {
   const uses = usage(state);
   renderSection("sec-act", "var(--action)", t("Movement & Actions"),
-    t("Always the controller: the game only sees controller input while you fight. \"{ingame}\" is the game's own keyboard key for the same action; match it to yours (see the checklist) so keyboard mode feels the same.", { ingame: t("in game") }),
+    t("These press the virtual controller, so the game stays in controller mode while you fight (most teleports send the game's own keys). \"{ingame}\" is the game's own keyboard key for the same action: make it match yours (see the checklist) so keyboard mode works the same.", { ingame: t("in game") }),
     ACTIONS.filter(a => a.sec === "act"), uses);
   renderSection("sec-menu", "var(--menu)", t("Menus"),
-    state.opt.ControllerMenus ? t("For menus the game has both ways, pick one. {keyboard} (default): your keys send the game's own shortcut and switch to mouse mode. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the chosen way is active; the other stays off.", { keyboard: t("Keyboard"), controller: t("Controller") }) : t("Your keys send the game's own keyboard shortcut and switch to mouse mode. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving."),
+    state.opt.ControllerMenus ? t("For menus the game has both ways, pick one. {keyboard} (default): your keys send the game's own shortcut, and the cursor comes back so you can click. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the way you pick works; the other is off.", { keyboard: t("Keyboard"), controller: t("Controller") }) : t("Your keys send the game's own keyboard shortcut, and the cursor comes back so you can click. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving."),
     ACTIONS.filter(a => a.sec === "menu"), uses);
   renderWheelNote();
-  $("sec-menu").querySelector(".lede").after(el("label", { class: "menu-switch" },
-    el("input", { type: "checkbox", checked: !!state.opt.ControllerMenus, onchange: e => {
-      state.opt.ControllerMenus = e.target.checked;
+  const menuSub = on => on ? t("menus and Teleport to player can each use the controller: pick Keyboard or Controller on their rows")
+    : t("menus use the game's keyboard shortcuts; only the inventory can be switched to the controller");
+  const menuNote = el("span", { class: "sub", text: menuSub(state.opt.ControllerMenus) });
+  $("sec-menu").querySelector(".lede").after(el("label", { class: "menu-switch", for: "o-ControllerMenus" },
+    el("input", { type: "checkbox", id: "o-ControllerMenus", checked: !!state.opt.ControllerMenus, onchange: e => {
+      state.opt.ControllerMenus = e.target.checked; menuNote.textContent = menuSub(e.target.checked);
       if (!e.target.checked) for (const a of ACTIONS) if (both(a) && !padAllowed(a, state)) state.mode[a.id] = "kb";
       changed();
     } }),
-    el("span", {}, t("Allow controller input for menus"),
-      el("span", { class: "sub", text: t("menus and Teleport to player can each use the controller instead of the game's keyboard shortcut; off: only the inventory can") }))));
+    el("span", {}, t("Allow controller input for menus"), menuNote)));
   renderMod(uses); renderTune(); renderRecs(); renderMismatch(); renderMap(uses); renderConflicts(uses); renderLayoutBar(); renderOut();
 }
 
@@ -1815,7 +2247,8 @@ function startCapture(target, btn) {
   $("capCancel").focus();
 }
 function stopCapture() {
-  if (capturing) capturing.btn.classList.remove("listening");
+  // Focus goes back to the button that opened it (render() then finds it again).
+  if (capturing) { capturing.btn.classList.remove("listening"); if (capturing.btn.isConnected) capturing.btn.focus({ preventScroll: true }); }
   capturing = null; $("capture").hidden = true;
 }
 function take(key) {
@@ -1823,6 +2256,7 @@ function take(key) {
   if (tgt.kind === "game") { const arr = state.game[tgt.a.id] = state.game[tgt.a.id] || []; arr[tgt.slot || 0] = key; stopCapture(); changed(); return; }
   if (tgt.keys.includes(key)) { $("capMsg").textContent = t("{key} is already on this row.", { key: pretty(key) }); return; }
   if (tgt.kbRoute && isMouse(key)) { $("capMsg").textContent = t("A mouse button can't send a keyboard shortcut. Pick a key, or switch this row to the controller."); return; }
+  if (tgt.keyOnly && isMouse(key)) { $("capMsg").textContent = t("{row} needs a key on the keyboard: the mod doesn't notice a mouse button for it.", { row: tgt.rowName }); return; }
   if (tgt.kbRoute && (key === "=" || key === ";")) { $("capMsg").textContent = t("That key can't be sent to the game. Pick another."); return; }
   tgt.set([...tgt.keys, key]);
   stopCapture(); changed();
@@ -1951,7 +2385,7 @@ async function downloadFile() {
     return;
   }
   if (downloads) {
-    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = t("Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.", { file: name }); }
+    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = t("Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name }); }
     catch (e) { $("saveStatus").textContent = e && e.code === "declined" ? t("Not saved.") : t("Saving isn't available here. Use Copy text instead."); }
     return;
   }
@@ -1959,7 +2393,7 @@ async function downloadFile() {
   a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
   a.download = name; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.", { file: name });
+  $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name });
 }
 $("saveBtn").addEventListener("click", downloadFile);
 $("downloadTop").addEventListener("click", () => downloadFile());

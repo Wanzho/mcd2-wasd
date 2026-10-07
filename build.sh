@@ -26,7 +26,7 @@ printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept 
 printf 'LIBRARY DWMAPI.dll\nEXPORTS\n%s\n' DwmSetWindowAttribute > build/dwmapi.def
 printf 'LIBRARY GDIPLUS.dll\nEXPORTS\n%s\n' GdiplusStartup GdipCreateFromHDC GdipDeleteGraphics GdipSetSmoothingMode GdipCreateSolidFill GdipDeleteBrush GdipCreatePen1 GdipDeletePen GdipSetPenStartCap GdipSetPenEndCap GdipCreatePath GdipDeletePath GdipAddPathArc GdipClosePathFigure GdipFillPath GdipDrawPath GdipFillEllipse GdipDrawLine GdipDrawArc GdipSetPixelOffsetMode GdipFillRectangle GdipAddPathEllipse GdipCreateLineBrushFromRect GdipSetLinePresetBlend GdipCreatePathGradientFromPath GdipSetPathGradientCenterColor GdipSetPathGradientSurroundColorsWithCount GdipSetPathGradientPresetBlend GdipSetPathGradientCenterPoint GdipSetPathGradientFocusScales GdipSetClipPath GdipResetClip GdipCreatePen2 > build/gdiplus.def
 for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus ole32; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
-VERSION=1.3.0 # shown in the apps, the log and the release
+VERSION=1.3.1 # shown in the apps, the log and the release
 # The translations (lang/*.json) as C tables for the mod and the Windows setup, a
 # file for the Mac app, and Keybinder.html (the key layout editor with every language).
 python3 lang.py
