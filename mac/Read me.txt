@@ -17,10 +17,11 @@ If wasdmod doesn't find the game (a Minecraft Launcher copy, or a copy in
 another folder or bottle), click Choose Game Folder and pick the game's folder,
 its Dungeons-Win64-Shipping.exe, or the CrossOver bottle it's in.
 
-The window below is the key layout editor: pick Default (the game's own keys),
-Recommended, or "+ Create" your own, and click "Save to game". A running game
-switches to it within a second. The yellow notice lists the game's own keyboard settings to change so
-keyboard mode uses the same keys.
+The window below is the key layout editor: pick Official layout (the
+game's own keys), Recommended, or "+ Create" your own, and click "Save to
+game". A running game switches to it within a second. The yellow notice
+lists the game's own keyboard settings to change so keyboard mode uses the
+same keys.
 
 In game: Tab opens the menu wheel (the game's own key, S, is "move down"
 now), F9 shows the key list (fn + F9 on most Mac keyboards), hold Option for

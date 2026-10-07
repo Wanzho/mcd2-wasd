@@ -24,8 +24,8 @@ Works with the Steam version, and with the game from Minecraft.net (Minecraft La
 
 1. Close the game and run **wasdmod-Windows.exe**.
 2. If Windows says "Windows protected your PC", click **More info → Run anyway**. (The file isn't signed; that costs money every year.)
-3. It finds the game in Steam, or in `XboxGames` for the Minecraft Launcher and Xbox app. If it doesn't, click **Browse…** and pick `Dungeons-Win64-Shipping.exe`.
-4. Click **Install**, pick **Default** or **Recommended** under Key layout, and start the game.
+3. It finds the game in Steam, or in `XboxGames` for the Minecraft Launcher and Xbox app. If it doesn't, click **Browse…** and pick the game's `Dungeons-Win64-Shipping.exe` (Steam) or `Dungeons-WinGDK-Shipping.exe` (Minecraft Launcher and Xbox app).
+4. Click **Install**, pick **Official layout** or **Recommended** under Key layout, and start the game.
 
 ### Mac
 
@@ -50,13 +50,13 @@ The game must already run under Proton. Then:
 
 Playing the Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles…)? Copy the files into its `Content/Dungeons/Binaries/Win64` folder and add the environment variable `WINEDLLOVERRIDES` = `xinput1_4=n,b` in that launcher's settings for the game instead of step 4.
 
-The same files work on Windows without the installer: skip step 4. For the Minecraft Launcher or Xbox app version, the folder is `C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\Win64` (or `XboxGames` on the drive you installed to).
+The same files work on Windows without the installer: skip step 4. For the Minecraft Launcher or Xbox app version, the folder is `C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\WinGDK` (or `XboxGames` on the drive you installed to; `Win64` in older copies), next to `Dungeons-WinGDK-Shipping.exe`.
 
 ## Controls
 
-Two layouts are built in. **Default** is the game's own keyboard keys, played as a controller; only the menu wheel moves from S (now a movement key) to Tab. **Recommended** is the author's layout.
+Two layouts are built in. The **Official layout** is the game's own keyboard keys, played as a controller; only the menu wheel moves from S (now a movement key) to Tab. **Recommended** is the author's layout.
 
-| Action | Default | Recommended |
+| Action | Official layout | Recommended |
 |---|---|---|
 | Move | W A S D | W A S D |
 | Jump / interact | Space | Space or F |
@@ -85,7 +85,7 @@ In both layouts:
 | Key | Does |
 |---|---|
 | Esc | Game menu |
-| T | Typing mode: every key goes to the game until Esc; a banner shows while it's on |
+| T | Typing mode: every key goes to the game until Esc; a banner and an amber frame around the game show while it's on |
 | Alt (Option on a Mac) | Hold for the mouse cursor |
 | F9 | Show or hide the on-screen key list (on a Mac keyboard: fn + F9, unless the F-keys are set as standard function keys) |
 | Backtick (`) | Turn wasdmod off and on |
@@ -96,14 +96,17 @@ Opening a menu or moving the mouse switches to **mouse mode**: the cursor and ke
 
 The key layout editor is the main window of the Mac app. On Windows, click **Edit key layout…** in the installer; the editor opens in its own window, and the installer has to stay open while you edit.
 
-- Pick **Default** or **Recommended** under Layout, or click **+ Create** for your own. Click a key to change it.
+- Pick **Official layout** or **Recommended** under Layout, or click **+ Create** for your own. Click a key to change it.
 - Click **Save to game**. A running game switches to it within a second, and the key list shows for a moment; no restart needed.
+- **Export…** shows the layout's settings file, to copy or download (without the apps: put it in the game folder yourself).
 - Changing a built-in layout asks to save it as a new layout of yours. **Reset** goes back to the saved version.
 - Menus send the game's own keyboard shortcut. The inventory can use the controller instead: tap for the full inventory, hold for the mini inventory while you keep moving. **Allow controller input for menus** gives the other menus and Teleport to player that choice too.
 
 **Match the game's own keyboard settings.** The game reads its own keyboard settings in menus, with the cursor and while aiming the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
 
 In the Mac app and the Windows editor window you don't have to do that by hand: the editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`), and **Apply to the game's controls** writes your keys into them while the game is closed. The first write keeps your old settings as `EnhancedInputUserSettings.sav.wasdmod-backup`; the game uses the new ones from its next start. A few rows the game hasn't saved yet (jump, artifacts 2 and 3, the guidance trail, teleports, map, emotes, event log) still have to be set in the game's menu.
+
+It works the other way too: **Use the game's keys in this layout** takes the keys from the game's keyboard settings into your layout. A game key that's one of your movement keys is left out, and the editor tells you to change it in the game. The game's own Menu Wheel key is S, for example, which is "move down" with WASD.
 
 ## Languages
 
@@ -120,7 +123,7 @@ The translations were written with AI help, so some wording may sound off, and t
 
 Restart the game after installing. Press **F9**: if no key list appears, the mod isn't loaded.
 
-- **Windows:** check that `xinput1_4.dll` is next to `Dungeons-Win64-Shipping.exe`. Antivirus may have removed it (see below).
+- **Windows:** check that `xinput1_4.dll` is next to `Dungeons-Win64-Shipping.exe` (or `Dungeons-WinGDK-Shipping.exe` for the Minecraft Launcher and Xbox app). Antivirus may have removed it (see below).
 - **Mac:** click **Install** again (it also sets the CrossOver options), then restart the game.
 
 ### Antivirus flags wasdmod
@@ -192,7 +195,7 @@ Every option is explained in `default.txt`. A few worth knowing:
 
 wasdmod uses the newest of `default.txt`, `author.txt` and any `wasdmod*.txt` in the game folder. It checks every second, so a newer file takes over in a running game. The editor saves `default.txt` or `author.txt` for an unchanged built-in layout, otherwise `wasdmod-MMDDYY.txt`.
 
-The Windows installer also has a command line: `/find`, `/status`, `/install`, `/uninstall`, `/default`, `/recommended`, `/own`, `/off`, `/on` (optionally followed by the game's Win64 folder).
+The Windows installer also has a command line: `/find`, `/status`, `/install`, `/uninstall`, `/default`, `/recommended`, `/own`, `/off`, `/on` (optionally followed by the game's folder or executable).
 
 ### How it works
 
@@ -225,7 +228,7 @@ No Windows SDK or C runtime is needed. `install.command` / `uninstall.command` i
 
 [MIT](LICENSE).
 
-Headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain), with some glyphs and the spacing adjusted to match Minecraft's lettering, and Cyrillic, Polish, Turkish and Portuguese letters added on the same pixel grid.
+The "wasdmod" wordmark in the Windows setup and the headings in the key layout editor use [Mojang by b.tenthousand](https://fontstruct.com/fontstructions/show/836974) (CC0 public domain), with some glyphs and the spacing adjusted to match Minecraft's lettering, and Cyrillic, Polish, Turkish and Portuguese letters added on the same pixel grid.
 
 The Windows setup includes Microsoft's `WebView2Loader.dll` from the [WebView2 SDK](https://www.nuget.org/packages/Microsoft.Web.WebView2), which starts the key layout editor's window. Its license:
 

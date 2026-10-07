@@ -1,6 +1,7 @@
 // Loads the mod DLL from its own folder and checks the exports behave:
 // controller 0 appears connected, the stick is centred with no keys held,
 // and the builtin XInput backend is reachable.
+// test_load.exe --overlay [dark] shows the on-screen overlays instead (see overlayTest).
 typedef unsigned long DWORD;
 typedef void *HANDLE;
 typedef unsigned short WORD;
@@ -22,6 +23,34 @@ __declspec(dllimport) HANDLE ImmAssociateContext(HANDLE, HANDLE);
 __declspec(dllimport) HANDLE ImmCreateContext(void);
 __declspec(dllimport) void keybd_event(unsigned char, unsigned char, DWORD, unsigned long long);
 
+// For --overlay: a window like the game's, redrawn every frame.
+typedef long LONG; typedef long long LRESULT; typedef unsigned long long WPARAM; typedef long long LPARAM;
+typedef struct { LONG left, top, right, bottom; } RECT;
+typedef struct { UINT style; LRESULT (*proc)(HANDLE, UINT, WPARAM, LPARAM); int clsExtra, wndExtra; HANDLE instance, icon, cursor, background; const char *menu, *className; } WNDCLASSA;
+typedef struct { HANDLE hdc; int erase; RECT paint; int restore, incUpdate; unsigned char reserved[32]; } PAINTSTRUCT;
+__declspec(dllimport) unsigned short RegisterClassA(const WNDCLASSA *);
+__declspec(dllimport) LRESULT DefWindowProcA(HANDLE, UINT, WPARAM, LPARAM);
+__declspec(dllimport) LRESULT DispatchMessageA(const MSG *);
+__declspec(dllimport) int ShowWindow(HANDLE, int);
+__declspec(dllimport) int AdjustWindowRect(RECT *, DWORD, int);
+__declspec(dllimport) int RedrawWindow(HANDLE, const RECT *, HANDLE, UINT);
+__declspec(dllimport) int DestroyWindow(HANDLE);
+__declspec(dllimport) HANDLE BeginPaint(HANDLE, PAINTSTRUCT *);
+__declspec(dllimport) int EndPaint(HANDLE, const PAINTSTRUCT *);
+__declspec(dllimport) HANDLE LoadImageW(HANDLE, const unsigned short *, UINT, int, int, UINT);
+__declspec(dllimport) HANDLE GetDC(HANDLE);
+__declspec(dllimport) int EnumWindows(int (*)(HANDLE, LPARAM), LPARAM);
+__declspec(dllimport) DWORD GetWindowThreadProcessId(HANDLE, DWORD *);
+__declspec(dllimport) int IsWindowVisible(HANDLE);
+__declspec(dllimport) int GetWindowTextW(HANDLE, unsigned short *, int);
+__declspec(dllimport) DWORD GetCurrentProcessId(void);
+__declspec(dllimport) HANDLE CreateCompatibleDC(HANDLE);
+__declspec(dllimport) HANDLE SelectObject(HANDLE, HANDLE);
+__declspec(dllimport) int BitBlt(HANDLE, int, int, int, int, HANDLE, int, int, DWORD);
+__declspec(dllimport) int GetDeviceCaps(HANDLE, int);
+__declspec(dllimport) int QueryPerformanceCounter(long long *);
+__declspec(dllimport) int QueryPerformanceFrequency(long long *);
+
 typedef struct { DWORD packet; WORD buttons; unsigned char lt, rt; SHORT lx, ly, rx, ry; } STATE;
 typedef struct { unsigned char type, subtype; WORD flags; WORD b; unsigned char lt, rt; SHORT lx, ly, rx, ry; WORD m1, m2; } CAPS;
 
@@ -34,8 +63,132 @@ static void num(const char *label, long v) {
     char r[32]; int j = 0; while (k) r[j++] = b[--k]; r[j] = 0; out(r); out("\r\n");
 }
 
+static HANDLE backdrop;
+#define GAME_W 960
+#define GAME_H 540
+static LRESULT gameProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x0F) { // WM_PAINT: the backdrop
+        PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
+        if (backdrop) { HANDLE m = CreateCompatibleDC(dc); HANDLE old = SelectObject(m, backdrop); BitBlt(dc, 0, 0, GAME_W, GAME_H, m, 0, 0, 0x00CC0020 /*SRCCOPY*/); SelectObject(m, old); }
+        EndPaint(w, &ps);
+        return 0;
+    }
+    return DefWindowProcA(w, msg, wp, lp);
+}
+// The mod's overlay windows (by their titles) that are on screen. A window's title is
+// asked for once (asking sends a message to the overlay thread and waits for it).
+static int overlaysSeen, legendSeen, bannerSeen, known;
+static HANDLE knownWnd[64]; static int knownKind[64];
+static int countOverlay(HANDLE w, LPARAM unused) {
+    DWORD pid = 0; GetWindowThreadProcessId(w, &pid);
+    if (pid != GetCurrentProcessId()) return 1;
+    int kind = -1;
+    for (int i = 0; i < known; i++) if (knownWnd[i] == w) kind = knownKind[i];
+    if (kind < 0) {
+        static const char *names[] = {"Keyboard controls", "Typing mode", "Typing mode frame"};
+        unsigned short t[64]; int n = GetWindowTextW(w, t, 64);
+        kind = 0;
+        for (int k = 0; k < 3; k++) {
+            const char *e = names[k]; int i = 0;
+            while (i < n && e[i] && t[i] == (unsigned short)e[i]) i++;
+            if (i == n && !e[i]) kind = k + 1;
+        }
+        if (known < 64) { knownWnd[known] = w; knownKind[known++] = kind; }
+    }
+    if (!kind || !IsWindowVisible(w)) return 1;
+    overlaysSeen++;
+    if (kind == 1) legendSeen = 1;
+    if (kind == 2) bannerSeen = 1;
+    return 1;
+}
+static int argNum(const char *cmd, char key, int fallback) {
+    for (const char *p = cmd; *p; p++) {
+        if (p[0] != ' ' || p[1] != key || p[2] != '=') continue;
+        int v = 0; for (p += 3; *p >= '0' && *p <= '9'; p++) v = v * 10 + *p - '0';
+        return v;
+    }
+    return fallback;
+}
+// --overlay: a 960x540 window like the game's in the bottom-right corner of the screen
+// (bright.bmp, or dark.bmp with "dark", next to this exe), redrawn every frame, never
+// brought to the front. At T ms it types T (typing mode), holds W from W to W+700 ms
+// (the banner shakes), at E ms presses Esc ("Back to playing"), and ends at Z ms
+// (defaults T=600 W=1600 E=3000 Z=4800; change them like "T=900"). It prints how long
+// this window's frames took meanwhile: the overlays run on their own thread and
+// shouldn't make them late. With RequireFocus=0 in default.txt the overlays show even
+// though this window isn't in front (KeepCursorInWindow=0 and MouseMoveSwitches=0 too:
+// the bottle shares the real mouse).
+// --overlay focus: the same with RequireFocus=1: as this window isn't in front, none of
+// the overlays may show (they'd float over other apps).
+static void overlayTest(int dark, int focusCase, const char *cmd) {
+    int tT = argNum(cmd, 'T', 600), tW = argNum(cmd, 'W', 1600), tE = argNum(cmd, 'E', 3000), tEnd = argNum(cmd, 'Z', 4800);
+    num("timeline: T ", tT); num("  W ", tW); num("  E ", tE); num("  Z ", tEnd);
+    static const unsigned short bright[] = {'b','r','i','g','h','t','.','b','m','p',0}, darkName[] = {'d','a','r','k','.','b','m','p',0};
+    backdrop = LoadImageW(0, dark ? darkName : bright, 0 /*IMAGE_BITMAP*/, 0, 0, 0x10 /*LR_LOADFROMFILE*/);
+    WNDCLASSA wc; char *z = (char *)&wc; for (unsigned i = 0; i < sizeof(wc); i++) z[i] = 0;
+    wc.proc = gameProc; wc.className = "WasdTestGame";
+    RegisterClassA(&wc);
+    RECT r = {0, 0, GAME_W, GAME_H}; AdjustWindowRect(&r, 0x00CF0000 /*WS_OVERLAPPEDWINDOW*/, 0);
+    HANDLE screen = GetDC(0);
+    int sw = screen ? GetDeviceCaps(screen, 8 /*HORZRES*/) : 1440, sh = screen ? GetDeviceCaps(screen, 10 /*VERTRES*/) : 900;
+    int ww = r.right - r.left, wh = r.bottom - r.top;
+    HANDLE w = CreateWindowExA(0x08000000 /*NOACTIVATE*/, "WasdTestGame", "wasd test game", 0x00CF0000, sw - ww - 16, sh - wh - 80, ww, wh, 0, 0, 0, 0);
+    ShowWindow(w, 4 /*SW_SHOWNOACTIVATE*/);
+    HANDLE m = LoadLibraryA(".\\xinput1_4.dll");
+    DWORD (*get)(DWORD, STATE *) = m ? GetProcAddress(m, "XInputGetState") : 0;
+    if (!get) { out("FAIL load\r\n"); DestroyWindow(w); ExitProcess(1); }
+    struct { int from, to; const char *name; } parts[5] = {
+        {300, tT, "before typing"}, {tT, tT + 1000, "typing: banner drops in, frame traces"}, {tT + 1000, tW, "typing, idle (caret blinks)"},
+        {tW + 400, tW + 1100, "typing: banner shakes, frame blinks"}, {tE, tE + 1700, "Esc: fade out, \"Back to playing\""}};
+    static long long sum[5], worst[5]; static int frames[5], late[5], worstAt[5], lateAt[24], lateUs[24], lates, maxSeen;
+    long long f, start, last, now; QueryPerformanceFrequency(&f); QueryPerformanceCounter(&start); last = start;
+    int typed = 0, held = 0, released = 0, escaped = 0;
+    for (;;) {
+        MSG msg; while (PeekMessageA(&msg, 0, 0, 0, 1)) DispatchMessageA(&msg);
+        STATE s; get(0, &s);
+        RedrawWindow(w, 0, 0, 0x1 | 0x100 /*RDW_INVALIDATE|RDW_UPDATENOW*/);
+        overlaysSeen = 0; EnumWindows(countOverlay, 0);
+        if (overlaysSeen > maxSeen) maxSeen = overlaysSeen;
+        long long frameEnd = last + f / 60;
+        do { Sleep(1); QueryPerformanceCounter(&now); } while (now < frameEnd);
+        int ms = (int)((now - start) * 1000 / f), dt = (int)((now - last) * 1000000 / f); // microseconds
+        last = now;
+        if (dt > 25000 && ms > 1000 && lates < 24) { lateAt[lates] = ms; lateUs[lates++] = dt; }
+        for (int p = 0; p < 5; p++) if (ms >= parts[p].from && ms < parts[p].to) { sum[p] += dt; frames[p]++; if (dt > worst[p]) { worst[p] = dt; worstAt[p] = ms; } if (dt > 25000) late[p]++; }
+        if (!typed && ms >= tT) { typed = 1; PostMessageA(w, 0x100, 'T', 0x00140001); }
+        if (!held && ms >= tW) { held = 1; keybd_event('W', 0x11, 0, 0); }
+        if (!released && ms >= tW + 700) { released = 1; keybd_event('W', 0x11, 2 /*KEYUP*/, 0); }
+        if (!escaped && ms >= tE) { escaped = 1; PostMessageA(w, 0x100, 0x1B, 0x00010001); }
+        if (ms >= tEnd) break;
+    }
+    if (held && !released) keybd_event('W', 0x11, 2, 0);
+    DestroyWindow(w);
+    if (focusCase) {
+        num("focus: overlay windows seen while the game window wasn't in front (0 expected) ", maxSeen);
+        out(maxSeen ? "RESULT FAIL\r\n" : "RESULT PASS\r\n");
+        ExitProcess(maxSeen != 0);
+    }
+    num("key list shown ", legendSeen); num("typing banner shown ", bannerSeen);
+    for (int i = 0; i < lates; i++) { num("late frame at ms ", lateAt[i]); num("  took us ", lateUs[i]); }
+    for (int p = 0; p < 5; p++) {
+        out(parts[p].name); num(": frames ", frames[p]);
+        num("  average us ", frames[p] ? (long)(sum[p] / frames[p]) : 0); num("  worst us ", (long)worst[p]); num("  worst at ms ", worstAt[p]);
+        num("  over 25 ms ", late[p]);
+    }
+    ExitProcess(0);
+}
+
 void mainCRTStartup(void) {
     int fail = 0;
+    {
+        const char *c = GetCommandLineA(); int overlay = 0, dark = 0, focus = 0;
+        for (const char *p = c; *p; p++) {
+            if (p[0] == '-' && p[1] == '-' && p[2] == 'o' && p[3] == 'v' && p[4] == 'e' && p[5] == 'r') overlay = 1;
+            if (p[0] == ' ' && p[1] == 'd' && p[2] == 'a' && p[3] == 'r' && p[4] == 'k') dark = 1;
+            if (p[0] == ' ' && p[1] == 'f' && p[2] == 'o' && p[3] == 'c' && p[4] == 'u' && p[5] == 's') focus = 1;
+        }
+        if (overlay) overlayTest(dark, focus, c);
+    }
     HANDLE m = LoadLibraryA(".\\xinput1_4.dll");
     if (!m) { out("FAIL load\r\n"); ExitProcess(1); }
     DWORD (*get)(DWORD, STATE *) = GetProcAddress(m, "XInputGetState");

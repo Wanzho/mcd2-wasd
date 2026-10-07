@@ -8,18 +8,19 @@ app makes for you (and https://github.com/Wanzho/mcd2-crossover to run the game)
 What's inside
 -------------
 xinput1_4.dll            the mod
-default.txt              the Default key layout (the game's own keys)
+default.txt              the Official key layout (the game's own keys)
 author.txt               the Recommended key layout (optional)
 Key Layout Editor.html   edit layouts in your browser
 
 Install
 -------
-1. Find the game folder (the one with Dungeons-Win64-Shipping.exe):
+1. Find the game folder (the one with the game's Dungeons-...-Shipping.exe):
    - Steam: right-click Minecraft Dungeons II > Manage > Browse local files,
-     then open Dungeons > Binaries > Win64.
+     then open Dungeons > Binaries > Win64 (Dungeons-Win64-Shipping.exe).
    - Minecraft Launcher (bought from Minecraft.net) or Xbox app:
-     C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\Win64
-     (or XboxGames on the drive you installed the game to).
+     C:\XboxGames\Minecraft Dungeons II\Content\Dungeons\Binaries\WinGDK
+     (Dungeons-WinGDK-Shipping.exe; Win64 in older copies), or XboxGames on
+     the drive you installed the game to.
 2. Copy xinput1_4.dll and default.txt into it. For the Recommended layout,
    copy author.txt too.
 3. Linux / Steam Deck only: in Steam, right-click the game > Properties >
@@ -37,10 +38,10 @@ ends it), and the backtick key (`) turns the mod off and on.
 
 Change keys
 -----------
-Open "Key Layout Editor.html", pick Default or Recommended or "+ Create" your
-own, and click "Download file". Put the file in the same Win64 folder; a
-running game switches to it within a second. The mod uses the newest of
-default.txt, author.txt and wasdmod*.txt.
+Open "Key Layout Editor.html", pick Official layout or Recommended or
+"+ Create" your own, and click "Download file". Put the file in the same
+Win64 folder; a running game switches to it within a second. The mod uses
+the newest of default.txt, author.txt and wasdmod*.txt.
 
 Languages
 ---------

@@ -125,7 +125,7 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
 
     func layoutName(_ f: String) -> String {
         switch f {
-        case "default.txt": return L("Default (the game's own keys)")
+        case "default.txt": return L("Official layout (the game's own keys)")
         case "author.txt": return L("Recommended")
         case "": return L("none")
         default: return L("your own ({file})", ["file": f])
@@ -509,9 +509,9 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        #if SELFTEST
-        if ProcessInfo.processInfo.environment["WASDMOD_LIGHT"] != nil { NSApp.appearance = NSAppearance(named: .aqua) }
-        #endif
+        // Dark, like the editor and the website: the page's own near-black under a seamless toolbar.
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        let ink = NSColor(srgbRed: 11 / 255, green: 11 / 255, blue: 13 / 255, alpha: 1)
         let config = WKWebViewConfiguration()
         config.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "wasdmod")
         config.userContentController.addUserScript(WKUserScript(source: hostScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -520,7 +520,7 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         web.uiDelegate = self
         web.allowsLinkPreview = false
         web.alphaValue = 0
-        if #available(macOS 12.0, *) { web.underPageBackgroundColor = .windowBackgroundColor }
+        if #available(macOS 12.0, *) { web.underPageBackgroundColor = ink }
 
         // The bar under the toolbar.
         bannerText.font = .systemFont(ofSize: 13)
@@ -551,6 +551,8 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
         window.toolbarStyle = .unified
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = ink
         window.contentView = content
         window.center()
         window.setFrameAutosaveName("wasdmod")

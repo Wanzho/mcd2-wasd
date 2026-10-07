@@ -26,7 +26,8 @@ DodgeFlickMs=80
 
 [Movement]
 ; Smoothing in milliseconds; 0 = instant. AccelMs: to full speed. DecelMs: to a
-; stop. TurnMs: a full 180 degree turn (90 degrees takes half).
+; stop. TurnMs: a full 180 degree turn (90 degrees takes half); 0 turns sharpest,
+; higher turns more smoothly but can feel less responsive.
 AccelMs=45
 DecelMs=35
 TurnMs=110

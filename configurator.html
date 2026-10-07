@@ -1,10 +1,13 @@
 <title>Dungeons II Keybinder</title>
 <script>
 // In the Mac app and the Windows setup's editor window the page is the app's window:
-// system font and the system's controls (.app, plus .win on Windows). Elsewhere it's
-// a web page with its own fonts.
+// dark, with the system font (.app, plus .win on Windows); the window's frame takes the
+// page's colour where it can (theme-color). Elsewhere it's a web page with its own fonts.
 const appKind = window.wasdmodHost && window.wasdmodHost.app;
-if (appKind === "mac" || appKind === "win") document.documentElement.classList.add("app", appKind);
+if (appKind === "mac" || appKind === "win") {
+  document.documentElement.classList.add("app", appKind);
+  document.head.append(Object.assign(document.createElement("meta"), { name: "theme-color", content: "#0b0b0d" }));
+}
 else document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet",
   href: "https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" }));
 </script>
@@ -95,6 +98,9 @@ h3.group { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spaci
 .seg label:has(input:checked) { background: var(--menu); color: #fff; }
 .seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
 .seg label:not(:has(input:checked)) { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.seg.pick label:not(:has(input:checked)) { text-decoration: none; }
+.seg.pick label:has(input:checked) { background: var(--accent); color: var(--accent-fg); }
+.map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .keys { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
 .cap { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 var(--body); background: var(--cap); color: var(--cap-fg); border: 1px solid var(--cap-edge); border-bottom-width: 3px; border-radius: 4px; padding: 5px 4px 4px 8px; }
 .cap.conflict { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger); }
@@ -135,7 +141,15 @@ h3.group { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spaci
 .legend-row span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; background: var(--c); vertical-align: -1px; }
 .mouse { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .mouse .k { width: auto; padding: 0 8px; }
-.hover-info { min-height: 1.5em; margin-top: 8px; font-size: 13px; }
+/* what a key on the map does, in a bubble over the key */
+.ktip { position: fixed; left: 0; top: 0; z-index: 30; max-width: min(260px, calc(100vw - 16px)); padding: 6px 10px; border-radius: 8px;
+  font: 500 12.5px/1.35 var(--body); color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .25); pointer-events: none; opacity: 0; transition: opacity .12s; }
+.ktip.show { opacity: 1; }
+.ktip::after { content: ""; position: absolute; left: calc(var(--ax, 50%) - 5px); bottom: -6px; width: 9px; height: 9px; background: inherit;
+  border: solid var(--line); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+.ktip.below::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
+.ktip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
 /* game settings checklist */
 ul.recs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.recs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; font-size: 13.5px; }
@@ -149,7 +163,7 @@ ul.recs button { padding: 5px 9px; }
 .mismatch p { margin: 0; font-size: 14px; max-width: 90ch; }
 .mismatch button { grid-row: span 2; background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-size: 14px; padding: 11px 16px; }
 @media (max-width: 720px) { .mismatch { grid-template-columns: minmax(0, 1fr); } .mismatch .icon, .mismatch button { grid-row: auto; } }
-.ingame button.stray { color: var(--accent); border-color: var(--accent); text-decoration: line-through; }
+.ingame button.stray { color: var(--accent); border-color: var(--accent); }
 .ingame .clear2, .ingame .add2 { padding: 4px 6px; border: 1px dashed var(--line); background: transparent; color: var(--muted); }
 .ingame .none { color: var(--muted); }
 .ingame .kbname { margin-left: 4px; }
@@ -160,6 +174,15 @@ ul.recs button { padding: 5px 9px; }
 .row.flash { outline: 3px solid var(--danger); outline-offset: 3px; border-radius: 6px; }
 ul.recs li { cursor: pointer; }
 .apply-game { display: grid; gap: 6px; justify-items: start; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.apply-game .out-actions { margin-top: 0; }
+/* a key of the game's that's one of your movement keys (after "Use the game's keys") */
+.clash { margin-top: 10px; border: 1px solid color-mix(in srgb, var(--warn, var(--accent)) 55%, transparent); background: var(--warn-bg); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+.clash ul { margin: 4px 0 0; padding-left: 18px; } .clash li + li { margin-top: 4px; }
+/* Export: the settings file in a sheet over the editor */
+.capture.sheet .box { text-align: left; width: 100%; max-width: 680px; max-height: calc(100vh - 32px); overflow: auto; }
+.capture.sheet .out-actions { margin-top: 4px; }
+.capture.sheet pre.ini { max-height: 46vh; }
+.capture.sheet details { margin-top: 10px; }
 ul.recs li:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
 .row.point { animation: point 1.8s ease-out; border-radius: 6px; }
 .ingame .point { animation: pointKey 1.8s ease-out; }
@@ -199,131 +222,418 @@ code { font-family: var(--mono); font-size: .92em; }
 :is(:lang(zh), :lang(ja), :lang(ko)) h1 { font-size: 30px; }
 /* The title's bold (the letters again, one font pixel to the right) would fill the gaps in ш, ж, ы, ю. */
 :is(:lang(ru), :lang(uk)) h1 { text-shadow: none; }
-/* ---------------------------------------------------------------- in the Mac app
-   The window of a Mac app rather than a web page: system font and colours (light or dark,
-   with the system's accent colour), Mac buttons, pop-ups and segmented controls, and the
-   layout bar pinned under the toolbar. The title and intro are the app's own. */
-:root.app {
-  --bg: #f2f2f4; --panel: #ffffff; --panel-2: #f5f5f7; --line: #dcdcdf; --fg: #1d1d1f; --muted: #6e6e73;
-  --accent: #007aff; --accent-fg: #ffffff; --warn: #e88a00; --warn-bg: #fff4e0;
-  --cap: #ececee; --cap-edge: #b4b4b9; --cap-fg: #1d1d1f; --cap-empty: #f4f4f6;
-  --danger: #e0352b; --danger-bg: #fdecea; --ok: #28a745; --ok-fg: #ffffff;
-  --btn: #ffffff; --btn-edge: rgba(0, 0, 0, .16); --seg-bg: rgba(0, 0, 0, .06); --seg-on: #ffffff; --press: brightness(.93);
-  --display: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; --body: var(--display); --mono: ui-monospace, "SF Mono", Menlo, monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) { :root.app {
-  --bg: #1e1e1e; --panel: #282828; --panel-2: #313131; --line: #3c3c3e; --fg: #ececec; --muted: #98989d;
-  --accent: #0a84ff; --warn: #ff9f0a; --warn-bg: #3a2e14;
-  --cap: #d6d6d8; --cap-edge: #8e8e93; --cap-fg: #1c1c1e; --cap-empty: #2f2f31;
-  --danger: #ff453a; --danger-bg: #3a1d1d; --ok: #30d158; --ok-fg: #0f2414;
-  --btn: #5c5c5e; --btn-edge: rgba(255, 255, 255, .06); --seg-bg: rgba(255, 255, 255, .07); --seg-on: #636366; --press: brightness(1.2);
-  color-scheme: dark; } }
-@supports (color: -apple-system-control-accent) { :root.app { --accent: -apple-system-control-accent; } }
-.app { scroll-padding-top: calc(var(--bar-h, 80px) + 12px); }
-.app body { font: 13px/1.4 var(--body); -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; }
-.app :is(input, textarea, pre, .path) { -webkit-user-select: text; user-select: text; }
-.app .wrap { max-width: none; padding: 0 20px 28px; }
-/* the layout bar, pinned under the toolbar */
-.app header { position: sticky; top: 0; z-index: 5; display: block; margin: 0 -20px; padding: 9px 20px 7px; border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px); }
-.app header > div:first-child { display: none; }
-.app .layoutbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "label btns lang" "status status status"; align-items: center; gap: 4px 10px; justify-items: stretch; }
-.app .layoutbar .labelrow { display: contents; }
-.app .layoutbar .label { grid-area: label; font: 400 13px var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); }
-.app .layoutbar .btns { grid-area: btns; }
-.app button { white-space: nowrap; }
-@media (max-width: 720px) { .app .layoutbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label lang" "btns btns" "status status"; } }
-.app #downloadTop { margin-left: auto; }
-.app .langpick { grid-area: lang; }
-.app .langpick > span { display: none; }
-.app .layout-status { grid-area: status; font-size: 12px; min-height: 22px; }
-.app .layout-status .changed { color: var(--warn); }
-.app select { all: revert; font: 13px var(--body); }
-.app #layoutSel { min-width: 13rem; }
-.app .namebox { font: 13px var(--body); border-radius: 5px; padding: 3px 6px; background: var(--panel); outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color: var(--accent); }
-/* buttons */
-:where(.app) button { font: 400 13px/16px var(--body); padding: 2px 10px 3px; border-radius: 6px; border: .5px solid var(--btn-edge); background: var(--btn); color: var(--fg);
-  box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .18); cursor: default; }
-:where(.app) button:hover { border-color: var(--btn-edge); }
-:where(.app) button:active:not(:disabled) { filter: var(--press); }
-.app :is(button, input, select, textarea, .k):focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 0; }
-.app .primary, .app .primary.save { background: var(--accent); color: #fff; border-color: transparent; }
-.app :is(.cap, .ingame) button, .app .add { box-shadow: none; }
-.app .cap button { border: 0; }
-.app .ingame button { border-width: 1px; border-radius: 5px; padding: 3px 7px; font: 500 12px/1 var(--body); }
-.app .ingame :is(button.unknown, button.stray) { color: var(--warn); border-color: var(--warn); }
-.app .add { border: 1px dashed var(--line); border-radius: 5px; padding: 3px 8px; }
-.app .add.listening { border: 1px solid var(--accent); }
-.app :is(summary, .seg label, .drop label, ul.recs li) { cursor: default !important; }
-/* groups */
-.app .grid { margin-top: 14px; gap: 14px; }
-.app .side { top: calc(var(--bar-h, 80px) + 14px); max-height: calc(100vh - var(--bar-h, 80px) - 28px); gap: 14px; }
-.app section.card { border-radius: 10px; padding: 12px 16px 14px; box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .06); }
-.app .card + .card { margin-top: 14px; }
-.app h2 { font: 600 13px/1.4 var(--body); letter-spacing: 0; text-shadow: none; margin-bottom: 4px; }
-.app h2 .dot { width: 8px; height: 8px; border-radius: 50%; }
-.app h3.group { font: 600 11px/1 var(--body); letter-spacing: .3px; }
-.app .lede, .app ul.recs li, .app ol.steps, .app .wheel-note { font-size: 12px; }
-.app .row { padding: 5px 0; }
-.app .name { font-weight: 500; }
-.app .sub, .app .note { font-size: 11px; }
-.app .badge { font: 500 11px/1 var(--body); padding: 4px 8px; }
-.app .cap { font: 500 12px/1 var(--body); border-radius: 5px; }
-.app ul.recs li { border-radius: 7px; }
-.app pre.ini, .app .path { font-size: 11px; border-radius: 7px; }
-.app .k { border-radius: 4px; width: 22px; }
-.app .mouse .k { width: auto; }
-/* a little narrower than on the web page, so the map fits beside a scrollbar */
-.app .kbd, .app .krow { gap: 2px; }
-.app .k.w15 { width: 33px; } .app .k.w18 { width: 40px; } .app .k.w22 { width: 48px; } .app .k.w6 { width: 126px; }
-/* segmented controls */
-.app .seg { border: 0; background: var(--seg-bg); border-radius: 7px; padding: 2px; gap: 2px; }
-.app .seg label { border-radius: 5px; padding: 3px 10px; font: 500 12px/1 var(--body); color: var(--muted); text-decoration: none; }
-.app .seg label:not(:has(input:checked)) { text-decoration: none; }
-.app .menu-switch { font-size: 13px; }
-.app .seg label:has(input:checked) { background: var(--seg-on); color: var(--fg); box-shadow: 0 .5px 1.5px rgba(0, 0, 0, .25); }
-/* notices */
-.app :is(.mismatch, .conflicts) { --tone: var(--warn); margin-top: 14px; border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
-  background: color-mix(in srgb, var(--tone) 9%, var(--panel)); border-radius: 10px; padding: 10px 14px; gap: 2px 12px; }
-.app .conflicts { --tone: var(--danger); }
-.app :is(.mismatch, .conflicts) .icon { font: 700 13px/22px var(--body); text-shadow: none; width: 22px; height: 22px; border-radius: 50%; text-align: center;
-  background: var(--tone); color: #fff; align-self: start; }
-.app :is(.mismatch, .conflicts) h2 { font: 600 13px/1.4 var(--body); color: var(--fg); }
-.app :is(.mismatch, .conflicts) :is(p, ul) { font-size: 12px; color: var(--muted); }
-.app .mismatch button { background: var(--btn); color: var(--fg); border-color: var(--btn-edge); font-size: 13px; padding: 2px 10px 3px; }
-.app #recsCard.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 60%, transparent); }
-/* the "press a key" sheet */
-.app .capture { background: rgba(0, 0, 0, .22); }
-.app .capture .box { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35), 0 0 0 .5px var(--line); }
-.app .capture .box h3 { font: 600 15px var(--body); letter-spacing: 0; text-shadow: none; }
 /* a message that comes and goes (after saving) */
 .toast { position: fixed; left: 50%; bottom: 20px; z-index: 20; transform: translate(-50%, 8px); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
   max-width: min(560px, calc(100vw - 32px)); padding: 8px 14px; border-radius: 10px; font-size: 13px; color: var(--fg);
   background: color-mix(in srgb, var(--panel) 85%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
   border: .5px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, .3); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
-/* On Windows (the setup's editor window): Windows 11's look instead of the Mac's. */
-:root.app.win {
-  --display: "Segoe UI Variable Text", "Segoe UI", sans-serif; --body: var(--display); --mono: "Cascadia Mono", Consolas, monospace;
-  --bg: #f3f3f3; --panel: #fbfbfb; --panel-2: #f6f6f6; --line: #e5e5e5; --fg: #1b1b1b; --muted: #606060;
-  --accent: #005fb8; --accent-fg: #ffffff; --btn: #fefefe; --btn-edge: #e5e5e5; --seg-bg: rgba(0, 0, 0, .05); --seg-on: #ffffff;
+/* ---------------------------------------------------------------- in the apps
+   In the Mac app and the Windows setup's editor window the page is the app's window, dark
+   whatever the system's setting, in the look of the wasdmod website: a near-black window
+   (exactly --bg, so the native window around the page can match it), dark cards with
+   hairlines, your keys as little dark keycaps with a glowing edge in the row's colour, and
+   the keyboard map as a lit keyboard with a mouse. The system's own font (Segoe UI and
+   squarer corners on Windows). The title and intro are the app's own. */
+@property --app-spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+:root.app {
+  --bg: #0b0b0d; --panel: #161618; --panel-2: #1d1d1f; --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .14);
+  --fg: #f5f5f7; --muted: #a1a1a6; --soft: #8e8e93; --faint: #6e6e73;
+  --accent: #0a84ff; --accent-hi: #3395ff; --accent-fg: #ffffff; --focus: #4aa3ff;
+  --warn: #ff9f0a; --warn-fg: #ffb340; --warn-bg: rgba(255, 159, 10, .08);
+  --danger: #ff453a; --danger-fg: #ff6961; --danger-bg: rgba(255, 69, 58, .08); --ok: #30d158; --ok-fg: #ffffff;
+  --move: #5bb5e0; --action: #f19a2e; --menu: #6cc27f; --mod: #a68cf0;
+  --xa: #5cbf5c; --xb: #e0584f; --xx: #4f8fe0; --xy: #e8b83a;
+  --cap: #2d2d31; --cap-edge: #1f1f22; --cap-fg: #f5f5f7; --cap-empty: #1d1d1f;
+  --grad: linear-gradient(90deg, #ffb340, #ff6a3d 45%, #ff3d77 75%, #a259ff);
+  --ease: cubic-bezier(.22, .8, .24, 1);
+  --r-card: 18px; --r-box: 12px; --r-ctl: 999px; --r-cap: 7px;
+  --fs: 13px; --fs-s: 12px; --fs-xs: 11px; --fs-h: 15px;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23a1a1a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --globe: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a1a1a6' stroke-width='1.25'%3E%3Ccircle cx='8' cy='8' r='6.4'/%3E%3Cpath d='M1.6 8h12.8M8 1.6c1.9 1.8 2.7 4 2.7 6.4S9.9 12.6 8 14.4M8 1.6C6.1 3.4 5.3 5.6 5.3 8s.8 4.6 2.7 6.4'/%3E%3C/svg%3E");
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; --body: var(--display); --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) { :root.app.win {
-  --bg: #202020; --panel: #2b2b2b; --panel-2: #323232; --line: #1d1d1d; --fg: #ffffff; --muted: #c8c8c8;
-  --accent: #60cdff; --accent-fg: #000000; --btn: #373737; --btn-edge: #404040; --seg-bg: rgba(255, 255, 255, .06); --seg-on: #454545;
-  --cap-empty: #2f2f2f; } }
-.win body { font-size: 14px; }
-:where(.win) button { border-radius: 4px; border: 1px solid var(--btn-edge); border-bottom-color: color-mix(in srgb, var(--btn-edge) 70%, #000); box-shadow: none; padding: 4px 12px 5px; font-size: 14px; }
-.win .primary, .win .primary.save { color: var(--accent-fg); }
-.win section.card, .win :is(.mismatch, .conflicts) { border-radius: 8px; box-shadow: none; }
-.win .seg, .win .seg label { border-radius: 4px; }
-.win select { all: revert; font: 14px var(--body); color: var(--fg); background: var(--btn); border: 1px solid var(--btn-edge); border-radius: 4px; padding: 4px 8px; }
-.win :is(button, input, select, textarea, .k):focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
-.win ::-webkit-scrollbar { width: 12px; height: 12px; }
-.win ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 6px; border: 4px solid transparent; background-clip: content-box; }
-.win ::-webkit-scrollbar-thumb:hover { border-width: 3px; }
-.win ::-webkit-scrollbar-track { background: transparent; }
+:root.app.win {
+  --display: "Segoe UI Variable Text", "Segoe UI", sans-serif; --mono: "Cascadia Mono", Consolas, monospace;
+  --r-card: 12px; --r-box: 8px; --r-ctl: 6px; --r-cap: 5px; --fs: 14px; --fs-s: 12.5px; --fs-xs: 11.5px; --fs-h: 15.5px; --focus: #ffffff;
+}
+.app { scroll-padding-top: calc(var(--bar-h, 80px) + 16px);
+  background: radial-gradient(70% 55% at 100% 100%, rgba(255, 106, 61, .05), transparent 70%) fixed, radial-gradient(55% 50% at 0% 100%, rgba(162, 89, 255, .045), transparent 70%) fixed, var(--bg); }
+.app body { background: transparent; color: var(--fg); font: 400 var(--fs)/1.45 var(--body); -webkit-user-select: none; user-select: none;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.app :is(input, textarea, pre, .path) { -webkit-user-select: text; user-select: text; }
+.app ::selection { background: rgba(255, 106, 61, .45); color: #fff; }
+.app .wrap { max-width: none; padding: 0 22px 32px; }
+.app b { font-weight: 600; }
+.app code { font: .92em var(--mono); padding: .1em .35em; border-radius: 5px; background: rgba(255, 255, 255, .08); }
+/* the layout bar, pinned at the top like the website's menu bar: translucent and blurred */
+.app header { position: sticky; top: 0; z-index: 5; display: block; margin: 0 -22px; padding: 10px 22px 6px; border: 0;
+  background: rgba(11, 11, 13, .72); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: inset 0 -1px 0 var(--line); }
+.app header > div:first-child { display: none; }
+.app .layoutbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "label btns lang" "status status status"; align-items: center; gap: 6px 10px; justify-items: stretch; }
+.app .layoutbar .labelrow { display: contents; }
+.app .layoutbar .label { grid-area: label; font: 500 var(--fs) var(--body); text-transform: none; letter-spacing: 0; color: var(--muted); }
+.app .layoutbar .btns { grid-area: btns; gap: 8px; }
+.app #downloadTop { margin-left: auto; }
+.app .langpick { grid-area: lang; }
+.app .langpick > span { display: none; }
+.app .layout-status { grid-area: status; min-height: 26px; gap: 8px; font-size: var(--fs-s); color: var(--muted); }
+.app .layout-status .changed { color: var(--warn-fg); font-weight: 600; }
+.app .layout-status .warn { color: var(--danger-fg); font-weight: 600; }
+.app .layout-status button { padding: 3px 12px; font-size: var(--fs-s); }
+@media (max-width: 1000px) { .app .layoutbar { grid-template-areas: "label btns btns" "status status lang"; } .app #layoutSel { min-width: 11rem; } }
+@media (max-width: 720px) { .app .layoutbar { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label lang" "btns btns" "status status"; } }
+.app .namebox { width: 14rem; padding: 4px 10px; font: 500 var(--fs) var(--body); color: var(--fg); background: #0e0e10; border: 1px solid var(--accent); border-radius: 8px;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, .3); }
+/* buttons: dark pills (squarer on Windows), blue for the main one; they press in a little */
+:where(.app) button { padding: 5px 14px; border: 0; border-radius: var(--r-ctl); font: 500 var(--fs)/18px var(--body); color: var(--fg); white-space: nowrap; cursor: default;
+  background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .04);
+  transition: background-color .15s, box-shadow .2s, color .15s, transform .12s var(--ease); }
+:where(.app) button:where(:hover:not(:disabled)) { background: rgba(255, 255, 255, .14); }
+:where(.app) button:where(:active:not(:disabled)) { background: rgba(255, 255, 255, .18); transform: scale(.97); }
+:where(.app) button:disabled { opacity: .38; }
+.app .primary, .app .primary.save { color: #fff; background: var(--accent); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 6px 16px -8px rgba(10, 132, 255, .9); }
+.app .primary:hover:not(:disabled) { background: var(--accent-hi); }
+.app .primary:active:not(:disabled) { background: #0071e3; }
+.app :is(button, input, select, textarea, summary, .k):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.app .namebox:focus-visible { outline: 0; }
+/* pop-up menus: the same pills with a chevron (and a globe for the language) */
+.app select { -webkit-appearance: none; appearance: none; min-width: 0; padding: 5px 30px 5px 13px; border: 0; border-radius: var(--r-ctl);
+  font: 500 var(--fs)/18px var(--body); color: var(--fg); cursor: default;
+  background: rgba(255, 255, 255, .09) var(--chev) no-repeat right 11px center / 9px 6px; box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1);
+  transition: background-color .15s; }
+.app select:hover { background-color: rgba(255, 255, 255, .14); }
+.app :is(option, optgroup) { background: #1d1d1f; color: var(--fg); }
+.app #layoutSel { min-width: 15rem; }
+.app #langSel { padding-left: 32px; background-image: var(--globe), var(--chev); background-position: left 11px center, right 11px center; background-size: 14px 14px, 9px 6px; }
+/* groups */
+.app .grid { margin-top: 16px; gap: 16px; }
+.app .side { top: calc(var(--bar-h, 80px) + 8px); max-height: calc(100vh - var(--bar-h, 80px) - 16px); gap: 16px; padding: 8px; margin: -8px;
+  -webkit-mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 8px), transparent); mask-image: linear-gradient(transparent, #000 8px, #000 calc(100% - 8px), transparent); }
+@media (max-width: 1020px) { .app .side { -webkit-mask-image: none; mask-image: none; } }
+.app section.card { padding: 18px 20px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 1px 3px rgba(0, 0, 0, .35); }
+.app .card + .card { margin-top: 16px; }
+.app h2 { margin: 0 0 4px; gap: 10px; font: 600 var(--fs-h)/1.35 var(--body); letter-spacing: -.01em; text-shadow: none; }
+.app h2 .dot { position: relative; flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.app h2 .dot::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; background: inherit; filter: blur(4px); opacity: .85; }
+.app #recsCard h2 .dot { background: var(--warn) !important; }
+.app h3.group { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font: 600 10.5px/1 var(--body); letter-spacing: .08em; color: var(--soft); }
+.app .lede { margin: 0 0 12px; max-width: 74ch; font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.app .row { --cat: var(--faint); gap: 6px 14px; padding: 8px 0; border-top: 1px solid var(--line); }
+.app .row.first { border-top: 0; }
+.app .row[data-cat="move"] { --cat: var(--move); }
+.app .row[data-cat="action"] { --cat: var(--action); }
+.app .row[data-cat="menu"] { --cat: var(--menu); }
+.app .row[data-cat="mod"] { --cat: var(--mod); }
+/* a narrow card (a window just wide enough for two columns): your keys under the name */
+.app main > section.card { container-type: inline-size; }
+@container (max-width: 600px) { .app .row { grid-template-columns: minmax(0, 1fr) auto; } .app .row .keys { grid-column: 1 / -1; } }
+.app .name { font-weight: 500; }
+.app .sub { margin-top: 1px; font-size: var(--fs-xs); line-height: 1.35; color: var(--soft); }
+.app .note { font-size: var(--fs-xs); color: var(--soft); }
+/* how a row reaches the game: dark pills; the controller's face buttons as glossy A B X Y */
+.app .badge { padding: 5px 10px; border: 0; border-radius: 999px; font: 600 var(--fs-xs)/1 var(--body); letter-spacing: .01em; color: #e5e5ea;
+  background: linear-gradient(#2c2c30, #212124); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 0 0 .5px rgba(255, 255, 255, .1), 0 1px 2px rgba(0, 0, 0, .45); }
+.app .badge.kb { color: var(--soft); background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.app .badge.face { --c: var(--xa); width: 24px; height: 24px; padding: 0; font: 700 12px/1 var(--body); color: #0b0b0d;
+  background: radial-gradient(130% 120% at 50% 8%, color-mix(in srgb, var(--c) 50%, #fff) 0%, var(--c) 45%, color-mix(in srgb, var(--c) 68%, #000) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), inset 0 -2px 3px rgba(0, 0, 0, .25), 0 0 0 1px rgba(0, 0, 0, .5), 0 2px 12px -3px var(--c); }
+.app .badge.B { --c: var(--xb); }
+.app .badge.X { --c: var(--xx); }
+.app .badge.Y { --c: var(--xy); }
+/* keyboard / controller (and Windows / Mac): Apple-style segmented pills */
+.app .seg { gap: 0; padding: 2px; border: 0; border-radius: var(--r-ctl); background: rgba(118, 118, 128, .2); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .08); }
+.app .seg label { padding: 4px 11px; border-radius: var(--r-ctl); font: 500 var(--fs-xs)/16px var(--body); color: var(--muted); text-decoration: none;
+  transition: color .15s, background-color .2s, box-shadow .2s; }
+.app .seg label:hover { color: var(--fg); }
+.app .seg label:not(:has(input:checked)) { text-decoration: none; }
+.app .seg label:has(input:checked), .app .seg.pick label:has(input:checked) { color: #fff; background: #636366;
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .22), 0 2px 6px rgba(0, 0, 0, .3), 0 1px 1px rgba(0, 0, 0, .2); }
+.app .seg label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* your keys: little dark keycaps with a glowing bottom edge in the row's colour */
+.app .keys { gap: 6px; }
+.app .cap { position: relative; height: 26px; gap: 2px; padding: 0 3px 0 9px; border: 0; border-radius: var(--r-cap);
+  font: 600 var(--fs-s)/1 var(--body); color: var(--fg); background: linear-gradient(180deg, #2d2d31, #1f1f22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 -2px 0 color-mix(in srgb, var(--cat) 85%, transparent), 0 1px 0 rgba(0, 0, 0, .75),
+    0 4px 12px -6px color-mix(in srgb, var(--cat) 80%, transparent);
+  transition: transform .15s var(--ease), box-shadow .2s; }
+.app .cap:hover { transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 var(--cat), 0 2px 0 rgba(0, 0, 0, .6), 0 7px 16px -6px var(--cat); }
+.app .cap.conflict, .app .cap.conflict:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 -2px 0 var(--danger), 0 0 0 1.5px var(--danger), 0 0 14px -2px rgba(255, 69, 58, .75); }
+.app .cap .arrow { margin-left: 3px; font: 500 var(--fs-xs)/1 var(--body); color: var(--soft); }
+.app .cap .arrow b { color: var(--fg); }
+.app .cap button { display: grid; place-items: center; width: 18px; height: 18px; margin-left: 2px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; box-shadow: none; font: 400 14px/1 var(--body); color: var(--soft); opacity: 1; }
+.app .cap button:hover { background: rgba(255, 255, 255, .12); color: var(--fg); }
+.app .add { height: 26px; padding: 0 11px; border: 1px dashed rgba(255, 255, 255, .2); border-radius: 999px; background: transparent; box-shadow: none;
+  font: 500 var(--fs-s)/1 var(--body); color: var(--soft); }
+.app .add:hover { border-color: rgba(255, 255, 255, .4); background: rgba(255, 255, 255, .04); color: var(--fg); }
+/* waiting for a key: the button glows and pulses */
+.app .add.listening, .app .ingame button.listening { border: 1px solid var(--accent); color: #fff; background: rgba(10, 132, 255, .2);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, .25), 0 0 16px rgba(10, 132, 255, .6); animation: app-listen 1.1s ease-in-out infinite; }
+@keyframes app-listen { 50% { box-shadow: 0 0 0 5px rgba(10, 132, 255, .1), 0 0 24px rgba(10, 132, 255, .85); } }
+/* the game's own keys: outlined pills, amber where they aren't yours */
+.app .ingame { gap: 5px; margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--line); font-size: var(--fs-xs); color: var(--soft); }
+.app .ingame button { height: 22px; padding: 0 9px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px; background: transparent; box-shadow: none;
+  font: 500 var(--fs-xs)/1 var(--body); color: #d1d1d6; text-decoration: none; }
+.app .ingame button:hover { border-color: rgba(255, 255, 255, .32); background: rgba(255, 255, 255, .05); color: var(--fg); }
+.app .ingame :is(button.unknown, button.stray) { color: var(--warn-fg); border-color: rgba(255, 159, 10, .55); background: rgba(255, 159, 10, .1); box-shadow: 0 0 12px -4px rgba(255, 159, 10, .6); }
+.app .ingame :is(button.unknown, button.stray):hover { border-color: rgba(255, 159, 10, .9); background: rgba(255, 159, 10, .17); color: #ffc46b; }
+.app .ingame button.none { border-style: dashed; color: var(--faint); }
+.app .ingame :is(.add2, .clear2) { width: 22px; padding: 0; border: 1px dashed rgba(255, 255, 255, .16); background: transparent; color: var(--soft); font-size: 13px; }
+.app .ingame .clear2 { border-color: transparent; }
+.app .ingame :is(.add2, .clear2):hover { border-color: rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .06); color: var(--fg); }
+.app .ingame .clear2:hover { border-color: transparent; background: rgba(255, 255, 255, .1); }
+.app .ingame .fixed { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px;
+  background: rgba(255, 255, 255, .04); font: 500 var(--fs-xs)/1 var(--body); color: #d1d1d6; }
+.app .ingame .kbname { color: var(--soft); }
+.app .menu-switch { margin: 0 0 14px; gap: 10px; font-size: var(--fs); font-weight: 500; }
+.app :is(.menu-switch, .toggles) input { accent-color: var(--accent); width: 15px; height: 15px; margin: 1px 0 0; flex: none; }
+.app :is(.menu-switch, .toggles) .sub { font-weight: 400; }
+/* notices: dark cards with a glowing edge and a glowing "!" (amber: change the game; red: keys bound twice) */
+.app :is(.mismatch, .conflicts) { --tone: var(--warn); position: relative; overflow: hidden; margin-top: 16px; padding: 14px 18px 14px 20px; gap: 3px 14px;
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent); border-radius: var(--r-card);
+  background: radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--tone) 13%, transparent), transparent 60%), var(--panel);
+  box-shadow: 0 12px 34px -22px color-mix(in srgb, var(--tone) 70%, transparent); }
+.app .conflicts { --tone: var(--danger); }
+.app :is(.mismatch, .conflicts)::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--tone); box-shadow: 0 0 12px var(--tone), 0 0 3px var(--tone); }
+.app :is(.mismatch, .conflicts) .icon { display: grid; place-items: center; align-self: start; width: 26px; height: 26px; margin-top: 1px; border-radius: 50%;
+  font: 800 14px/1 var(--body); text-shadow: none; color: #0b0b0d;
+  background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--tone) 55%, #fff), var(--tone) 62%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 15%, transparent), 0 0 18px color-mix(in srgb, var(--tone) 65%, transparent);
+  animation: app-breathe 2.8s ease-in-out infinite; }
+@keyframes app-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--tone) 9%, transparent), 0 0 26px color-mix(in srgb, var(--tone) 85%, transparent); } }
+.app :is(.mismatch, .conflicts) h2 { margin: 0; font: 600 var(--fs-h)/1.35 var(--body); color: var(--fg); }
+.app :is(.mismatch, .conflicts) :is(p, ul) { font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.app .conflicts li b { color: var(--fg); }
+.app :is(.mismatch, .conflicts) button { color: color-mix(in srgb, var(--tone) 55%, #fff); background: color-mix(in srgb, var(--tone) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 42%, transparent); }
+.app :is(.mismatch, .conflicts) button:hover { background: color-mix(in srgb, var(--tone) 24%, transparent); }
+.app .mismatch button { padding: 6px 15px; font-size: var(--fs); }
+.app .conflicts li button { margin-left: 8px; padding: 2px 10px; font-size: var(--fs-xs); }
+.app .wheel-note { position: relative; overflow: hidden; margin: 0 0 14px; padding: 10px 14px 10px 17px; border: 1px solid rgba(255, 159, 10, .22); border-radius: var(--r-box);
+  background: var(--warn-bg); font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.app .wheel-note::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+.app .wheel-note b { color: var(--warn-fg); }
+/* the checklist: clean dark rows */
+.app ul.recs { gap: 6px; margin-top: 10px; }
+.app ul.recs li { gap: 10px; padding: 9px 10px 9px 12px; border: 1px solid var(--line); border-radius: var(--r-box); background: var(--panel-2);
+  font-size: var(--fs-s); color: var(--muted); cursor: default; transition: background-color .15s, border-color .15s; }
+.app ul.recs li:hover { border-color: rgba(255, 255, 255, .14); background: #232326; }
+.app ul.recs li b { color: var(--fg); }
+.app ul.recs .was { margin-top: 1px; font-size: var(--fs-xs); color: var(--soft); }
+.app .recs .note { font-size: var(--fs-xs); color: var(--soft); }
+.app ul.recs button { padding: 4px 12px; font-size: var(--fs-s); }
+.app #recsCard > .out-actions { margin-top: 10px; }
+.app .allset { display: flex; align-items: center; gap: 9px; margin: 8px 0 0; font-size: var(--fs-s); font-weight: 600; color: var(--ok); }
+.app .allset::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok), 0 0 2px var(--ok); }
+.app .apply-game { gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.app .apply-game .note { line-height: 1.4; }
+.app .clash { margin-top: 12px; padding: 10px 14px; border: 1px solid rgba(255, 159, 10, .3); border-radius: var(--r-box); background: rgba(255, 159, 10, .08);
+  font-size: var(--fs-s); line-height: 1.45; color: var(--muted); }
+.app .clash b { color: var(--warn-fg); }
+.app .clash li::marker { color: rgba(255, 159, 10, .7); }
+.app #recsCard.flash { box-shadow: 0 0 0 1px rgba(255, 159, 10, .65), 0 0 32px -6px rgba(255, 159, 10, .55); }
+.app .row.flash { outline: 0; border-radius: 10px; background: rgba(255, 69, 58, .08); box-shadow: 0 0 0 6px rgba(255, 69, 58, .08), 0 0 0 7px rgba(255, 69, 58, .5); }
+.app .row.point { animation: app-point 1.8s ease-out; border-radius: 10px; }
+.app .ingame .point { animation: app-point-key 1.8s ease-out; }
+@keyframes app-point { 0%, 60% { background: rgba(255, 159, 10, .1); box-shadow: 0 0 0 6px rgba(255, 159, 10, .1); } }
+@keyframes app-point-key { 0%, 70% { box-shadow: 0 0 0 2px var(--warn), 0 0 14px rgba(255, 159, 10, .7); } }
+/* feel & options */
+.app .tune { gap: 10px 14px; }
+.app .tune > label { font-weight: 500; }
+.app .tune input[type=range] { accent-color: var(--accent); }
+.app .tune output { justify-self: end; padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .08);
+  font: 600 var(--fs-xs) var(--mono); color: var(--fg); }
+.app .toggles { gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.app .toggles label { gap: 10px; font-size: var(--fs); font-weight: 500; }
+/* importing a file */
+.app .drop { margin-top: 8px; padding: 14px; border: 1.5px dashed rgba(255, 255, 255, .18); border-radius: var(--r-box); background: rgba(255, 255, 255, .02); font-size: var(--fs-s); color: var(--muted); }
+.app .drop.over { border-color: var(--accent); background: rgba(10, 132, 255, .08); color: var(--fg); }
+.app textarea#importText { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-box); background: #0e0e10; color: var(--fg); font: 12px/1.45 var(--mono); }
+.app :is(.status, ol.steps, details summary) { font-size: var(--fs-s); }
+.app .path { padding: 8px 10px; border: 0; border-radius: 8px; background: #0e0e10; box-shadow: inset 0 0 0 1px var(--line); font: 11px/1.4 var(--mono); }
+
+/* ---- the keyboard map: a lit keyboard on a dark deck, and a mouse; u = one key, sized to the card ---- */
+.app #mapCard { container-type: inline-size; display: grid; grid-template-columns: 1fr 1fr; column-gap: 26px; align-items: center; }
+.app #mapCard > :is(.map-head, .lede, .kbd) { grid-column: 1 / -1; }
+.app .map-head { margin-bottom: 4px; }
+.app .map-head h2 { margin: 0; }
+.app .map-head h2::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; /* all four colours */
+  background: conic-gradient(var(--move) 0 25%, var(--action) 0 50%, var(--menu) 0 75%, var(--mod) 0); box-shadow: 0 0 8px rgba(255, 179, 64, .35); }
+.app :is(.kbd, .mouse) { --u: 26px; --g: 3px; }
+@supports (width: 1cqw) { .app :is(.kbd, .mouse) { --u: clamp(19px, (100cqw + 3px) / 15.6, 34px); } }
+.app .kbd { justify-self: center; width: max-content; margin: 2px 0 0; padding: calc(var(--u) * .3); gap: var(--g); overflow: visible;
+  border-radius: calc(var(--u) * .4); background: linear-gradient(#151517, #0c0c0e);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .075), inset 0 1px 0 rgba(255, 255, 255, .07),
+    0 28px 50px -32px rgba(255, 106, 61, .32), 0 20px 46px -30px rgba(162, 89, 255, .36); }
+.app .krow { gap: var(--g); }
+.app .k { --cat: #6e6e73; z-index: 0; width: calc(var(--u) - var(--g)); height: calc(var(--u) - var(--g)); border: 0; border-radius: calc(var(--u) * .15);
+  font: 500 max(8.5px, calc(var(--u) * .34))/1 var(--body); color: var(--faint); cursor: default;
+  background: linear-gradient(180deg, #27272a, #1d1d1f 55%, #19191b);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 -1px 0 rgba(0, 0, 0, .35), 0 1px 0 #000, 0 2px 3px rgba(0, 0, 0, .45);
+  transition: filter .15s, transform .15s var(--ease), opacity .2s, color .2s; }
+.app .k svg { width: max(8px, calc(var(--u) * .36)); height: auto; }
+/* key sizes of a real keyboard: every row 15 keys wide; a short function row */
+.app .krow:first-child .k { width: calc(var(--u) * 1.125 - var(--g)); height: calc(var(--u) * .72 - var(--g)); font-size: max(8px, calc(var(--u) * .3)); }
+.app .krow:first-child .k:first-child { width: calc(var(--u) * 1.5 - var(--g)); }
+.app .k[data-k="Backspace"] { width: calc(var(--u) * 2 - var(--g)); }
+.app .k:is([data-k="Tab"], [data-k="\\"]) { width: calc(var(--u) * 1.5 - var(--g)); }
+.app .k[data-k="CapsLock"] { width: calc(var(--u) * 1.75 - var(--g)); }
+.app .k[data-k="Enter"] { width: calc(var(--u) * 2.25 - var(--g)); }
+.app .k[data-k="Shift"]:first-child { width: calc(var(--u) * 2.25 - var(--g)); }
+.app .k[data-k="Shift"]:last-child { width: calc(var(--u) * 2.75 - var(--g)); }
+.app .kbd[data-kind="win"] .k:is([data-k="Ctrl"], [data-k="cmd"], [data-k="Alt"]) { width: calc(var(--u) * 1.25 - var(--g)); }
+.app .kbd[data-kind="win"] .k[data-k="Ctrl"]:first-child { width: calc(var(--u) * 1.5 - var(--g)); }
+.app .kbd[data-kind="win"] .k[data-k="Space"] { width: calc(var(--u) * 5.5 - var(--g)); }
+.app .kbd[data-kind="mac"] .k:is([data-k="Ctrl"], [data-k="Alt"]) { width: calc(var(--u) * 1.25 - var(--g)); }
+.app .kbd[data-kind="mac"] .k[data-k="cmd"] { width: calc(var(--u) * 1.5 - var(--g)); }
+.app .kbd[data-kind="mac"] .k[data-k="Space"] { width: calc(var(--u) * 6.5 - var(--g)); }
+/* the arrow keys as an inverted T of half-height keys at the end of the bottom row */
+.app .krow:last-child { display: grid; grid-auto-flow: column; grid-auto-columns: max-content; grid-template-rows: repeat(2, calc(var(--u) / 2 - var(--g))); gap: var(--g); }
+.app .krow:last-child > .k { grid-row: 1 / span 2; height: auto; }
+.app .krow:last-child > .k:nth-last-child(-n + 4) { grid-row: 2; font-size: max(7px, calc(var(--u) * .3)); }
+.app .krow:last-child > .k:nth-last-child(3) { grid-row: 1; }
+/* lit keys: tinted in their colour, with a glowing bar */
+.app .k::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; opacity: 0; }
+.app .k.used { color: var(--fg); }
+.app .k.used::before { opacity: 1;
+  background: radial-gradient(calc(var(--u) * .9) calc(var(--u) * .7) at 50% 108%, color-mix(in srgb, var(--cat) 42%, transparent), transparent),
+    color-mix(in srgb, var(--cat) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat) 36%, transparent), 0 0 calc(var(--u) * .3) color-mix(in srgb, var(--cat) 18%, transparent); }
+.app .k.used::after { left: 50%; right: auto; bottom: calc(var(--u) * .09); width: calc(var(--u) * .44); height: max(2px, calc(var(--u) * .05)); margin-left: calc(var(--u) * -.22);
+  border-radius: 9px; background: var(--cat); box-shadow: 0 0 calc(var(--u) * .16) var(--cat); }
+.app .krow:first-child .k.used::after { bottom: max(1px, calc(var(--u) * .045)); width: calc(var(--u) * .36); height: max(1.5px, calc(var(--u) * .04)); margin-left: calc(var(--u) * -.18); }
+.app .krow:last-child > .k.used:nth-last-child(-n + 4)::after { bottom: 1px; width: calc(var(--u) * .3); height: 1.5px; margin-left: calc(var(--u) * -.15); }
+/* blocked keys: dim, faintly hatched */
+.app .k.off { opacity: .5; background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .055) 0 1px, transparent 1px 4px), linear-gradient(180deg, #27272a, #1d1d1f 55%, #19191b); }
+.app .k.off:hover { opacity: .9; color: var(--muted); }
+/* keys bound twice: a red glowing ring */
+.app .k.conflict { z-index: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1.5px var(--danger), 0 0 12px rgba(255, 69, 58, .7); animation: app-alarm 1.8s ease-in-out infinite; }
+@keyframes app-alarm { 50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1.5px var(--danger), 0 0 20px rgba(255, 69, 58, .95); } }
+.app .k:hover { z-index: 2; filter: brightness(1.35); }
+.app .k:active { transform: translateY(1px) scale(.98); }
+.app .k:focus-visible { z-index: 3; }
+/* the mouse, from above (front up, side buttons on the left), like the website's */
+.app .mouse { --mu: calc(var(--u) * .92); position: relative; display: block; justify-self: end; width: calc(var(--mu) * 3.3); height: calc(var(--mu) * 5.8); margin: 20px 0 0; }
+.app .mbody { position: absolute; inset: 0 0 0 calc(var(--mu) * .3); overflow: hidden; border-radius: 50% 50% 46% 46% / 33% 33% 38% 38%;
+  background: radial-gradient(80% 45% at 50% 52%, rgba(255, 255, 255, .045), transparent 70%), linear-gradient(#1a1a1c, #0d0d0f); }
+.app .mbody::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 0 rgba(255, 255, 255, .08); }
+.app .mbody::after { content: ""; position: absolute; z-index: 1; left: calc(50% - var(--mu) * .3); top: calc(var(--mu) * .4); width: calc(var(--mu) * .6); height: calc(var(--mu) * 1.34);
+  border-radius: 99px; background: #050506; box-shadow: inset 0 1px 2px #000, 0 0 0 1px rgba(255, 255, 255, .04); pointer-events: none; }
+.app .mouse .k { position: absolute; padding: 0; font-size: max(8px, calc(var(--mu) * .3)); }
+.app .mouse .k:is([data-k="Mouse1"], [data-k="Mouse2"]) { top: 0; width: calc(50% - var(--mu) * .03); height: 41%; border-radius: 0; }
+.app .mouse .k[data-k="Mouse1"] { left: 0; border-bottom-left-radius: calc(var(--mu) * .08); }
+.app .mouse .k[data-k="Mouse2"] { right: 0; border-bottom-right-radius: calc(var(--mu) * .08); }
+.app .mouse .k:is([data-k="Mouse1"], [data-k="Mouse2"]).used::after { bottom: calc(var(--mu) * .22); }
+.app .mouse .k[data-k="Mouse3"] { z-index: 3; left: calc(var(--mu) * 1.6); top: calc(var(--mu) * .52); width: calc(var(--mu) * .4); height: calc(var(--mu) * 1.1); border-radius: 99px;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .09) 0 1px, transparent 1px 4px), linear-gradient(90deg, #121214, #2c2c2f 50%, #121214); }
+.app .mouse .k:is([data-k="Mouse4"], [data-k="Mouse5"]) { z-index: 3; left: calc(var(--mu) * .04); width: calc(var(--mu) * .44); height: calc(var(--mu) * .96);
+  border-radius: calc(var(--mu) * .22) calc(var(--mu) * .08) calc(var(--mu) * .08) calc(var(--mu) * .22); }
+.app .mouse .k[data-k="Mouse5"] { top: calc(var(--mu) * 2.45); }
+.app .mouse .k[data-k="Mouse4"] { top: calc(var(--mu) * 3.5); }
+.app .mouse .k:is([data-k="Mouse3"], [data-k="Mouse4"], [data-k="Mouse5"])::after { display: none; }
+.app .mouse .k:is([data-k="Mouse3"], [data-k="Mouse4"], [data-k="Mouse5"]).used::before { background: color-mix(in srgb, var(--cat) 40%, transparent); }
+/* the colours, as small pills */
+.app .legend-row { justify-self: start; flex-direction: column; align-items: flex-start; gap: 5px; margin: 20px 0 0; font-size: var(--fs-s); color: var(--muted); }
+.app .legend-row span { display: inline-flex; align-items: center; gap: 9px; padding: 5px 12px 5px 10px; border-radius: 999px; font-weight: 500;
+  background: rgba(255, 255, 255, .045); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .07); }
+.app .legend-row span::before { width: 14px; height: 3px; margin: 0; border-radius: 3px; background: var(--c); box-shadow: 0 0 6px var(--c); vertical-align: 0; }
+/* pointing at a colour picks out its keys, as on the website */
+.app .legend-row span { transition: color .2s, background-color .2s; }
+.app .legend-row span:hover { color: var(--fg); background: rgba(255, 255, 255, .08); }
+.app #mapCard:has(.legend-row span:hover) .k { opacity: .18 !important; transition-duration: .25s; }
+.app #mapCard:has(.legend-row span:nth-child(1):hover) .k[style*="var(--move)"],
+.app #mapCard:has(.legend-row span:nth-child(2):hover) .k[style*="var(--action)"],
+.app #mapCard:has(.legend-row span:nth-child(3):hover) .k[style*="var(--menu)"],
+.app #mapCard:has(.legend-row span:nth-child(4):hover) .k[style*="var(--mod)"] { opacity: 1 !important; filter: brightness(1.25); }
+/* what a key does: the website's dark glass bubble, key name in its colour */
+.app .ktip { max-width: min(280px, calc(100vw - 16px)); padding: 8px 12px 9px; border: 0; border-radius: 12px; font: 400 var(--fs-s)/1.4 var(--body); color: var(--fg);
+  background: rgba(42, 42, 46, .95); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16), 0 12px 32px rgba(0, 0, 0, .5), 0 2px 8px rgba(0, 0, 0, .3);
+  translate: 0 4px; transition: opacity .15s, translate .2s var(--ease); }
+.app .ktip.below { translate: 0 -4px; }
+.app .ktip.show { translate: none; }
+.app .ktip::after { left: calc(var(--ax, 50%) - 8px); bottom: -7px; width: 16px; height: 7px; border: 0; transform: none; background: inherit; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.app .ktip.below::after { top: -7px; bottom: auto; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.app .ktip .dot { display: none; }
+.app .ktip b { font-weight: 600; color: color-mix(in srgb, var(--cat, #fff) 72%, #fff); }
+
+/* ---- sheets: "press a key" and the settings file, dark glass over a dimmed window ---- */
+.app .capture { background: rgba(0, 0, 0, .45); animation: app-fade .18s ease-out; }
+.app .capture .box { position: relative; max-width: 440px; padding: 26px 28px 22px; border: 0; border-radius: 18px;
+  background: rgba(30, 30, 33, .84); -webkit-backdrop-filter: blur(40px) saturate(1.8); backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14), inset 0 1px 0 rgba(255, 255, 255, .06), 0 30px 80px rgba(0, 0, 0, .6), 0 8px 24px rgba(0, 0, 0, .35);
+  animation: app-sheet .28s var(--ease); }
+.app .capture .box h3 { margin: 0 0 6px; font: 600 17px/1.3 var(--body); letter-spacing: -.01em; text-shadow: none; color: var(--fg); }
+.app .capture .box p { margin: 0 0 16px; font-size: var(--fs); color: var(--muted); }
+.app #capMsg { margin-top: -6px; font-weight: 500; color: var(--warn-fg); }
+.app #capMsg:empty { display: none; }
+/* listening: a warm ring runs round the sheet, and a keycap waits to be pressed */
+.app .capture:not(.sheet) .box { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1), 0 30px 80px rgba(0, 0, 0, .6), 0 0 70px -24px rgba(255, 106, 61, .55); }
+.app .capture:not(.sheet) .box::before { content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit; pointer-events: none; opacity: .85;
+  background: conic-gradient(from var(--app-spin), #ffb340, #ff6a3d, #ff3d77, #a259ff, rgba(162, 89, 255, 0) 60%, rgba(255, 179, 64, 0) 85%, #ffb340);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: app-spin 3.2s linear infinite; }
+.app #capTitle::before { content: ""; display: block; width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 12px;
+  background: var(--grad) no-repeat 50% calc(100% - 7px) / 20px 3px, linear-gradient(180deg, #303034, #1c1c1f);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -3px 0 rgba(0, 0, 0, .45), 0 2px 0 #000, 0 12px 28px -8px rgba(255, 106, 61, .75);
+  animation: app-tap 1.8s var(--ease) infinite; }
+.app .capture.sheet .box { max-width: 680px; padding: 22px 24px 24px; text-align: left; }
+.app .capture.sheet .out-actions { margin-top: 14px; }
+.app pre.ini { margin: 14px 0 0; padding: 12px 14px; border: 0; border-radius: var(--r-box); background: #0c0c0e; color: #d1d1d6;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), inset 0 1px 3px rgba(0, 0, 0, .5); font: 11.5px/1.55 var(--mono); }
+.app .capture.sheet pre.ini { max-height: 50vh; }
+.app pre.ini .c { color: var(--soft); }
+.app pre.ini .s { font-weight: 600; color: var(--warn-fg); }
+.app pre.ini .n { color: #8fcdf0; }
+.app pre.ini .e { color: var(--faint); }
+/* a message that comes and goes: a dark glass pill that slides up */
+.app .toast { bottom: 22px; padding: 10px 18px; border: 0; border-radius: 20px; font: 500 var(--fs)/1.4 var(--body); color: var(--fg);
+  background: rgba(36, 36, 40, .82); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14), 0 14px 40px rgba(0, 0, 0, .55); transform: translate(-50%, 18px) scale(.97);
+  transition: opacity .25s, transform .4s var(--ease); }
+.app .toast.show { transform: translate(-50%, 0); }
+/* ---- Windows: the same look, squarer */
+.win .seg label { border-radius: 4px; }
+.win .capture .box { border-radius: 12px; }
+.win .ktip { border-radius: 8px; }
+.win .toast { border-radius: 10px; }
+/* ---- thin dark scrollbars */
+.app::-webkit-scrollbar, .app ::-webkit-scrollbar { width: 10px; height: 10px; }
+.app::-webkit-scrollbar-thumb, .app ::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, .16) padding-box; }
+.app::-webkit-scrollbar-thumb:hover, .app ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .3); }
+.app::-webkit-scrollbar-track, .app ::-webkit-scrollbar-track, .app ::-webkit-scrollbar-corner { background: transparent; }
+/* ---- motion: cards rise in; keys a change lights glow in; after saving into the game the lit keys
+   light up in a wave from WASD (wave() in the script). None of it with reduced motion. */
+@keyframes app-rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes app-fade { from { opacity: 0; } }
+@keyframes app-sheet { from { opacity: 0; transform: translateY(8px) scale(.95); } }
+@keyframes app-lit { 0% { opacity: 0; } 40% { opacity: 1; filter: brightness(2); } }
+@keyframes app-bar { from { opacity: 0; transform: scaleX(.2); } }
+@keyframes app-flash { 0% { opacity: .3; } 35% { opacity: 1; filter: brightness(2.1) saturate(1.2); } }
+@keyframes app-spin { to { --app-spin: 360deg; } }
+@keyframes app-tap { 0%, 50%, 100% { transform: none; } 60% { transform: translateY(2px) scale(.97); } }
+.app :is(#conflicts, #mismatch, .grid section.card) { animation: app-rise .6s var(--ease) backwards; }
+.app #mismatch { animation-delay: .04s; }
+.app main > :nth-child(1) { animation-delay: .08s; }
+.app main > :nth-child(2) { animation-delay: .14s; }
+.app main > :nth-child(3) { animation-delay: .2s; }
+.app main > :nth-child(4) { animation-delay: .26s; }
+.app .side > :nth-child(1) { animation-delay: .11s; }
+.app .side > :nth-child(2) { animation-delay: .17s; }
+.app .k.fresh::before { animation: app-lit .9s var(--ease) both; }
+.app .k.fresh::after { animation: app-bar .6s cubic-bezier(.3, 1.5, .5, 1) both; }
+.app .wave .k.used::before { animation: app-flash 1s var(--ease) calc(var(--d, 0) * 40ms) both; }
+.app .wave .k.used::after { animation: app-bar .6s cubic-bezier(.3, 1.5, .5, 1) calc(var(--d, 0) * 40ms) both; }
+@media (prefers-reduced-motion: reduce) {
+  .app *, .app *::before, .app *::after { animation: none !important; transition-duration: .01s !important; transition-delay: 0s !important; }
+}
 </style>
 
 <div class="wrap">
@@ -341,6 +651,7 @@ code { font-family: var(--mono); font-size: .92em; }
         <select id="layoutSel"></select>
         <button type="button" id="createBtn" data-t="+ Create" data-t-title="A new layout of your own, starting from what's on screen"></button>
         <button type="button" id="resetBtn" data-t="Reset" data-t-title="Back to this layout's saved version"></button>
+        <button type="button" id="exportBtn" data-t="Export…"></button>
         <button type="button" class="primary save" id="downloadTop"></button>
       </div>
       <div class="layout-status" id="layoutStatus" aria-live="polite"></div>
@@ -369,40 +680,27 @@ code { font-family: var(--mono); font-size: .92em; }
     </main>
     <aside class="side">
       <section class="card" id="recsCard"></section>
-      <section class="card">
-        <h2 data-t="Keyboard map"></h2>
+      <section class="card" id="mapCard">
+        <div class="map-head">
+          <h2 data-t="Keyboard map"></h2>
+          <div class="seg pick" id="kbdKind" role="radiogroup" data-t-aria="Keyboard">
+            <label><input type="radio" name="kbdKind" value="win">Windows</label><label><input type="radio" name="kbdKind" value="mac">Mac</label>
+          </div>
+        </div>
         <p class="lede" data-t="Keys with a coloured line do something; the colour says what. Hatched keys are blocked while you play, so the game can't flip into keyboard mode. Hover a key to see what it does."></p>
         <div class="kbd" id="kbd"></div>
         <div class="mouse" id="mouseMap"></div>
-        <div class="hover-info" id="hoverInfo">&nbsp;</div>
         <div class="legend-row">
           <span style="--c:var(--move)" data-t="Movement"></span><span style="--c:var(--action)" data-t="Actions"></span><span style="--c:var(--menu)" data-t="Menus"></span><span style="--c:var(--mod)" data-t="Mod keys"></span>
         </div>
-      </section>
-      <section class="card">
-        <h2 data-t="Settings file"></h2>
-        <div class="out-actions">
-          <button class="primary save" id="saveBtn" type="button"></button>
-          <button id="copyBtn" type="button" data-t="Copy text"></button>
-        </div>
-        <div class="status" id="saveStatus"></div>
-        <details id="whereItGoes">
-          <summary data-t="Where it goes"></summary>
-          <ol class="steps">
-            <li data-tx="Windows: run <code>wasdmod-Windows.exe</code> and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself."></li>
-            <li><span data-tx="Mac: the <b>wasdmod</b> app has this editor built in and saves straight into the game. Or put the file yourself in (CrossOver, default Steam bottle):"></span>
-              <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
-              <button id="copyPath" type="button" data-t="Copy folder path"></button> <span class="note" data-t="In Finder: Go › Go to Folder (⇧⌘G), paste."></span></li>
-            <li data-tx="The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins. Restart the game."></li>
-          </ol>
-        </details>
-        <pre class="ini" id="iniOut"></pre>
       </section>
     </aside>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="saveStatus" hidden></div>
+<div class="ktip" id="ktip" aria-hidden="true"></div>
 
 <div class="capture" id="capture" hidden>
   <div class="box" role="dialog" aria-modal="true" aria-labelledby="capTitle">
@@ -410,6 +708,28 @@ code { font-family: var(--mono); font-size: .92em; }
     <p id="capFor"></p>
     <p class="note" id="capMsg"></p>
     <button id="capCancel" type="button" data-t="Cancel"></button>
+  </div>
+</div>
+
+<div class="capture sheet" id="exportSheet" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+    <h3 id="exportTitle" data-t="Settings file"></h3>
+    <div class="out-actions">
+      <button class="primary save" id="saveBtn" type="button"></button>
+      <button id="copyBtn" type="button" data-t="Copy text"></button>
+      <button id="exportDone" type="button" data-t="Done"></button>
+    </div>
+    <details id="whereItGoes">
+      <summary data-t="Where it goes"></summary>
+      <ol class="steps">
+        <li data-tx="Windows: run <code>wasdmod-Windows.exe</code> and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself."></li>
+        <li><span data-tx="Mac: the <b>wasdmod</b> app has this editor built in and saves straight into the game. Or put the file yourself in (CrossOver, default Steam bottle):"></span>
+          <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
+          <button id="copyPath" type="button" data-t="Copy folder path"></button> <span class="note" data-t="In Finder: Go › Go to Folder (⇧⌘G), paste."></span></li>
+        <li data-tx="The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins. Restart the game."></li>
+      </ol>
+    </details>
+    <pre class="ini" id="iniOut"></pre>
   </div>
 </div>
 
@@ -660,7 +980,7 @@ Language=Auto
 RequireFocus=1
 AlwaysConnected=1
 Log=1`;
-const BUILTIN = { default: { name: _("Default"), text: DEFAULT_INI, file: "default.txt" }, author: { name: _("Recommended"), text: AUTHOR_INI, file: "author.txt" } };
+const BUILTIN = { default: { name: _("Official layout"), text: DEFAULT_INI, file: "default.txt" }, author: { name: _("Recommended"), text: AUTHOR_INI, file: "author.txt" } };
 
 // =================================================================== key names
 const CODE_NAMES = { Space: "Space", Enter: "Enter", NumpadEnter: "Enter", Escape: "Escape", Tab: "Tab", ShiftLeft: "Shift", ShiftRight: "Shift",
@@ -716,7 +1036,7 @@ const get = (ini, sec, key) => { const e = (ini[sec] || []).filter(([k]) => k.to
 const TUNE = [
   { sec: "Movement", key: "AccelMs", label: _("Speed-up time"), sub: _("time to reach full speed"), min: 0, max: 200, step: 5, unit: "ms" },
   { sec: "Movement", key: "DecelMs", label: _("Stopping time"), sub: _("time to come to a stop"), min: 0, max: 200, step: 5, unit: "ms" },
-  { sec: "Movement", key: "TurnMs", label: _("Turn time"), sub: _("a full 180° turn; 90° takes half"), min: 0, max: 300, step: 10, unit: "ms" },
+  { sec: "Movement", key: "TurnMs", label: _("Turn time"), sub: _("a full 180° turn (90° takes half). 0 ms = sharpest; higher = smoother, but it can feel less responsive"), min: 0, max: 1000, step: 10, unit: "ms" },
   { sec: "Move", key: "DodgeDragPx", label: _("Drag to roll"), sub: _("mouse travel that turns a dodge click into a roll"), min: 10, max: 150, step: 5, unit: "px" },
   { sec: "Move", key: "DodgeFlickMs", label: _("Dodge flick"), sub: _("how long each dodge holds the stick"), min: 30, max: 200, step: 10, unit: "ms" },
   { sec: "Mouse", key: "MouseModeOnMovePx", label: _("Mouse wakes the cursor"), sub: _("mouse travel (after letting go of WASD) that switches to mouse mode"), min: 0, max: 150, step: 5, unit: "px" },
@@ -1016,8 +1336,9 @@ function tx(s, vars = {}) {
   return frag;
 }
 // In the wasdmod app (Mac) and the Windows setup's editor window, window.wasdmodHost
-// keeps the layouts and saves straight into the game folder.
+// keeps the layouts and saves straight into the game folder. inApp: the page is the app's window.
 const host = window.wasdmodHost || null;
+const inApp = document.documentElement.classList.contains("app");
 const store = host
   ? { get: k => k in host.store ? host.store[k] : null, set: (k, v) => host.set(k, String(v)) }
   : { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
@@ -1068,7 +1389,7 @@ function gameCell(a) {
     el("span", { class: "kbname", text: t("Keyboard") }));
   const g = state.game[a.id] || [], keys = state.keys[a.id], action = t(a.game), second = t("{action} (second key)", { action });
   // Both columns of the game's keyboard settings. A key that isn't one of yours is
-  // struck through: the checklist asks to change it in the game.
+  // yellow: the checklist asks to change it in the game.
   [0, 1].forEach(i => {
     const k = g[i];
     if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", text: "+", title: t("The game has a second key for {action}: add it", { action }), onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: second }, e.currentTarget) })); return; }
@@ -1089,7 +1410,7 @@ function rowEl(a, uses, first) {
   const kbRoute = r === "kb", label = t(a.label);
   let note = null;
   if (kbRoute && !g && keys.length) note = t("set the game's key →");
-  return el("div", { class: "row" + (first ? " first" : ""), "data-action": a.id },
+  return el("div", { class: "row" + (first ? " first" : ""), "data-action": a.id, "data-cat": a.cat },
     el("div", { class: "name" }, label, a.sub ? el("span", { class: "sub", text: t(a.sub) }) : null),
     routeCell(a),
     keysCell(keys, v => state.keys[a.id] = v, label, uses, { kbRoute, sendsAs: kbRoute && g ? g : null, note, after: a.game || a.fixedGame ? gameCell(a) : null }));
@@ -1108,7 +1429,7 @@ function renderMod(uses) {
   const s = $("sec-mod");
   s.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--mod)" }), t("Mod keys")),
     el("p", { class: "lede", text: t("Keys for the mod itself. Every other key is blocked while you play, unless it's listed under \"{row}\".", { row: t("Always send to the game") }) }));
-  MOD_ROWS.forEach((m, i) => s.append(el("div", { class: "row" + (i === 0 ? " first" : "") },
+  MOD_ROWS.forEach((m, i) => s.append(el("div", { class: "row" + (i === 0 ? " first" : ""), "data-cat": "mod" },
     el("div", { class: "name" }, t(m.label), m.sub ? el("span", { class: "sub", text: t(m.sub) }) : null),
     el("span", { class: "badge kb", text: t("Mod") }),
     keysCell(m.get(state), v => m.set(state, v), t(m.label), uses, { max: m.max, kbRoute: m.id === "OtherMenus" || m.id === "PassKeys" }))));
@@ -1195,18 +1516,49 @@ function renderRecs() {
   const recs = recommendations(state), card = $("recsCard");
   card.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--accent)" }), t("Make the game's keyboard keys match yours")),
     el("p", { class: "lede", text: t("Change these in the game: Settings › Controls › Keyboard (both columns). Leave the Controller tab at its defaults: the mod presses the game's standard controller buttons. Tick each one off here once it's done.") }));
-  if (!recs.length) { card.append(el("p", { class: "allset", text: t("All set: the game's keyboard keys match yours, in both columns.") })); return; }
-  const ul = el("ul", { class: "recs" });
-  for (const r of recs) ul.append(el("li", { title: t("Show"), onclick: e => { if (!e.target.closest("button")) showGameKey(r); } },
-    el("span", {}, recLine(r),
-      el("span", { class: "was", text: r.was ? t("now: {key}", { key: pretty(r.was) }) : t("now: empty") }), r.a.note ? el("span", { class: "note", text: t(r.a.note) }) : null),
-    el("button", { type: "button", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
-  card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: t("Mark all as done"), onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
-  // In the apps: write the game's own settings instead (the rows the file has names for).
-  if (controls && host && host.writeGameControls && recs.some(r => GAME_ACTIONS[r.a.id]))
+  const move = moveKeys(), clashes = gameClashes.filter(c => (state.game[c.a.id] || []).includes(c.k) && move.has(c.k));
+  if (clashes.length) card.append(el("div", { class: "clash", role: "alert" }, el("b", { text: t("Change in the game") }),
+    el("ul", {}, ...clashes.map(c => el("li", { text: clashText(c) })))));
+  if (!recs.length) card.append(el("p", { class: "allset", text: t("All set: the game's keyboard keys match yours, in both columns.") }));
+  else {
+    const ul = el("ul", { class: "recs" });
+    for (const r of recs) ul.append(el("li", { title: t("Show"), onclick: e => { if (!e.target.closest("button")) showGameKey(r); } },
+      el("span", {}, recLine(r),
+        el("span", { class: "was", text: r.was ? t("now: {key}", { key: pretty(r.was) }) : t("now: empty") }), r.a.note ? el("span", { class: "note", text: t(r.a.note) }) : null),
+      el("button", { type: "button", text: t("Done"), title: t("I changed it in the game"), onclick: () => { applyRec(r); changed(); } })));
+    card.append(ul, el("div", { class: "out-actions" }, el("button", { type: "button", text: t("Mark all as done"), onclick: () => { for (const r of recs) applyRec(r); changed(); } })));
+  }
+  // In the apps, both ways: the game's own settings set to this layout (the rows the file
+  // has names for), or this layout set to the game's keys.
+  if (controls && host && host.writeGameControls)
     card.append(el("div", { class: "apply-game" },
-      el("button", { type: "button", class: "primary", text: t("Apply to the game's controls"), onclick: applyControls }),
-      el("span", { class: "note", text: t("Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.") })));
+      el("div", { class: "out-actions" },
+        el("button", { type: "button", class: "primary", text: t("Apply to the game's controls"), disabled: !recs.some(r => GAME_ACTIONS[r.a.id]), onclick: applyControls }),
+        el("button", { type: "button", text: t("Use the game's keys in this layout"), onclick: useGameKeys })),
+      el("span", { class: "note", text: t("Sets these keys in the game's own keyboard settings for you. The game has to be closed; your old settings are backed up.") }),
+      el("span", { class: "note", text: t("Takes the keys from the game's keyboard settings into this layout. Keys the game shares with your movement keys are left out.") })));
+}
+// "Use the game's keys": each row takes the game's keys (both columns), except keys you
+// move with. Those stay yours, and the game needs another key there: its own menu wheel
+// is S, for example, which is "move down" with WASD.
+let gameClashes = [];
+const MOVE_IDS = ["up", "left", "down", "right"];
+const moveKeys = () => new Set(MOVE_IDS.flatMap(id => state.keys[id]));
+const clashText = c => t("{action}: the game uses {key}, which is one of your movement keys, so this layout keeps its own key. Change {action} in the game (Settings › Controls › Keyboard) to another key.", { action: t(c.a.game), key: pretty(c.k) });
+function useGameKeys() {
+  const move = moveKeys(), clashes = [];
+  let n = 0;
+  for (const a of ACTIONS) {
+    if (!a.game || a.hidden || MOVE_IDS.includes(a.id)) continue;
+    const g = (state.game[a.id] || []).filter(k => k && k !== "?"), ok = g.filter(k => !move.has(k));
+    for (const k of g) if (move.has(k)) clashes.push({ a, k });
+    if (!ok.length || JSON.stringify(ok) === JSON.stringify(state.keys[a.id])) continue;
+    state.keys[a.id] = ok; n++;
+  }
+  gameClashes = clashes;
+  if (n) changed(); else render();
+  $("saveStatus").textContent = (n ? t("This layout now uses the game's keys.") : t("This layout already uses the game's keys.")) + (clashes.length ? " " + clashText(clashes[0]) : "");
+  if (clashes.length) $("recsCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 // The notice at the top: while the game's own keyboard settings differ from the
 // layout, keyboard mode and controller mode are two different layouts.
@@ -1221,34 +1573,99 @@ function renderMismatch() {
     el("p", { text: t("The mod turns your keys into the controller only while you fight. In menus, with the cursor, and when aiming the bow, the game reads its own keyboard settings, so its old keys still work there and yours may not; its on-screen button prompts show its keys too. The mod blocks the leftover keys in the meantime, but only changing them in the game (Settings › Controls › Keyboard) makes both modes one layout.") })));
 }
 
-// Keyboard map: Mac layout; Command can't be bound (it's for Mac shortcuts).
+// Keyboard map: a Windows or a Mac keyboard (only the bottom row differs). The
+// Windows / Command key can't be bound (it's for system shortcuts).
 const KBD = [
   [["Escape", "esc"], ["F1"], ["F2"], ["F3"], ["F4"], ["F5"], ["F6"], ["F7"], ["F8"], ["F9"], ["F10"], ["F11"], ["F12"]],
   [["Backtick", "`"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["0"], ["-"], ["="], ["Backspace", "⌫", "w18"]],
   [["Tab", "tab", "w15"], ["Q"], ["W"], ["E"], ["R"], ["T"], ["Y"], ["U"], ["I"], ["O"], ["P"], ["["], ["]"]],
   [["CapsLock", "caps", "w18"], ["A"], ["S"], ["D"], ["F"], ["G"], ["H"], ["J"], ["K"], ["L"], [";"], ["'"], ["Enter", "⏎", "w18"]],
   [["Shift", "⇧", "w22"], ["Z"], ["X"], ["C"], ["V"], ["B"], ["N"], ["M"], [","], ["."], ["/"], ["Shift", "⇧", "w22"]],
-  [["Ctrl", "ctrl", "w15"], ["Alt", "⌥", "w15"], ["cmd", "⌘", "w15"], ["Space", "space", "w6"], ["cmd", "⌘", "w15"], ["Left", "←"], ["Up", "↑"], ["Down", "↓"], ["Right", "→"]],
 ];
+// The Windows key's four squares.
+function winLogo() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
+  svg.setAttribute("viewBox", "0 0 10 10"); svg.setAttribute("width", "10"); svg.setAttribute("height", "10"); svg.setAttribute("aria-hidden", "true");
+  path.setAttribute("fill", "currentColor"); path.setAttribute("d", "M0 0h4.6v4.6H0zM5.4 0H10v4.6H5.4zM0 5.4h4.6V10H0zM5.4 5.4H10V10H5.4z");
+  svg.append(path); return svg;
+}
+const KBD_BOTTOM = {
+  win: [["Ctrl", "ctrl", "w15"], ["cmd", "win", "w15"], ["Alt", "alt", "w15"], ["Space", "space", "w6"], ["Alt", "alt", "w15"], ["Ctrl", "ctrl", "w15"], ["Left", "←"], ["Up", "↑"], ["Down", "↓"], ["Right", "→"]],
+  mac: [["Ctrl", "ctrl", "w15"], ["Alt", "⌥", "w15"], ["cmd", "⌘", "w15"], ["Space", "space", "w6"], ["cmd", "⌘", "w15"], ["Left", "←"], ["Up", "↑"], ["Down", "↓"], ["Right", "→"]],
+};
+// Only the Mac app shows a Mac keyboard (and starts with it); everywhere else, Windows.
+const isMacApp = !!(host && host.app === "mac");
+let kbdKind = isMacApp && store.get("d2kb-kbd") !== "win" ? "mac" : "win";
+$("kbdKind").hidden = !isMacApp;
+for (const r of document.querySelectorAll("#kbdKind input")) {
+  r.checked = r.value === kbdKind;
+  r.addEventListener("change", () => { kbdKind = r.value; store.set("d2kb-kbd", kbdKind); render(); });
+}
 function describe(k, uses) {
-  if (k === "cmd") return t("⌘ Command (Windows key on a PC): while held, no key registers. It can't be bound.");
+  if (k === "cmd") return kbdKind === "win" ? t("Windows key: while held, no key registers. It can't be bound.") : t("⌘ Command (Windows key on a PC): while held, no key registers. It can't be bound.");
   const u = uses.get(k);
   if (!u || !u.length) return state.opt.BlockOtherKeys ? t("{key}: blocked while playing", { key: pretty(k) }) : t("{key}: blocked while playing (off: sent to the game)", { key: pretty(k) });
   return pretty(k) + ": " + u.map(r => r.name).join(" · ") + (u.length > 1 ? "  ⚠ " + t("conflict") : "");
 }
+// The bubble over a hovered (or focused) key: above it, or below when there's no room.
+function showKeyTip(c, k, uses) {
+  const tip = $("ktip"), s = describe(k, uses), name = pretty(k) + ":";
+  const cat = c.style.getPropertyValue("--cat");
+  tip.style.setProperty("--cat", cat); // the key's colour, for its name in the bubble
+  tip.replaceChildren(...(cat ? [el("span", { class: "dot", style: "background:" + cat })] : []),
+    ...(s.startsWith(name) ? [el("b", { text: name }), s.slice(name.length)] : [s]));
+  const r = c.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  const x = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)), below = r.top - h - 10 < 8;
+  tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(below ? r.bottom + 10 : r.top - h - 10)}px)`;
+  tip.style.setProperty("--ax", Math.round(r.left + r.width / 2 - x) + "px");
+  tip.classList.toggle("below", below); tip.classList.add("show");
+}
+const hideKeyTip = () => $("ktip").classList.remove("show");
+addEventListener("scroll", hideKeyTip, true);
+let litBefore = null; // the lit keys (key -> category) the map showed last time
 function renderMap(uses) {
   const cat = { move: "var(--move)", action: "var(--action)", menu: "var(--menu)", mod: "var(--mod)" };
+  hideKeyTip();
+  const lit = new Map();
   const cell = (k, text, w) => {
     const u = uses.get(k) || [];
-    const c = el("div", { class: "k" + (w ? " " + w : "") + (u.length ? " used" : " off") + (u.length > 1 ? " conflict" : ""), tabindex: "0", text: text || k });
-    if (u.length) c.style.setProperty("--cat", cat[u[0].cat]);
+    const c = el("div", { class: "k" + (w ? " " + w : "") + (u.length ? " used" : " off") + (u.length > 1 ? " conflict" : ""), tabindex: "0", "data-k": k, text: text || k, "aria-label": describe(k, uses) });
+    if (u.length) {
+      c.style.setProperty("--cat", cat[u[0].cat]);
+      lit.set(k, u[0].cat);
+      if (litBefore && litBefore.get(k) !== u[0].cat) c.classList.add("fresh"); // lit by the change just made
+    }
     if (k === "cmd") { c.classList.remove("off"); c.style.opacity = ".6"; }
-    const show = () => { $("hoverInfo").textContent = describe(k, uses); };
+    if (k === "cmd" && kbdKind === "win") c.replaceChildren(winLogo());
+    const show = () => showKeyTip(c, k, uses);
     c.addEventListener("mouseenter", show); c.addEventListener("focus", show);
+    c.addEventListener("mouseleave", hideKeyTip); c.addEventListener("blur", hideKeyTip);
     return c;
   };
-  $("kbd").replaceChildren(...KBD.map(r => el("div", { class: "krow" }, ...r.map(([k, text, w]) => cell(k, text, w)))));
-  $("mouseMap").replaceChildren(...["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k))));
+  // In the apps the map is drawn like a real keyboard (the backslash key fills the Tab row)
+  // and a mouse: left and right on its body, the wheel, side buttons 5 (front) and 4 (back).
+  const rows = [...KBD, KBD_BOTTOM[kbdKind]];
+  if (inApp) rows[2] = [...rows[2], ["\\"]];
+  $("kbd").dataset.kind = kbdKind;
+  $("kbd").replaceChildren(...rows.map(r => el("div", { class: "krow" }, ...r.map(([k, text, w]) => cell(k, text, w)))));
+  const mouse = ["Mouse1", "Mouse2", "Mouse3", "Mouse4", "Mouse5"].map(k => cell(k, pretty(k)));
+  if (inApp) {
+    mouse.forEach((c, i) => { c.textContent = i === 3 ? "4" : i === 4 ? "5" : ""; });
+    $("mouseMap").replaceChildren(el("div", { class: "mbody" }, mouse[0], mouse[1]), mouse[2], mouse[4], mouse[3]);
+  } else $("mouseMap").replaceChildren(...mouse);
+  litBefore = lit;
+}
+// After a save into the game, the map's lit keys light up in a wave from WASD.
+function wave() {
+  const card = $("mapCard"), from = $("kbd").querySelector('[data-k="S"]');
+  if (!inApp || !from || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const o = from.getBoundingClientRect(), x = o.left + o.width / 2, y = o.top, unit = o.width || 24;
+  for (const c of card.querySelectorAll(".k.used")) {
+    const r = c.getBoundingClientRect();
+    c.style.setProperty("--d", (Math.hypot(r.left + r.width / 2 - x, (r.top + r.height / 2 - y) * 1.3) / unit).toFixed(2));
+  }
+  card.classList.remove("wave"); void card.offsetWidth; card.classList.add("wave");
+  clearTimeout(wave.timer); wave.timer = setTimeout(() => card.classList.remove("wave"), 2600);
 }
 
 // Your own keys bound twice: separate from the yellow "change these in the game"
@@ -1317,7 +1734,17 @@ function renderLayoutBar() {
   }
 }
 
-function renderOut() { $("iniOut").textContent = iniText(state); }
+function renderOut() {
+  const text = iniText(state);
+  if (!inApp) { $("iniOut").textContent = text; return; }
+  // In the apps, in colour: comments, [sections], and each setting's name.
+  $("iniOut").replaceChildren(...text.split("\n").flatMap((line, i, all) => {
+    const m = /^([^;=[][^=]*)=(.*)$/.exec(line);
+    const part = line.startsWith(";") ? el("span", { class: "c", text: line }) : /^\[.*\]$/.test(line) ? el("span", { class: "s", text: line })
+      : m ? el("span", {}, el("span", { class: "n", text: m[1] }), el("span", { class: "e", text: "=" }), m[2]) : line;
+    return i < all.length - 1 ? [part, "\n"] : [part];
+  }));
+}
 // Says plainly where the menu wheel went while the game still has it on another
 // key (S by default, which is "move down" here). Gone once the game's key matches.
 function renderWheelNote() {
@@ -1364,6 +1791,7 @@ function translatePage() {
   $("downloadTop").textContent = host ? t("Save to game") : t("Download file");
   $("downloadTop").title = host ? t("Save this layout into the game folder") : t("Download the settings file for the game folder");
   $("saveBtn").textContent = host ? t("Save to game") : t("Download settings file");
+  $("saveBtn").hidden = !!host;
   $("langSel").replaceChildren(...Object.entries(LANGS).map(([code, l]) => el("option", { value: code }, l.name)));
   $("langSel").value = lang;
 }
@@ -1402,7 +1830,7 @@ function take(key) {
 window.addEventListener("keydown", e => {
   if (!capturing) return;
   e.preventDefault(); e.stopPropagation();
-  if (e.key === "Meta" || e.code.startsWith("Meta") || e.code.startsWith("OS")) { $("capMsg").textContent = t("⌘ Command is kept for system shortcuts and can't be bound."); return; }
+  if (e.key === "Meta" || e.code.startsWith("Meta") || e.code.startsWith("OS")) { $("capMsg").textContent = /Mac/.test(navigator.platform || "") ? t("⌘ Command is kept for system shortcuts and can't be bound.") : t("The Windows key is kept for system shortcuts and can't be bound."); return; }
   let k = CODE_NAMES[e.code];
   if (!k) { const m = /^(Key|Digit)(.)$/.exec(e.code) || /^Numpad(\d)$/.exec(e.code); if (m) k = m[m.length - 1]; }
   if (!k) { const f = /^F(\d{1,2})$/.exec(e.code); if (f && +f[1] <= 12) k = "F" + f[1]; }
@@ -1513,6 +1941,7 @@ async function downloadFile() {
       if (!used || used === name) host.game = { file: name, text };
       renderLayoutBar();
       $("saveStatus").textContent = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. A running game switches to it within a second.", { file: name });
+      wave();
     } catch (e) {
       // "saved:" starts the app's messages for a file that was saved but can't be used yet.
       const m = String(e && e.message || e);
@@ -1533,18 +1962,26 @@ async function downloadFile() {
   $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder, then restart the game. On a Mac, the wasdmod app has this editor built in.", { file: name });
 }
 $("saveBtn").addEventListener("click", downloadFile);
-$("downloadTop").addEventListener("click", () => { downloadFile(); if (!inApp) $("saveStatus").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+$("downloadTop").addEventListener("click", () => downloadFile());
+// Export: the settings file to download or copy, in a sheet over the editor.
+const openExport = () => { renderOut(); $("exportSheet").hidden = false; $(host ? "copyBtn" : "saveBtn").focus(); };
+const closeExport = () => { $("exportSheet").hidden = true; $("exportBtn").focus(); };
+$("exportBtn").addEventListener("click", openExport);
+$("exportDone").addEventListener("click", closeExport);
+$("exportSheet").addEventListener("mousedown", e => { if (e.target === e.currentTarget) closeExport(); });
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("exportSheet").hidden) { e.preventDefault(); closeExport(); } });
 if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { downloads = d; }).catch(() => {});
 if (host) $("whereItGoes").hidden = true;
-// In the Mac app: a toast for what happened, no web page right-click menu, and the
-// pinned layout bar's height for the sticky side column.
-const inApp = document.documentElement.classList.contains("app");
+// A toast for what happened (saved, copied, imported…: the text of #saveStatus). In the
+// apps also: no web page right-click menu, and the pinned layout bar's height for the
+// sticky side column.
 let toastTimer = 0;
 function toast(text) {
-  if (!inApp || !text) return;
+  if (!text) return;
   const box = $("toast"); box.textContent = text; box.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => box.classList.remove("show"), 4000);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => box.classList.remove("show"), Math.min(10000, 3000 + text.length * 40));
 }
+new MutationObserver(() => toast($("saveStatus").textContent)).observe($("saveStatus"), { childList: true, characterData: true, subtree: true });
 if (inApp) {
   document.addEventListener("contextmenu", e => { if (!e.target.closest("input, textarea, pre, .path")) e.preventDefault(); });
   new ResizeObserver(() => document.documentElement.style.setProperty("--bar-h", document.querySelector("header").offsetHeight + "px")).observe(document.querySelector("header"));
