@@ -3,6 +3,15 @@
 # that ships with the Rust toolchain. No Windows SDK or CRT is needed.
 set -e
 cd "$(dirname "$0")"
+# FLAVOR=nexus sh build.sh: the same downloads without the update check, for Nexus
+# Mods (which allows no internet code in a mod's files), in dist/nexus/. The update
+# code is left out when compiling (-DNEXUS / -D NEXUS), and WinHTTP isn't linked.
+FLAVOR=${FLAVOR:-github}
+case "$FLAVOR" in
+github) FLAVORDEF=; UPDATELIB=build/winhttp.lib ;;
+nexus) FLAVORDEF=NEXUS; UPDATELIB= ;;
+*) echo "FLAVOR is github (the default) or nexus"; exit 1 ;;
+esac
 if [ -z "$LLD" ]; then
     for c in ~/.rustup/toolchains/stable-*/lib/rustlib/*/bin/gcc-ld/lld-link ~/.rustup/toolchains/*/lib/rustlib/*/bin/gcc-ld/lld-link; do
         "$c" --version >/dev/null 2>&1 && { LLD="$c"; break; }
@@ -10,7 +19,7 @@ if [ -z "$LLD" ]; then
 fi
 [ -x "$LLD" ] || { echo "lld-link not found; set LLD=/path/to/lld-link"; exit 1; }
 mkdir -p build
-printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA SetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage > build/kernel32.def
+printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA SetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage GetModuleFileNameW MoveFileExW CreateFileW DeleteFileW GetFileAttributesW GetEnvironmentVariableW CreateProcessW > build/kernel32.def
 printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW BeginPaint EndPaint SetWindowLongPtrW CallWindowProcW TrackMouseEvent IsWindowEnabled LoadImageW DrawIconEx RedrawWindow DestroyWindow SetForegroundWindow MapWindowPoints UpdateLayeredWindow KillTimer GetCaretBlinkTime IsIconic > build/user32.def
 printf 'LIBRARY GDI32.dll\nEXPORTS\n%s\n' CreateFontA SelectObject SetTextColor SetBkMode TextOutA CreateSolidBrush GetTextExtentPoint32A CreatePen Ellipse GetStockObject DeleteObject Polygon GetDeviceCaps TextOutW GetTextExtentPoint32W GetTextFaceA CreateCompatibleDC CreateCompatibleBitmap DeleteDC BitBlt CreatePatternBrush SetBrushOrgEx AddFontMemResourceEx CreateDIBSection GdiFlush GetTextExtentExPointW GetTextMetricsW SetTextCharacterExtra > build/gdi32.def
 printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext > build/imm32.def
@@ -23,13 +32,16 @@ printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA ShellExecuteW SHGetFol
 printf 'LIBRARY OLE32.dll\nEXPORTS\n%s\n' CoInitializeEx CoTaskMemFree > build/ole32.def
 printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameW > build/comdlg32.def
 printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept getsockname setsockopt recv send closesocket > build/ws2_32.def
+# WinHTTP: the GitHub build's update check and download (updater.inc) only.
+printf 'LIBRARY WINHTTP.dll\nEXPORTS\n%s\n' WinHttpOpen WinHttpConnect WinHttpOpenRequest WinHttpSendRequest WinHttpReceiveResponse WinHttpQueryHeaders WinHttpReadData WinHttpSetOption WinHttpSetTimeouts WinHttpCloseHandle > build/winhttp.def
 printf 'LIBRARY DWMAPI.dll\nEXPORTS\n%s\n' DwmSetWindowAttribute > build/dwmapi.def
 printf 'LIBRARY GDIPLUS.dll\nEXPORTS\n%s\n' GdiplusStartup GdipCreateFromHDC GdipDeleteGraphics GdipSetSmoothingMode GdipCreateSolidFill GdipDeleteBrush GdipCreatePen1 GdipDeletePen GdipSetPenStartCap GdipSetPenEndCap GdipCreatePath GdipDeletePath GdipAddPathArc GdipClosePathFigure GdipFillPath GdipDrawPath GdipFillEllipse GdipDrawLine GdipDrawArc GdipSetPixelOffsetMode GdipFillRectangle GdipAddPathEllipse GdipCreateLineBrushFromRect GdipSetLinePresetBlend GdipCreatePathGradientFromPath GdipSetPathGradientCenterColor GdipSetPathGradientSurroundColorsWithCount GdipSetPathGradientPresetBlend GdipSetPathGradientCenterPoint GdipSetPathGradientFocusScales GdipSetClipPath GdipResetClip GdipCreatePen2 > build/gdiplus.def
-for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus ole32; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
-VERSION=1.3.1 # shown in the apps, the log and the release
+for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus ole32 winhttp; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
+VERSION=1.4.0 # shown in the apps, the log and the release
 # The translations (lang/*.json) as C tables for the mod and the Windows setup, a
-# file for the Mac app, and Keybinder.html (the key layout editor with every language).
-python3 lang.py
+# file for the Mac app, and Keybinder.html (the key layout editor with every language;
+# the Nexus build's doesn't load web fonts when opened as a page).
+WASDMOD_FLAVOR=$FLAVOR python3 lang.py
 CFLAGS="-DVERSION=\"$VERSION\" --target=x86_64-pc-windows-msvc -O2 -fno-stack-protector -fno-builtin -Wall -Wno-incompatible-pointer-types -Wno-int-conversion"
 clang $CFLAGS -Ibuild -c xinput_wasd.c -o build/xinput_wasd.obj
 "$LLD" /dll /brepro /nodefaultlib /entry:DllMain /machine:x64 /def:xinput1_4.def /out:build/xinput1_4.dll build/xinput_wasd.obj build/kernel32.lib build/user32.lib build/gdi32.lib
@@ -47,10 +59,10 @@ if [ ! -f build/webview2/sdk/runtimes/win-x64/native/WebView2Loader.dll ]; then
     (cd build/webview2 && unzip -q -o sdk.nupkg -d sdk)
 fi
 WEBVIEW2_SDK=$WEBVIEW2_SDK python3 pack.py
-clang $CFLAGS -c installer.c -o build/installer.obj
+clang $CFLAGS ${FLAVORDEF:+-D$FLAVORDEF} -c installer.c -o build/installer.obj
 SETUP="build/wasdmod-Windows.exe"
 "$LLD" /brepro /nodefaultlib /entry:start /subsystem:windows /machine:x64 /out:"$SETUP" build/installer.obj build/installer.res \
-    build/kernel32.lib build/user32.lib build/gdi32.lib build/advapi32.lib build/shell32.lib build/comdlg32.lib build/ws2_32.lib build/dwmapi.lib build/gdiplus.lib build/ole32.lib
+    build/kernel32.lib build/user32.lib build/gdi32.lib build/advapi32.lib build/shell32.lib build/comdlg32.lib build/ws2_32.lib build/dwmapi.lib build/gdiplus.lib build/ole32.lib $UPDATELIB
 rm -f build/*.obj build/payload.h
 # Mac app (mac/main.swift): the key layout editor in a window, with install and
 # uninstall at the top, done by mac/wasdmod.sh. Put together outside this folder:
@@ -59,7 +71,7 @@ STAGE=$(mktemp -d "${TMPDIR:-/tmp}/wasdmod-dmg.XXXXXX")
 APP="$STAGE/wasdmod.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 for arch in arm64 x86_64; do
-    swiftc -swift-version 5 -O -target $arch-apple-macos11 mac/main.swift -o "$STAGE/wasdmod-$arch"
+    swiftc -swift-version 5 -O -target $arch-apple-macos11 ${FLAVORDEF:+-D $FLAVORDEF} mac/main.swift mac/updater.swift -o "$STAGE/wasdmod-$arch"
 done
 lipo -create "$STAGE/wasdmod-arm64" "$STAGE/wasdmod-x86_64" -output "$APP/Contents/MacOS/wasdmod"
 rm "$STAGE"/wasdmod-arm64 "$STAGE"/wasdmod-x86_64
@@ -92,10 +104,9 @@ iconutil -c icns build/wasdmod.iconset -o "$APP/Contents/Resources/wasdmod.icns"
 xattr -cr "$APP"
 codesign --force --deep --sign - "$APP" 2>/dev/null
 codesign --verify --deep --strict "$APP"
-cp "mac/Read me.txt" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
-rm -f build/wasdmod-Mac.dmg
-hdiutil create -quiet -volname wasdmod -srcfolder "$STAGE" -fs HFS+ -format UDZO build/wasdmod-Mac.dmg
+# The disk image: the app, an Applications link and the read-me in a designed
+# Finder window (mac/dmg), laid out without opening Finder.
+sh mac/make-dmg.sh "$APP" build/wasdmod-Mac.dmg "mac/Read me.txt"
 rm -rf "$STAGE" build/dmg
 # Manual install (Linux / Steam Deck, or Windows without the setup): the files in
 # a wasdmod folder, zipped.
@@ -107,7 +118,30 @@ cp Keybinder.html "$STAGE/wasdmod/Key Layout Editor.html"
 rm -f build/wasdmod.zip
 (cd "$STAGE" && zip -q -X -r "$OLDPWD/build/wasdmod.zip" wasdmod)
 rm -rf "$STAGE"
-# Ready-to-use downloads.
+# The downloads are named with the version: wasdmod-1.4.0.exe (Windows setup),
+# wasdmod-1.4.0.dmg (Mac) and wasdmod-1.4.0.zip (manual install). The files in build/
+# keep their plain names.
+N="wasdmod-$VERSION"
+if [ "$FLAVOR" = nexus ]; then
+    # The Nexus Mods files, in dist/nexus/: the same three, with the Mac disk image
+    # zipped as wasdmod-VERSION-mac.zip (Nexus Mods doesn't take .dmg files), and all
+    # three in wasdmod-VERSION-nexus.zip for the GitHub release.
+    mkdir -p dist/nexus
+    rm -f dist/nexus/wasdmod*
+    cp "$SETUP" "dist/nexus/$N.exe"
+    cp build/wasdmod.zip "dist/nexus/$N.zip"
+    STAGE=$(mktemp -d "${TMPDIR:-/tmp}/wasdmod-nexus.XXXXXX")
+    cp build/wasdmod-Mac.dmg "$STAGE/$N.dmg"
+    (cd "$STAGE" && zip -q -X "$OLDPWD/dist/nexus/$N-mac.zip" "$N.dmg")
+    rm -rf "$STAGE"
+    (cd dist/nexus && zip -q -X "wasdmod-$VERSION-nexus.zip" "$N.exe" "$N-mac.zip" "$N.zip")
+    echo "Built the Nexus Mods files (no update check) in dist/nexus/: $N.exe, $N-mac.zip, $N.zip, and all three in wasdmod-$VERSION-nexus.zip"
+    exit 0
+fi
+# Ready-to-use downloads (earlier versions' files, and the old unversioned names, go).
 mkdir -p dist
-cp "$SETUP" build/wasdmod-Mac.dmg build/wasdmod.zip dist/
-echo "Built build/xinput1_4.dll, Keybinder.html and dist/ (wasdmod-Windows.exe, wasdmod-Mac.dmg, wasdmod.zip)"
+rm -f dist/wasdmod-*.exe dist/wasdmod-*.dmg dist/wasdmod*.zip
+cp "$SETUP" "dist/$N.exe"
+cp build/wasdmod-Mac.dmg "dist/$N.dmg"
+cp build/wasdmod.zip "dist/$N.zip"
+echo "Built build/xinput1_4.dll, Keybinder.html and dist/ ($N.exe, $N.dmg, $N.zip)"

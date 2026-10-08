@@ -1,0 +1,156 @@
+<!doctype html>
+<!--
+  The Mac disk image's window background. render.sh turns it into background.png
+  and background@2x.png; settings.py places the icons on it (from layout.js).
+
+  660 x 420 points show in Finder. The picture runs 60 points further down, so a
+  window that comes out a little taller (older macOS has a shorter title bar)
+  never shows a bare edge.
+
+  Finder writes the names under the icons in black whenever a window has a
+  background picture, whatever the Mac's appearance, so each name sits on a light
+  keycap drawn here. The icon positions are in layout.js, which settings.py reads too.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>wasdmod disk image background</title>
+<style>
+  /* "Mojang" by b.tenthousand (CC0), the wordmark's pixel font */
+  @font-face { font-family: "Pixel"; src: url("../../fonts/Mojang-Regular.ttf") format("truetype"); }
+  :root {
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  }
+  html, body { margin: 0; width: 660px; height: 480px; overflow: hidden; background: #000; }
+  body { position: relative; color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+
+  /* the site's warm light, under the icons */
+  .atmos {
+    inset: 0;
+    background:
+      radial-gradient(50% 42% at 50% 190px, rgba(255, 106, 61, .16), rgba(255, 61, 119, .055) 55%, transparent 78%),
+      radial-gradient(42% 36% at 94% 0%, rgba(162, 89, 255, .13), transparent 72%),
+      radial-gradient(34% 30% at 2% 100%, rgba(255, 179, 64, .05), transparent 70%);
+  }
+
+  .brand {
+    left: 0;
+    right: 0;
+    top: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    font: 400 32px/1 "Pixel", monospace;
+    letter-spacing: .02em;
+  }
+  .brand canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+  .brand span { transform: translateY(-2px); }
+
+  /* the drag cue: a dashed trail in the brand colours, ending in a chevron */
+  .cue { overflow: visible; filter: drop-shadow(0 0 9px rgba(255, 106, 61, .5)); }
+
+  /* a keycap under each icon for its name (Finder draws the name, in black) */
+  .cap {
+    height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(#c9c9ce, #a9a9ae);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .55),
+      inset 0 -2px 0 rgba(0, 0, 0, .16),
+      0 2px 0 rgba(0, 0, 0, .55),
+      0 8px 18px rgba(0, 0, 0, .5);
+  }
+  .cap.warm {
+    background: linear-gradient(#ffc061, #ff7a45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 240, 210, .8),
+      inset 0 -2px 0 rgba(120, 30, 0, .22),
+      0 2px 0 rgba(0, 0, 0, .55),
+      0 0 22px rgba(255, 106, 61, .38),
+      0 8px 18px rgba(0, 0, 0, .5);
+  }
+  .cap.cool {
+    background: linear-gradient(#ff6f98, #b57aff);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 225, 240, .75),
+      inset 0 -2px 0 rgba(60, 0, 90, .22),
+      0 2px 0 rgba(0, 0, 0, .55),
+      0 0 22px rgba(162, 89, 255, .38),
+      0 8px 18px rgba(0, 0, 0, .5);
+  }
+
+  .steps { text-align: center; }
+  .steps h1 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -.01em; }
+  .steps p { margin: 4px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+  .steps b { font-weight: 600; color: var(--text); }
+
+  /* render.sh never sets this; open background.html#guides to see the icon boxes */
+  .guide { outline: 1px dashed rgba(0, 255, 255, .7); }
+</style>
+</head>
+<body>
+<div class="abs atmos"></div>
+<div class="abs brand"><canvas id="pad" width="16" height="16"></canvas><span>wasdmod</span></div>
+<div class="abs steps" id="steps">
+  <h1>Drag wasdmod into Applications</h1>
+  <p>Then open it and click <b>Install</b>.</p>
+</div>
+
+<script src="layout.js"></script>
+<script>
+const ICON = LAYOUT.iconSize, TEXT = LAYOUT.textSize, ITEMS = LAYOUT.items;
+
+// The app icon's pixel art, as in pack.py.
+const ART = [
+  "................", "................", "................", "..oooooooooooo..",
+  ".ohhhhhhhhhhhho.", "obbbwbbbbbbybbbo", "obbwwwbbbbubrbbo", "obbbwbbbbbbgbbbo",
+  "obbbbbbbbbbbbbbo", "obbbbboooobbbbbo", ".obbbo....obbbo.", "..ooo......ooo..",
+  "................", "................", "................", "................",
+];
+const COLORS = { o: "#1b1d22", b: "#4a4f59", h: "#6b717d", w: "#eef0f2", g: "#3fbf5f", r: "#e0463c", y: "#f2c230", u: "#3d8bf0" };
+const pad = document.getElementById("pad").getContext("2d");
+ART.forEach((row, y) => [...row].forEach((c, x) => { if (COLORS[c]) { pad.fillStyle = COLORS[c]; pad.fillRect(x, y, 1, 1); } }));
+
+function box(cls, x, y, w, h) {
+  const el = document.createElement("div");
+  el.className = "abs " + cls;
+  Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+  document.body.appendChild(el);
+  return el;
+}
+
+// Name keycaps, sized to the name in the system font, just under each icon (Finder
+// puts the name a few points below the icon; the keycap leaves room either way).
+const measure = document.createElement("canvas").getContext("2d");
+measure.font = `${TEXT}px ${getComputedStyle(document.body).fontFamily}`;
+for (const it of ITEMS) {
+  const w = Math.round(measure.measureText(it.label).width + 30);
+  box("cap " + it.cap, it.x - w / 2, it.y + ICON / 2 + 2, w, 26);
+}
+
+// The cue between the first two icons, at their height.
+const [a, b] = ITEMS, x0 = a.x + ICON / 2 + 20, x1 = b.x - ICON / 2 - 20, w = x1 - x0;
+const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+svg.setAttribute("class", "abs cue");
+Object.assign(svg.style, { left: x0 + "px", top: a.y - 14 + "px", width: w + "px", height: "28px" });
+svg.setAttribute("viewBox", `0 0 ${w} 28`);
+svg.innerHTML = `
+  <defs><linearGradient id="g" x1="0" x2="${w}" y1="0" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#ffb340"/><stop offset=".45" stop-color="#ff6a3d"/>
+    <stop offset=".75" stop-color="#ff3d77"/><stop offset="1" stop-color="#a259ff"/>
+  </linearGradient></defs>
+  <path d="M2 14 H${w - 14}" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-dasharray="9 9" fill="none"/>
+  <path d="M${w - 13} 5 L${w - 3} 14 L${w - 13} 23" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+document.body.appendChild(svg);
+
+// Instructions between the icons' names and the bottom.
+Object.assign(document.getElementById("steps").style, { left: "0", right: "0", top: LAYOUT.stepsTop + "px" });
+
+if (location.hash === "#guides") for (const it of ITEMS) box("guide", it.x - ICON / 2, it.y - ICON / 2, ICON, ICON);
+</script>
+</body>
+</html>

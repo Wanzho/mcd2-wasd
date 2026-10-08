@@ -1,6 +1,10 @@
 # Builds wasdmod from this repository on GitHub's macOS machines (build.sh): the
-# Windows setup, the Mac app and the manual-install zip, kept as the run's
-# artifact. For a published release, the files are attached to the release.
+# Windows setup, the Mac app and the manual-install zip (wasdmod-VERSION.exe, .dmg,
+# .zip, with VERSION from build.sh), kept as the run's artifact; and the same three
+# for Nexus Mods without the update check (FLAVOR=nexus, in dist/nexus/). For a
+# published release (tagged vVERSION), the files are attached to the release with
+# SHA256SUMS, which the apps' one-click update checks its download against, and
+# the Nexus Mods files as one wasdmod-VERSION-nexus.zip.
 #
 # Code signing, by the SignPath Foundation: once the SignPath project exists, set
 # the repository variable SIGNPATH_ORGANIZATION_ID and the secret
@@ -34,6 +38,15 @@ jobs:
       - name: Build
         run: LLD="$(brew --prefix lld)/bin/lld-link" sh build.sh
 
+      # The same files with no internet code at all (Nexus Mods doesn't allow an
+      # update check): dist/nexus/, and all three in wasdmod-VERSION-nexus.zip.
+      - name: Build the Nexus Mods files
+        run: LLD="$(brew --prefix lld)/bin/lld-link" FLAVOR=nexus sh build.sh
+
+      # The version the files are named with (VERSION= in build.sh).
+      - name: Version
+        run: echo "VERSION=$(sed -n 's/^VERSION=\([0-9][0-9.]*\).*/\1/p' build.sh)" >> "$GITHUB_ENV"
+
       - name: Keep the downloads
         uses: actions/upload-artifact@v7
         with:
@@ -41,13 +54,18 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      # (SignPath's configuration signs wasdmod-Windows.exe: the setup goes under that name.)
+      - name: Prepare the Windows setup for signing
+        if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: mkdir -p signing && cp "dist/wasdmod-$VERSION.exe" signing/wasdmod-Windows.exe
+
       - name: Keep the Windows setup for signing
         id: setup
         if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
         uses: actions/upload-artifact@v7
         with:
           name: wasdmod-Windows-unsigned
-          path: dist/wasdmod-Windows.exe
+          path: signing/wasdmod-Windows.exe
           if-no-files-found: error
 
       - name: Sign the Windows setup (SignPath Foundation)
@@ -65,10 +83,25 @@ jobs:
 
       - name: Use the signed setup
         if: github.event_name == 'release' && vars.SIGNPATH_ORGANIZATION_ID != ''
-        run: cp signed/wasdmod-Windows.exe dist/wasdmod-Windows.exe
+        run: cp signed/wasdmod-Windows.exe "dist/wasdmod-$VERSION.exe"
+
+      # After signing, so the Windows setup's checksum is the signed file's. The apps'
+      # update only takes a download whose version is the release's, so the tag must
+      # match build.sh's VERSION.
+      - name: Checksums
+        if: github.event_name == 'release'
+        run: |
+          [ "${{ github.event.release.tag_name }}" = "v$VERSION" ] || { echo "::error::The release tag isn't v$VERSION (VERSION in build.sh)."; exit 1; }
+          cd dist
+          shasum -a 256 "wasdmod-$VERSION.exe" "wasdmod-$VERSION.dmg" "wasdmod-$VERSION.zip" > SHA256SUMS
+          (cd nexus && shasum -a 256 "wasdmod-$VERSION-nexus.zip") >> SHA256SUMS
+          cat SHA256SUMS
 
       - name: Attach the files to the release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/wasdmod-Windows.exe dist/wasdmod-Mac.dmg dist/wasdmod.zip --clobber
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" --clobber \
+            "dist/wasdmod-$VERSION.exe" "dist/wasdmod-$VERSION.dmg" "dist/wasdmod-$VERSION.zip" dist/SHA256SUMS \
+            "dist/nexus/wasdmod-$VERSION-nexus.zip#wasdmod-$VERSION-nexus.zip (the files for Nexus Mods: the same apps without the update check)"

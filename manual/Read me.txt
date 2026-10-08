@@ -2,8 +2,9 @@ wasdmod: Minecraft Dungeons II controller mod (manual install)
 ==============================================================
 
 For Linux and Steam Deck (Proton), or for Windows if you'd rather not run the
-setup. On a Mac, use wasdmod-Mac.dmg instead: CrossOver needs settings that the
-app makes for you (and https://github.com/Wanzho/mcd2-crossover to run the game).
+setup. On a Mac, use the wasdmod app (the .dmg) instead: it makes the CrossOver
+settings the mod needs. To run the game in CrossOver, set it up with MCD2
+Crossover: https://github.com/Wanzho/mcd2-crossover
 
 What's inside
 -------------

@@ -32,8 +32,26 @@ struct Languages {
         return order.first { $0.lowercased() == base }
     }
 }
+// The app's settings. Test builds can keep theirs apart (WASDMOD_TEST_DEFAULTS, a
+// defaults domain), so a test never touches the player's settings.
+#if SELFTEST
+let prefs = ProcessInfo.processInfo.environment["WASDMOD_TEST_DEFAULTS"].flatMap { UserDefaults(suiteName: $0) } ?? .standard
+// WASDMOD_TEST_UPDATE=check|update|after: the update flow without a window or Dock
+// icon (updater.swift), logged to WASDMOD_TEST_LOG.
+let testHeadless = ProcessInfo.processInfo.environment["WASDMOD_TEST_UPDATE"] != nil
+func testLog(_ s: String) {
+    print(s); fflush(stdout)
+    guard let path = ProcessInfo.processInfo.environment["WASDMOD_TEST_LOG"] else { return }
+    if !FileManager.default.fileExists(atPath: path) { FileManager.default.createFile(atPath: path, contents: nil) }
+    if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data("[\(getpid())] \(s)\n".utf8)); h.closeFile() }
+}
+#else
+let prefs = UserDefaults.standard
+let testHeadless = false
+@inline(__always) func testLog(_ s: @autoclosure () -> String) {}
+#endif
 let languages = Languages()
-var lang = languages.match(UserDefaults.standard.string(forKey: "lang") ?? "")
+var lang = languages.match(prefs.string(forKey: "lang") ?? "")
     ?? Locale.preferredLanguages.lazy.compactMap { languages.match($0) }.first ?? "en"
 func L(_ s: String, _ vars: [String: String] = [:]) -> String {
     var out = languages.text[lang]?[s].flatMap { $0.isEmpty ? nil : $0 } ?? s
@@ -77,16 +95,19 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     var storeURL: URL { support.appendingPathComponent("editor.json") }
     var info: [String: String] = [:]
     var busy = false
+    #if !NEXUS
+    lazy var updater = Updater(app: self) // the one-click update (updater.swift)
+    #endif
 
     // The game's folder, picked by hand (wins over the automatic search while it exists).
     var gameDir: String? {
-        get { UserDefaults.standard.string(forKey: "game") }
-        set { UserDefaults.standard.set(newValue, forKey: "game") }
+        get { prefs.string(forKey: "game") }
+        set { prefs.set(newValue, forKey: "game") }
     }
     // A bottle picked by hand in earlier versions.
     var bottle: String? {
-        get { UserDefaults.standard.string(forKey: "bottle") }
-        set { UserDefaults.standard.set(newValue, forKey: "bottle") }
+        get { prefs.string(forKey: "bottle") }
+        set { prefs.set(newValue, forKey: "bottle") }
     }
 
     func button(_ action: Selector) -> NSButton {
@@ -98,6 +119,18 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     // ------------------------------------------------------------ wasdmod.sh
 
     func sh(_ args: [String], _ extra: [String: String] = [:]) -> (ok: Bool, out: String) {
+        #if SELFTEST
+        // Test builds: with WASDMOD_TEST_GAMEROOT set, nothing that changes a game folder
+        // runs on a game outside it (the player's own game stays untouched).
+        if let root = ProcessInfo.processInfo.environment["WASDMOD_TEST_GAMEROOT"], let cmd = args.first,
+           !["status", "locate", "folder", "report", "controls"].contains(cmd) || (cmd == "controls" && args.count > 1) {
+            let game = fields(shRun(["status"], extra).out)["game"] ?? ""
+            if game.isEmpty || !game.hasPrefix(root) { testLog("test guard: refused \(cmd) on \(game.isEmpty ? "(no game)" : game)"); return (false, "test guard: not a test game folder") }
+        }
+        #endif
+        return shRun(args, extra)
+    }
+    func shRun(_ args: [String], _ extra: [String: String] = [:]) -> (ok: Bool, out: String) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         p.arguments = [res.appendingPathComponent("wasdmod.sh").path] + args
@@ -146,8 +179,12 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         } else if state == "current" {
             subtitle = L("Installed")
         } else if state == "older" {
-            subtitle = L("Update available")
-            text = L("An older version is installed. Click Update.")
+            // Never "up to date" while the game folder has an older mod than this app.
+            subtitle = L("Mod in the game is out of date")
+            let v = info["modversion"] ?? "", running = info["running"] == "yes"
+            text = v.isEmpty ? (running ? L("The mod in the game is an older version. Quit the game, then click Update.") : L("The mod in the game is an older version. Click Update to update it."))
+                : (running ? L("The mod in the game is still {version}; this app is {app}. Quit the game, then click Update.", ["version": v, "app": version])
+                           : L("The mod in the game is still {version}; this app is {app}. Click Update to update it.", ["version": v, "app": version]))
             symbol = "arrow.down.circle.fill"
         } else if state == "off" {
             subtitle = L("Turned off")
@@ -162,6 +199,9 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
             text = L("Not installed yet. Quit the game, then click Install.")
         }
         if installed { subtitle += "  ·  " + L("Layout: {layout}", ["layout": layoutName(info["layout"] ?? "")]) }
+        #if !NEXUS
+        if updater.coversModState { text = nil } // the update card says it, as step 2
+        #endif
         if !busy { window?.subtitle = subtitle }
         bannerText.stringValue = text ?? ""
         bannerIcon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
@@ -240,6 +280,9 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     }
 
     func alert(_ title: String, _ text: String, style: NSAlert.Style = .informational, buttons: [String] = []) -> NSApplication.ModalResponse {
+        #if SELFTEST
+        if testHeadless { testLog("alert: \(title) | \(text)"); return .alertFirstButtonReturn }
+        #endif
         let a = NSAlert()
         a.messageText = title; a.informativeText = text; a.alertStyle = style
         for b in buttons.isEmpty ? [L("OK")] : buttons { a.addButton(withTitle: b) }
@@ -309,45 +352,11 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
                : alert(L("Turned off."), L("From the next game start, the game runs without wasdmod. Your layouts are kept; click Turn On to use it again.\n\nIn a running game, the backtick key (`) turns it off right away."))
     }
 
-    // Check for Updates: the newest release on GitHub against this app's version.
-    @objc func checkForUpdates() {
-        let api = URL(string: "https://api.github.com/repos/Wanzho/mcd2-wasd/releases/latest")!
-        var request = URLRequest(url: api, timeoutInterval: 15)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            let json = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-            let tag = json?["tag_name"] as? String
-            let page = (json?["html_url"] as? String).flatMap(URL.init(string:))
-            let dmg = (json?["assets"] as? [[String: Any]])?.first { ($0["name"] as? String)?.hasSuffix(".dmg") == true }?["browser_download_url"] as? String
-            DispatchQueue.main.async {
-                guard let tag, (response as? HTTPURLResponse)?.statusCode == 200 else {
-                    _ = self.alert(L("Couldn't check for updates"), error?.localizedDescription ?? L("GitHub didn't answer. Try again later."), style: .warning)
-                    return
-                }
-                let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-                guard self.isNewer(latest, than: self.version) else {
-                    _ = self.alert(L("wasdmod is up to date"), L("{version} is the newest version.", ["version": self.version]))
-                    return
-                }
-                if self.alert(L("wasdmod {version} is available", ["version": latest]),
-                              L("You have {version}. Download the new one, open it and drag wasdmod into Applications to replace this one; your layouts are kept.", ["version": self.version]),
-                              buttons: [L("Download"), L("Later")]) == .alertFirstButtonReturn,
-                   let url = dmg.flatMap(URL.init(string:)) ?? page {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        }.resume()
-    }
-    // "1.10.0" > "1.9.2"; a test build ("dev") is never out of date.
-    func isNewer(_ a: String, than b: String) -> Bool {
-        let x = a.split(separator: ".").map { Int($0) ?? 0 }, y = b.split(separator: ".").compactMap { Int($0) }
-        if y.isEmpty { return false }
-        for i in 0..<max(x.count, y.count) {
-            let p = i < x.count ? x[i] : 0, q = i < y.count ? y[i] : 0
-            if p != q { return p > q }
-        }
-        return false
-    }
+    #if NEXUS
+    // The Nexus Mods build has no internet code: updates are on the mod's Nexus Mods
+    // page, opened in the browser.
+    @objc func openNexusPage() { NSWorkspace.shared.open(URL(string: "https://www.nexusmods.com/minecraftdungeons2/mods/104")!) }
+    #endif
 
     // Getting the game itself to run in CrossOver (Steam, sign-in) is MCD2 Crossover's job.
     @objc func openSetupHelp() { NSWorkspace.shared.open(URL(string: "https://github.com/Wanzho/mcd2-crossover")!) }
@@ -416,8 +425,8 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         // panels from the next start).
         if cmd == "lang", let value = body["value"] as? String, let code = languages.match(value) {
             lang = code
-            UserDefaults.standard.set(code, forKey: "lang")
-            UserDefaults.standard.set([code == "pt" ? "pt-BR" : code], forKey: "AppleLanguages")
+            prefs.set(code, forKey: "lang")
+            prefs.set([code == "pt" ? "pt-BR" : code], forKey: "AppleLanguages")
             applyTexts()
             return replyHandler(nil, nil)
         }
@@ -505,6 +514,9 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         chooseButton.title = L("Choose Game Folder…")
         setupButton.title = L("Get MCD2 Crossover")
         buildMenu()
+        #if !NEXUS
+        updater.show() // the update card's text too
+        #endif
         refresh()
     }
 
@@ -535,11 +547,15 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         banner.spacing = 10
         banner.edgeInsets = NSEdgeInsets(top: 9, left: 16, bottom: 9, right: 16)
         bannerLine.boxType = .separator
-        let content = NSStackView(views: [banner, bannerLine, web])
+        var top: [NSView] = []
+        #if !NEXUS
+        top = [updater.card, updater.line] // the update card, while there's an update to tell about
+        #endif
+        let content = NSStackView(views: top + [banner, bannerLine, web])
         content.orientation = .vertical
         content.spacing = 0
         content.alignment = .leading
-        for v in [banner, bannerLine, web] as [NSView] { v.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true }
+        for v in top + [banner, bannerLine, web] as [NSView] { v.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true }
 
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 860),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -557,6 +573,10 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         window.center()
         window.setFrameAutosaveName("wasdmod")
         applyTexts()
+        #if !NEXUS
+        updater.start() // finishes an update this app was started for, or checks (once a day)
+        #endif
+        if testHeadless { return } // (test builds: the update flow only, no window)
         web.loadFileURL(res.appendingPathComponent("Key Layout Editor.html"), allowingReadAccessTo: res)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self.showEditor() }
         window.makeKeyAndOrderFront(nil)
@@ -567,6 +587,18 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
 
     // Back in the app after playing: the game folder may have changed.
     func applicationDidBecomeActive(_ notification: Notification) { if window != nil && !busy { refresh() } }
+
+    // Check for Updates… (the GitHub build), or Get Updates on Nexus Mods… (the Nexus Mods build).
+    var updatesMenuItem: (String, Selector?, String) {
+        #if NEXUS
+        return (L("Get Updates on Nexus Mods…"), #selector(openNexusPage), "")
+        #else
+        return (L("Check for Updates…"), #selector(checkNow), "")
+        #endif
+    }
+    #if !NEXUS
+    @objc func checkNow() { updater.checkNow() }
+    #endif
 
     func buildMenu() {
         let main = NSMenu()
@@ -581,7 +613,7 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
             main.addItem(item)
         }
         menu("wasdmod", [(L("About wasdmod"), #selector(NSApplication.orderFrontStandardAboutPanel(_:)), ""),
-                         (L("Check for Updates…"), #selector(checkForUpdates), ""), ("-", nil, ""),
+                         updatesMenuItem, ("-", nil, ""),
                          (L("Choose Game Folder…"), #selector(chooseGame), "o"), (L("Find Game Automatically"), #selector(findGameAutomatically), ""), ("-", nil, ""),
                          (L("Hide wasdmod"), #selector(NSApplication.hide(_:)), "h"), ("-", nil, ""),
                          (L("Quit wasdmod"), #selector(NSApplication.terminate(_:)), "q")])
@@ -596,5 +628,5 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
 let app = NSApplication.shared
 let delegate = App()
 app.delegate = delegate
-app.setActivationPolicy(.regular)
+app.setActivationPolicy(testHeadless ? .prohibited : .regular)
 app.run()

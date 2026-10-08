@@ -688,6 +688,34 @@ code { font-family: var(--mono); font-size: .92em; }
 @media (prefers-reduced-motion: reduce) {
   .app *, .app *::before, .app *::after { animation: none !important; transition-duration: .01s !important; transition-delay: 0s !important; }
 }
+/* ---- the game's keys: the sync switch in the checklist card, "Change them for me" in the notice */
+.apply-game .game-sync { margin: 0 0 4px; }
+.mismatch .acts { grid-row: span 2; display: grid; gap: 6px; justify-items: stretch; max-width: 22rem; }
+.mismatch .acts button { grid-row: auto; }
+.mismatch .acts .warn { font-size: 13px; font-weight: 600; color: var(--danger); }
+.mismatch .acts .out-actions { margin: 0; }
+.mismatch .acts .out-actions button { flex: 1 1 auto; }
+.app .mismatch .acts .warn { font-size: var(--fs-s); color: var(--danger-fg); }
+.app .mismatch .acts button.primary { color: #fff; background: var(--accent); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 6px 16px -8px rgba(10, 132, 255, .9); }
+.app .mismatch .acts button.danger { color: #fff; background: var(--danger); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2); }
+@media (max-width: 720px) { .mismatch .acts { grid-row: auto; max-width: none; } }
+/* ---- undo / redo, and confirming what can't be taken back lightly (deleting a layout...) */
+.undo-group { display: inline-flex; gap: 4px; }
+.undo-group button { display: inline-grid; place-items: center; padding: 7px 9px; }
+.undo-group svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.undo-group button:disabled { opacity: .4; cursor: default; }
+button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+button.danger:hover { filter: brightness(1.1); }
+[data-confirm] .warn { color: var(--danger); }
+.toast.act { display: flex; align-items: center; gap: 12px; }
+.toast.act.show { pointer-events: auto; }
+.toast .toast-btn { flex: none; padding: 4px 12px; font-weight: 600; }
+.app .undo-group button { padding: 5px 9px; }
+.app button.danger { color: #fff; background: var(--danger); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 6px 16px -8px rgba(255, 69, 58, .9); }
+.app button.danger:hover:not(:disabled) { background: #ff5e55; filter: none; }
+.app .toast .toast-btn { padding: 3px 12px; color: #fff; background: var(--accent); box-shadow: none; }
+.app .toast .toast-btn:hover { background: var(--accent-hi); }
+.app .apply-game[data-confirm] .warn { font-size: var(--fs-s); font-weight: 600; color: var(--danger-fg); }
 </style>
 
 <div class="wrap">
@@ -778,8 +806,8 @@ code { font-family: var(--mono); font-size: .92em; }
     <details id="whereItGoes">
       <summary data-t="Where it goes"></summary>
       <ol class="steps">
-        <li data-tx="Windows: run <code>wasdmod-Windows.exe</code> and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself."></li>
-        <li><span data-tx="Mac: the <b>wasdmod</b> app has this editor built in and saves straight into the game. Or put the file yourself in (CrossOver, default Steam bottle):"></span>
+        <li data-tx="Windows: run <code>wasdmod</code> and click <b>Load layout file</b>. Or put the file in the game's <code>Dungeons\Binaries\Win64</code> folder yourself."></li>
+        <li><span data-tx="Mac: the wasdmod app has this editor built in and saves straight into the game. Or put the file in this folder yourself (CrossOver, default Steam bottle):"></span>
           <div class="path" id="gamePath">~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Minecraft Dungeons II/Dungeons/Binaries/Win64</div>
           <button id="copyPath" type="button" data-t="Copy folder path"></button> <span class="note" data-t="In Finder: Go › Go to Folder (⇧⌘G), paste."></span></li>
         <li data-tx="The file is <code>default.txt</code> or <code>author.txt</code> for an unchanged built-in layout, otherwise <code>wasdmod-MMDDYY.txt</code>. The mod uses the newest of them, so a fresh save always wins, and a running game switches to it within a second."></li>
@@ -837,8 +865,11 @@ const ACTIONS = [
   { id: "right", sec: "act", cat: "move", label: _("Move right"), move: "Right", badge: _("L-stick") },
   { id: "dodge", sec: "act", cat: "move", label: _("Directional dodge"), sub: _("tap: dodge the way you're moving · hold, move the mouse, let go: dodge that way"), move: "DodgeMouse", badge: _("R-stick"), game: _("Directional Dodge") },
   { id: "fdodge", sec: "act", cat: "move", label: _("Forward dodge"), sub: _("quick dodge the way you face"), pad: "LB", game: _("Forward Dodge") },
-  { id: "jump", sec: "act", cat: "action", label: _("Jump / interact"), pad: "A", game: _("Jump") },
-  { id: "melee", sec: "act", cat: "action", label: _("Melee"), sub: _("in the air: heavy jump attack"), pad: "X", game: _("Interact, Melee Attack") },
+  { id: "jump", sec: "act", cat: "action", label: _("Jump / interact"), sub: _("on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key"), pad: "A", game: _("Jump") },
+  // The game's keyboard settings have interact and melee as one action ("Interact, Melee
+  // Attack"), while on a controller interact is A, with jump. So that action's keys may also
+  // be your Jump / interact keys (an F there to interact is right): alsoOk.
+  { id: "melee", sec: "act", cat: "action", label: _("Melee"), sub: _("in the air: heavy jump attack"), pad: "X", game: _("Interact, Melee Attack"), alsoOk: "jump" },
   { id: "ranged", sec: "act", cat: "action", label: _("Ranged (bow)"), sub: _("on a mouse button: hold it to aim at the cursor"), pad: "RT", game: _("Ranged Attack") },
   { id: "art1", sec: "act", cat: "action", label: _("Artifact 1"), pad: "Y", game: _("Artifact 1") },
   { id: "art2", sec: "act", cat: "action", label: _("Artifact 2"), pad: "B", game: _("Artifact 2") },
@@ -874,6 +905,9 @@ const padAllowed = (a, st) => a.id === "inventory" || !!st.opt.ControllerMenus;
 const knownGame = arr => (arr || []).filter(k => k && k !== "?");
 const firstGame = (a, st) => a.fixedGame || knownGame(st.game[a.id])[0] || null;
 const gameSlots = (a, st) => a.fixedGame ? [a.fixedGame] : knownGame(st.game[a.id]);
+// The keys an action may have in the game's keyboard settings: the row's own, and for
+// "Interact, Melee Attack" also the Jump / interact keys (see alsoOk).
+const okGameKeys = (a, st) => a.alsoOk ? uniq([...(st.keys[a.id] || []), ...(st.keys[a.alsoOk] || [])]) : st.keys[a.id] || [];
 // The mod's row labels for the on-screen key list, per controller button.
 const PAD_LABEL = { A: "Jump / interact", X: "Melee (in the air: heavy jump attack)", RT: "Ranged (bow)", Y: "Artifact 1", B: "Artifact 2", RB: "Artifact 3",
   LT: "Health potion", LB: "Forward dodge", LS: "Guidance trail", RS: "Emotes", DUp: "Inventory (tap: full, hold: mini)", DDown: "Social menu",
@@ -957,7 +991,7 @@ Language=Auto
 RequireFocus=1
 AlwaysConnected=1
 Log=1`;
-// The Recommended layout: bow on side button 5, inventory (E), quests (V), social
+// The Recommended layout: bow on side button 4 and C, inventory (E), quests (V), social
 // (/) and teleport (X) on the controller so you can keep moving, Tab for the menu wheel,
 // everything else on the game's own keys. It assumes the game's default keyboard
 // keys ("in game"), and the mod converts your keys onto them.
@@ -981,7 +1015,7 @@ Y=Q
 LB=Shift
 RB=3
 LT=R
-RT=Mouse4
+RT=Mouse4, C
 Back=None
 Start=None
 LS=Mouse3
@@ -1096,7 +1130,7 @@ const TUNE = [
   { sec: "Movement", key: "TurnMs", label: _("Turn time"), sub: _("a full 180° turn (90° takes half). 0 ms = sharpest; higher = smoother, but it can feel less responsive"), min: 0, max: 1000, step: 10, unit: "ms" },
   { sec: "Move", key: "DodgeDragPx", label: _("Dodge drag distance"), sub: _("while you hold Directional dodge, moving the mouse this far dodges that way instead of the way you're moving. Lower = a small move is enough; higher = it takes a bigger move"), min: 10, max: 150, step: 5, unit: "px" },
   { sec: "Move", key: "DodgeFlickMs", label: _("Dodge stick time"), sub: _("how long each dodge pushes the controller's right stick. Lower = quicker dodges back to back, but too short and the game can miss one; higher = more reliable"), min: 30, max: 200, step: 10, unit: "ms" },
-  { sec: "Mouse", key: "MouseModeOnMovePx", label: _("Mouse move that brings back the cursor"), sub: _("how far you move the mouse, while not walking, before the cursor comes back. Lower = a small move does it; higher = it takes a bigger move, so bumps don't. 0 = never (and no bump correction)"), min: 0, max: 150, step: 5, unit: "px" },
+  { sec: "Mouse", key: "MouseModeOnMovePx", label: _("Mouse move that brings back the cursor"), sub: _("how far you move the mouse, while not walking, before the cursor comes back. Lower = a small move does it; higher = it takes a bigger move, so bumps don't. 0 = never (bump correction is then off too)"), min: 0, max: 150, step: 5, unit: "px" },
   { sec: "Mouse", key: "BumpNudgePct", label: _("Bump correction"), sub: _("a small mouse bump can switch the game's button prompts to keyboard; once the mouse stops, the mod pushes the right stick lightly to switch them back. Lower = a lighter push (lower it if it ever makes you dodge); 0 = off"), min: 0, max: 60, step: 5, unit: "%" },
   { sec: "Keys", key: "MenuTapMs", label: _("Tap vs hold"), sub: _("menu keys: a press shorter than this is a tap (the menu opens and the cursor stays), a longer one a hold (a quick overlay like the mini inventory, gone when you let go). Higher = longer presses still count as taps"), min: 100, max: 600, step: 25, unit: "ms" },
   { sec: "Options", key: "LegendSeconds", label: _("Key list at start"), sub: _("how long the on-screen key list shows when the game starts. 0 = only when you press {legend}"), min: 0, max: 60, step: 5, unit: "s" },
@@ -1118,7 +1152,7 @@ const TOGGLES = [
     on: _("holding a mouse button that's on {bow} switches the game to keyboard and mouse, so the bow aims at the cursor; your movement keys wait until you let go"),
     off: _("a mouse button on {bow} presses the controller's RT like any other key, so the bow aims the way your character faces") },
   { sec: "Mouse", key: "KeepCursorInWindow", label: _("Keep the mouse inside the game window while playing"), ...flag,
-    on: _("while you play, the hidden cursor can't leave the game window (and is put back in the middle while you walk), so a click can't land in another app"),
+    on: _("while you play, the hidden cursor can't leave the game window (the mod puts it back in the middle while you walk), so a click can't land in another app"),
     off: _("the hidden cursor can drift out of the game window, so a click can land in another app or on the desktop") },
   { sec: "Options", key: "BlockOtherKeys", label: _("Block keys that aren't used"), ...flag,
     on: _("while you play, keys this layout doesn't use never reach the game, so a stray press can't switch it to keyboard mode"),
@@ -1128,7 +1162,7 @@ const TOGGLES = [
     off: _("the game sees mouse movement while you play, which can switch it to keyboard mode") },
   { sec: "Options", key: "Legend", label: _("On-screen key list"), ...flag,
     on: _("a list of your keys shows over the game when it starts, for a moment after you save a layout, and when you press {legend}"),
-    off: _("no key list over the game, not even with {legend}") },
+    off: _("the key list never shows over the game, even when you press {legend}") },
 ];
 const TG = key => TOGGLES.find(o => o.key === key);
 
@@ -1271,10 +1305,12 @@ function recommendations(st) {
   const out = [];
   for (const a of ACTIONS) {
     if (!a.game) continue;
-    const keys = st.keys[a.id], g = st.game[a.id] || [];
-    if (!keys.length) { g.forEach((k, i) => { if (k && k !== "?") out.push({ a, slot: i, want: null, was: k }); }); continue; }
-    if (!keys.includes(g[0])) out.push({ a, slot: 0, want: keys.find(k => !isArrow(k)) || keys[0], was: g[0] || null });
-    if (g[1] && g[1] !== "?" && !keys.includes(g[1])) out.push({ a, slot: 1, want: null, was: g[1] });
+    const keys = st.keys[a.id], g = st.game[a.id] || [], ok = okGameKeys(a, st), known = k => k && k !== "?";
+    if (!keys.length) { g.forEach((k, i) => { if (known(k) && !ok.includes(k)) out.push({ a, slot: i, want: null, was: k }); }); continue; }
+    // The first column is one of your keys, or a key it may also have while yours is in the second.
+    const firstOk = keys.includes(g[0]) || (ok.includes(g[0]) && keys.includes(g[1]));
+    if (!firstOk) out.push({ a, slot: 0, want: keys.find(k => !isArrow(k)) || keys[0], was: g[0] || null });
+    if (known(g[1]) && !ok.includes(g[1])) out.push({ a, slot: 1, want: null, was: g[1] });
   }
   return out;
 }
@@ -1471,10 +1507,13 @@ function gameCell(a) {
   [0, 1].forEach(i => {
     const k = g[i];
     if (i === 1 && !k) { cell.append(el("button", { type: "button", class: "add2", "data-key": "add2", text: "+", title: t("Add the second key the game has for {action}", { action }), onclick: e => startCapture({ kind: "game", a, slot: 1, rowName: second }, e.currentTarget) })); return; }
-    const cls = !k ? "none" : k === "?" ? "unknown" : keys.includes(k) ? "match" : "stray";
+    // Your Jump / interact key on "Interact, Melee Attack" is right too (interact is part of it).
+    const shared = !!k && !keys.includes(k) && okGameKeys(a, state).includes(k);
+    const cls = !k ? "none" : k === "?" ? "unknown" : keys.includes(k) || shared ? "match" : "stray";
     const vars = { action, key: k ? pretty(k) : t("none") };
     cell.append(el("button", { type: "button", class: cls, "data-slot": i, "data-key": "game" + i, text: k ? pretty(k) : "–",
-      title: i ? t("Second key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars) : t("First key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars),
+      title: shared ? t("{key} is your {row} key. In the game's keyboard settings, interact is part of {action}, so {key} belongs here too. Click to change.", { ...vars, row: t(ACT[a.alsoOk].label) })
+        : i ? t("Second key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars) : t("First key the game has for {action} (Settings › Controls › Keyboard). Click to change.", vars),
       "aria-label": i ? t("Second game key for {action}: {key}. Change", vars) : t("First game key for {action}: {key}. Change", vars),
       onclick: e => startCapture({ kind: "game", a, slot: i, rowName: i ? second : action }, e.currentTarget) }));
     if (i === 1) cell.append(el("button", { type: "button", class: "clear2", "data-key": "clear2", text: "×", title: t("Clear it: the game has no second key for {action}", { action }), "aria-label": t("Clear the second game key for {action}", { action }), onclick: () => { state.game[a.id][1] = null; changed(); } }));
@@ -1509,7 +1548,7 @@ function renderMod(uses) {
   const vars = { row: t("Always send to the game"), block: t(TG("BlockOtherKeys").label) };
   s.replaceChildren(el("h2", {}, el("span", { class: "dot", style: "background:var(--mod)" }), t("Mod keys")),
     el("p", { class: "lede", text: state.opt.BlockOtherKeys
-      ? t("Keys for the mod itself. While you play, keys this layout doesn't use are blocked (\"{block}\"); put keys under \"{row}\" to let them through.", vars)
+      ? t("Keys for the mod itself. While you play, the mod blocks keys this layout doesn't use (\"{block}\"); put keys under \"{row}\" to let them through.", vars)
       : t("Keys for the mod itself. Keys this layout doesn't use reach the game (\"{block}\" is off).", vars) }));
   MOD_ROWS.forEach((m, i) => {
     const sub = m.subToggle && state.opt.CursorMode ? m.subToggle : m.sub;
@@ -1529,7 +1568,7 @@ function optionVars() {
 function renderTune() {
   const s = $("sec-tune"); s.replaceChildren();
   s.append(el("h2", {}, el("span", { class: "dot", style: "background:var(--muted)" }), t("Feel & options")),
-    el("p", { class: "lede", text: t("The first three sliders smooth your movement keys: speeding up, stopping and turning take a moment instead of snapping (0 = instant). The rest fine-tune dodging, the mouse, menus and the key list.") }));
+    el("p", { class: "lede", text: t("The first three sliders smooth your movement keys, so speeding up, stopping and turning take a moment (0 = instant). The rest fine-tune dodging, the mouse, menus and the key list.") }));
   const vars = optionVars(), g = el("div", { class: "tune" });
   for (const tu of TUNE) {
     const id = "t-" + tu.key, out = el("output", { for: id, text: state.num[tu.key] + " " + tu.unit });
@@ -1538,7 +1577,8 @@ function renderTune() {
     const sub = unused ? t("not used while \"{option}\" is off", { option: t(TG("MouseMoveSwitches").label) }) : t(tu.sub, vars);
     g.append(el("label", { for: id, class: unused ? "unused" : null }, t(tu.label), el("span", { class: "sub", text: sub })),
       el("input", { id, type: "range", min: tu.min, max: tu.max, step: tu.step, value: state.num[tu.key], disabled: unused,
-        oninput: e => { state.num[tu.key] = +e.target.value; out.textContent = e.target.value + " " + tu.unit; edited(); save(); renderOut(); } }), out);
+        oninput: e => { state.num[tu.key] = +e.target.value; out.textContent = e.target.value + " " + tu.unit; edited(); save(); renderOut(); },
+        onchange: () => remember() }), out); // one undo step per drag, when it's let go
   }
   s.append(g);
   // Each option shows what happens in its current state, and swaps that text the moment it's ticked.
@@ -1574,7 +1614,7 @@ async function readControls() {
   controls = ctl;
   if (JSON.stringify(next) === JSON.stringify(realGame)) return;
   realGame = next;
-  if (realGame) await syncReal(); else keepView(renderRecs);
+  if (realGame) await syncReal(); else quietly(() => keepView(renderRecs));
 }
 // The game's real keys into what's on screen (not counted as a change). The layout in
 // the game sends some keys on to the game's own keys; when those moved, it's saved
@@ -1582,23 +1622,23 @@ async function readControls() {
 async function syncReal() {
   applyReal(state); base = iniText(applyReal(stateFromIni(base)));
   const l = layouts.find(x => x.id === cur); if (l && !dirty()) l.text = base;
-  render(); persist();
+  quietly(render); persist();
   if (host && host.game && gameLayoutId() === cur && !dirty() && iniText(stateFromIni(host.game.text)) !== iniText(state)) {
-    await downloadFile();
-    toast(t("The game's controls changed, so the layout in the game was updated to match."));
+    await downloadFile({ auto: true });
+    if (!syncingGame) toast(t("The game's controls changed, so the editor updated the layout in the game to match."));
   }
+  historyRebase(); // the game's own keys coming in aren't a step to undo
 }
 async function applyControls() {
-  const want = {};
-  for (const r of recommendations(state)) if (GAME_ACTIONS[r.a.id]) (want[r.a.id] = want[r.a.id] || (state.game[r.a.id] || []).slice(0, 2))[r.slot] = r.want;
+  const want = gameKeyChanges(state).want;
   let msg;
   try {
-    await host.writeGameControls(toB64(writeControls(controls, want)));
-    await readControls();
+    syncingGame = true;
+    try { await host.writeGameControls(toB64(writeControls(controls, want))); gameSyncPending = false; await readControls(); } finally { syncingGame = false; }
     msg = t("Done: the game's controls now match. The game uses them the next time it starts.");
   } catch (e) {
     const m = String(e && e.message || e);
-    msg = t("Couldn't change the game's controls: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so it was left alone.") : m });
+    msg = t("Couldn't change the game's controls: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so the editor left it alone.") : m });
   }
   $("saveStatus").textContent = msg; toast(msg);
 }
@@ -1628,13 +1668,26 @@ function renderRecs() {
   // In the apps, both ways: the game's own settings set to this layout (the rows the file
   // has names for), or this layout set to the game's keys.
   if (controls && host && host.writeGameControls) {
-    const apply = t("Apply to the game's controls"), use = t("Use the game's keys in this layout");
-    card.append(el("div", { class: "apply-game" },
+    const apply = t(SET_GAME), use = t(SET_LAYOUT);
+    // It writes the game's own settings file, which undo can't take back: asked first.
+    const n = gameKeyChanges(state).n;
+    if (confirmApply === "recs" && n) {
+      card.append(el("div", { class: "apply-game", "data-confirm": "" },
+        el("span", { class: "warn", text: tn("This changes {n} key in the game's own keyboard settings. Close the game first.", "This changes {n} keys in the game's own keyboard settings. Close the game first.", n) }),
+        el("div", { class: "out-actions" },
+          el("button", { type: "button", class: "danger", "data-key": "ok", text: apply, onclick: () => {
+            confirmApply = false; askFrom = null; keepView(renderRecs); focusSoon(card.querySelector('[data-key="apply"]')); applyControls();
+          } }),
+          el("button", { type: "button", "data-key": "cancel", text: t("Cancel"), onclick: cancelAsk }))));
+      focusSoon(card.querySelector('.apply-game [data-key="cancel"]'));
+      return;
+    }
+    card.append(el("div", { class: "apply-game" }, gameSyncSwitch(),
       el("div", { class: "out-actions" },
-        el("button", { type: "button", class: "primary", "data-key": "apply", text: apply, disabled: !recs.some(r => GAME_ACTIONS[r.a.id]), onclick: applyControls,
-          title: t("Changes the game's keyboard settings to this layout, for you") }),
+        el("button", { type: "button", class: "primary", "data-key": "apply", text: apply, disabled: !n, onclick: e => askFirst("apply", e.currentTarget, "recs"),
+          title: t("Writes this layout's keys into the game's keyboard settings") }),
         el("button", { type: "button", "data-key": "usegame", text: use, onclick: useGameKeys, title: t("Changes this layout to the keys in the game's keyboard settings") })),
-      el("span", { class: "note" }, tx("{apply} changes the game's keyboard settings to this layout, for every key it can (the rest stay in the list). Close the game first; the original settings file is kept as a backup.", { apply: el("b", { text: apply }) })),
+      el("span", { class: "note" }, tx("{apply} changes the game's keyboard settings to this layout, for every key it can (the rest stay in the list). Close the game first; the original settings file stays as a backup.", { apply: el("b", { text: apply }) })),
       el("span", { class: "note" }, tx("{use} does the opposite: this layout takes the game's keys, except keys you move with.", { use: el("b", { text: use }) }))));
   }
 }
@@ -1650,7 +1703,11 @@ function useGameKeys() {
   let n = 0;
   for (const a of ACTIONS) {
     if (!a.game || a.hidden || MOVE_IDS.includes(a.id)) continue;
-    const g = (state.game[a.id] || []).filter(k => k && k !== "?"), ok = g.filter(k => !move.has(k));
+    // "Interact, Melee Attack" keys that are your Jump / interact keys are for interacting: they
+    // stay on Jump / interact (and aren't added to Melee).
+    const interact = a.alsoOk ? state.keys[a.alsoOk] || [] : [];
+    const sharers = ACTIONS.filter(x => x.alsoOk === a.id), keep = (state.keys[a.id] || []).filter(k => sharers.some(x => gameSlots(x, state).includes(k)));
+    const g = (state.game[a.id] || []).filter(k => k && k !== "?"), ok = uniq([...g.filter(k => !move.has(k) && !interact.includes(k)), ...keep]);
     for (const k of g) if (move.has(k)) clashes.push({ a, k });
     if (!ok.length || JSON.stringify(ok) === JSON.stringify(state.keys[a.id])) continue;
     state.keys[a.id] = ok; n++;
@@ -1658,6 +1715,7 @@ function useGameKeys() {
   gameClashes = clashes;
   if (n) changed(); else render();
   $("saveStatus").textContent = (n ? t("This layout now uses the game's keys.") : t("This layout already uses the game's keys.")) + (clashes.length ? " " + clashText(clashes[0]) : "");
+  if (n) offerUndo($("saveStatus").textContent);
   if (clashes.length) $("recsCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 // The notice at the top: while the game's own keyboard settings differ from the
@@ -1665,12 +1723,22 @@ function useGameKeys() {
 function renderMismatch() {
   const recs = recommendations(state), box = $("mismatch");
   if (!recs.length) { box.replaceChildren(); return; }
-  const n = recs.length;
+  const n = recs.length, canSet = !!(controls && host && host.writeGameControls) && gameKeyChanges(state).n;
+  const show = el("button", { type: "button", "data-key": "showrecs", text: t("Show what to change"), onclick: () => { const c = $("recsCard"); c.scrollIntoView({ behavior: "smooth", block: "start" }); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1500); } });
+  // In the apps: "Change them for me" sets the game's keys (asking first, right here).
+  const acts = !canSet ? show : confirmApply === "top" ? el("div", { class: "acts", "data-confirm": "" },
+      el("span", { class: "warn", text: tn("This changes {n} key in the game's own keyboard settings. Close the game first.", "This changes {n} keys in the game's own keyboard settings. Close the game first.", canSet) }),
+      el("div", { class: "out-actions" },
+        el("button", { type: "button", class: "danger", "data-key": "ok", text: t(SET_GAME), onclick: () => { confirmApply = false; askFrom = null; keepView(renderAsks); applyControls(); } }),
+        el("button", { type: "button", "data-key": "cancel", text: t("Cancel"), onclick: cancelAsk })))
+    : el("div", { class: "acts" }, el("button", { type: "button", class: "primary", "data-key": "setgame", text: t("Change them for me"), title: t("Writes this layout's keys into the game's keyboard settings"),
+      onclick: e => askFirst("apply", e.currentTarget, "top") }), show);
+  if (confirmApply === "top") focusSoon(acts.querySelector('[data-key="cancel"]'));
   box.replaceChildren(el("div", { class: "mismatch", role: "alert" },
     el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
     el("h2", { text: tn("Change {n} setting in the game, or you're playing with two layouts", "Change {n} settings in the game, or you're playing with two layouts", n) }),
-    el("button", { type: "button", "data-key": "showrecs", text: t("Show what to change"), onclick: () => { const c = $("recsCard"); c.scrollIntoView({ behavior: "smooth", block: "start" }); c.classList.add("flash"); setTimeout(() => c.classList.remove("flash"), 1500); } }),
-    el("p", { text: t("The mod turns your keys into controller buttons only while you play. In menus, with the cursor, and while aiming the bow with the mouse, the game reads its own keyboard settings: there your keys may do nothing, and its button prompts show its own keys. The mod blocks the game's old keys in the meantime; changing them in the game (Settings › Controls › Keyboard) makes both work the same.") })));
+    acts,
+    el("p", { text: t("The mod turns your keys into controller buttons only while you play. In menus, with the cursor and while aiming the bow with the mouse, the game reads its own keyboard settings: your keys may do nothing there, and the button prompts show the game's keys. Until you change those settings (Settings › Controls › Keyboard), the mod blocks the game's old keys. Once they match your layout, keyboard mode and controller mode use the same keys.") })));
 }
 
 // Keyboard map: a Windows or a Mac keyboard (only the bottom row differs). The
@@ -1740,7 +1808,7 @@ function renderMap(uses) {
   endPick(); // what's picked up is from the old map
   hideKeyTip();
   $("mapLede").replaceChildren(state.opt.BlockOtherKeys
-    ? t("Keys with a coloured line do something; the colour says what. Hatched keys aren't used and are blocked while you play, so they can't switch the game to keyboard mode. Hover over a key to see what it does.")
+    ? t("Keys with a coloured line do something; the colour says what. Hatched keys aren't used, and the mod blocks them while you play, so they can't switch the game to keyboard mode. Hover over a key to see what it does.")
     : t("Keys with a coloured line do something; the colour says what. Hatched keys aren't used and reach the game as they are. Hover over a key to see what it does."),
     el("span", { class: "drag-hint", text: t("Drag a key onto another one to move what it does (if both do something, they swap), or click one key and then the other.") }));
   const lit = new Map(), seen = new Map(), rows = mapRows();
@@ -1819,7 +1887,7 @@ function dropPlan(S, T, rows) {
   if (inRemap(T)) return { why: remapWhy(T) };
   for (const [list, key, old] of [[from, T, S], [to, S, T]]) for (const r of list) {
     if (r.id === "esc" && old === "Escape") return { why: escWhy() };
-    if (r.kb && isMouse(key)) return { why: t("{row} sends the game a keyboard shortcut, so it needs a key, not a mouse button.", { row: r.name }) };
+    if (r.kb && isMouse(key)) return { why: t("{row} sends the game a keyboard shortcut, so it can't use a mouse button.", { row: r.name }) };
     if (r.keyOnly && isMouse(key)) return { why: t("{row} needs a key on the keyboard: the mod doesn't notice a mouse button for it.", { row: r.name }) };
     if (r.kb && (key === "=" || key === ";")) return { why: t("{row} can't send {key} to the game.", { row: r.name, key: pretty(key) }) };
   }
@@ -2019,7 +2087,7 @@ function renderConflicts(uses) {
     el("span", { class: "icon", "aria-hidden": "true", text: "!" }),
     el("h2", { text: tn("{n} key does two things", "{n} keys do two things", n) }),
     el("p", { text: tn("Pressing this key does both jobs at once. Give each job its own key: the clashing keys have a red outline below.", "Pressing one of these keys does both jobs at once. Give each job its own key: the clashing keys have a red outline below.", n) }),
-    el("ul", {}, ...bad.map(([k, u]) => el("li", { "data-key": "clash:" + k }, el("b", { text: pretty(k) }), " — " + andList(u.map(r => r.name)),
+    el("ul", {}, ...bad.map(([k, u]) => el("li", { "data-key": "clash:" + k }, el("b", { text: pretty(k) }), ": " + andList(u.map(r => r.name)),
       el("button", { type: "button", "data-key": "show", text: t("Show"), onclick: () => show(k) }))))));
 }
 
@@ -2032,7 +2100,8 @@ function renderLayoutBar() {
     el("option", { value: "__import" }, t("Import a file…")));
   sel.value = cur;
   $("resetBtn").disabled = !dirty();
-  const s = $("layoutStatus"); s.replaceChildren();
+  renderHistory();
+  const s = $("layoutStatus"); s.replaceChildren(); s.removeAttribute("data-confirm");
   if (naming) {
     const input = el("input", { type: "text", class: "namebox", maxlength: "40", "aria-label": t("Name for the new layout"),
       value: naming === "create" ? t("My layout {n}", { n: layouts.length + 1 }) : t("{name} (mine)", { name: layoutName(cur) }) });
@@ -2045,9 +2114,19 @@ function renderLayoutBar() {
     return;
   }
   if (confirmReset) {
+    s.setAttribute("data-confirm", "");
     s.append(el("span", { class: "warn", text: t("Reset {name} to its saved version? Your changes will be lost.", { name: layoutName(cur) }) }),
-      el("button", { type: "button", class: "primary", text: t("Reset"), onclick: resetLayout }),
-      el("button", { type: "button", text: t("Cancel"), onclick: () => { confirmReset = false; renderLayoutBar(); } }));
+      el("button", { type: "button", class: "danger", "data-key": "ok", text: t("Reset"), onclick: resetLayout }),
+      el("button", { type: "button", "data-key": "cancel", text: t("Cancel"), onclick: cancelAsk }));
+    focusSoon(s.querySelector('[data-key="cancel"]'));
+    return;
+  }
+  if (confirmDelete && confirmDelete === cur && !BUILTIN[cur]) {
+    s.setAttribute("data-confirm", "");
+    s.append(el("span", { class: "warn", text: t("Delete \"{name}\"?", { name: layoutName(cur) }) }),
+      el("button", { type: "button", class: "danger", "data-key": "ok", text: t("Delete"), onclick: deleteLayout }),
+      el("button", { type: "button", "data-key": "cancel", text: t("Cancel"), onclick: cancelAsk }));
+    focusSoon(s.querySelector('[data-key="cancel"]'));
     return;
   }
   if (switchWarn && pendingSwitch && dirty()) {
@@ -2061,10 +2140,10 @@ function renderLayoutBar() {
   if (dirty()) {
     s.append(el("span", { class: "changed", text: BUILTIN[cur] ? t("You changed {name}. Save changes?", { name: layoutName(cur) }) : t("Unsaved changes") }),
       el("button", { type: "button", class: "primary save", text: BUILTIN[cur] ? t("Save as new layout…") : t("Save changes"), onclick: saveChanges }),
-      el("button", { type: "button", text: t("Discard"), onclick: askReset }));
+      el("button", { type: "button", "data-key": "discard", text: t("Discard"), onclick: e => askFirst("reset", e.currentTarget) }));
   } else if (!switchWarn) {
     s.append(BUILTIN[cur] ? t("Built-in layout. Change anything and you can save it as your own.") : host ? t("Your layout, kept on this computer.") : t("Your layout, kept in this browser."));
-    if (!BUILTIN[cur]) s.append(el("button", { type: "button", text: t("Delete"), title: t("Delete this layout"), onclick: deleteLayout }));
+    if (!BUILTIN[cur]) s.append(el("button", { type: "button", "data-key": "delete", text: t("Delete"), title: t("Delete this layout"), onclick: e => askFirst("delete", e.currentTarget) }));
   }
 }
 
@@ -2130,6 +2209,10 @@ const FLOW = "main, #conflicts, #mismatch, #importCard"; // what moves with the 
 const HOLD = "main [data-action], main [data-mod], main h2, main h3, main .lede, main .wheel-note, main .menu-switch, main .tune > *, main .toggles > label, #conflicts li, #mismatch .mismatch";
 const SIDE_HOLD = "#recsCard h2, #recsCard li, #recsCard .clash, #recsCard .allset, #recsCard .apply-game, #mapCard .map-head, #kbd, #mouseMap";
 let keeping = false;
+// Renders the player didn't cause (the first one, the game's own keys coming in, the editor
+// adopting the layout in the game) run quietly: a part that's scrolled to the top stays there.
+let quiet = 0;
+function quietly(fn) { quiet++; try { return fn(); } finally { quiet--; } }
 // One element to hold still in an area: the one just focused or pressed if it's there and in
 // view, else the first of `list` in view; with where each element on its path is on screen.
 function pickHold(inArea, list, top, bottom) {
@@ -2161,7 +2244,7 @@ function keepView(build) {
   const focusSteps = focused && keyPath(focused);
   const pageHold = top > 0 ? pickHold(pageArea, pinned ? HOLD : HOLD + ", " + SIDE_HOLD, viewTop, innerHeight) : null; // at the very top, stay there: a notice that opens should be seen
   let sideHold = null;
-  if (pinned) { const r = side.getBoundingClientRect(); sideHold = pickHold(e => !!e.closest(".side"), SIDE_HOLD, Math.max(r.top, viewTop), Math.min(r.bottom, innerHeight)); }
+  if (pinned && (sideTop > 0 || !quiet)) { const r = side.getBoundingClientRect(); sideHold = pickHold(e => !!e.closest(".side"), SIDE_HOLD, Math.max(r.top, viewTop), Math.min(r.bottom, innerHeight)); }
   keeping = true;
   try { build(); } finally { keeping = false; }
   if (side) side.scrollTop = sideTop;
@@ -2192,7 +2275,7 @@ function renderAll() {
     t("These press the virtual controller, so the game stays in controller mode while you fight (most teleports send the game's own keys). \"{ingame}\" is the game's own keyboard key for the same action: make it match yours (see the checklist) so keyboard mode works the same.", { ingame: t("in game") }),
     ACTIONS.filter(a => a.sec === "act"), uses);
   renderSection("sec-menu", "var(--menu)", t("Menus"),
-    state.opt.ControllerMenus ? t("For menus the game has both ways, pick one. {keyboard} (default): your keys send the game's own shortcut, and the cursor comes back so you can click. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving. Only the way you pick works; the other is off.", { keyboard: t("Keyboard"), controller: t("Controller") }) : t("Your keys send the game's own keyboard shortcut, and the cursor comes back so you can click. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving."),
+    state.opt.ControllerMenus ? t("For a menu the game has on both keyboard and controller, pick one way on its row; the other way is then off. {keyboard} (default): your keys send the game's own shortcut, and the cursor comes back so you can click. {controller}: your keys press the controller button; the inventory then opens with a tap and shows the mini inventory while held, so you can keep moving.", { keyboard: t("Keyboard"), controller: t("Controller") }) : t("Your keys send the game's own keyboard shortcut, and the cursor comes back so you can click. The inventory can use the controller instead: it then opens with a tap and shows the mini inventory while held, so you can keep moving."),
     ACTIONS.filter(a => a.sec === "menu"), uses);
   renderWheelNote();
   const menuSub = on => on ? t("menus and Teleport to player can each use the controller: pick Keyboard or Controller on their rows")
@@ -2301,7 +2384,7 @@ function gameLayoutId() {
 function persist() { store.set("d2kb-ini", iniText(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur); }
 function save() { persist(); }
 function edited() { switchWarn = false; confirmReset = false; renderLayoutBar(); }
-function changed() { switchWarn = false; confirmReset = false; save(); render(); }
+function changed() { switchWarn = false; confirmReset = false; confirmDelete = null; confirmApply = false; save(); render(); remember(); }
 function selectLayout(id) {
   const text = layoutText(id); if (!text) return;
   state = applyReal(stateFromIni(text)); cur = id; base = iniText(state); naming = null; switchWarn = false; pendingSwitch = null;
@@ -2310,31 +2393,37 @@ function selectLayout(id) {
 function newLayout(name) {
   const id = "l" + Date.now().toString(36);
   const text = iniText(state);
-  layouts.push({ id, name, text });
+  layouts.push({ id, name, text }); remember();
   cur = id; base = text; naming = null; switchWarn = false;
   render(); persist();
   if (pendingSwitch) return selectLayout(pendingSwitch);
-  $("saveStatus").textContent = host ? t("Saved \"{name}\". Save it to the game to use it.", { name }) : t("Saved \"{name}\". Download the file to use it in the game.", { name });
+  $("saveStatus").textContent = host ? t("Saved \"{name}\". Click Save to game to use it.", { name }) : t("Saved \"{name}\". Download the file to use it in the game.", { name });
 }
 function saveChanges() {
   if (BUILTIN[cur]) { naming = "save"; renderLayoutBar(); return; } // built-in layouts stay as they are
   const l = layouts.find(x => x.id === cur); if (!l) return;
-  l.text = iniText(state); base = l.text; switchWarn = false; render(); persist();
+  l.text = iniText(state); base = l.text; switchWarn = false; render(); persist(); remember();
   if (pendingSwitch) selectLayout(pendingSwitch);
 }
 // Leaving a changed layout for the one picked: its changes go, no second question.
-function discardAndSwitch() { const to = pendingSwitch; state = stateFromIni(base); confirmReset = false; selectLayout(to); }
-function resetLayout() { state = stateFromIni(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); }
-function askReset() { if (!dirty()) return; confirmReset = true; naming = null; switchWarn = false; renderLayoutBar(); }
-function deleteLayout() { layouts = layouts.filter(l => l.id !== cur); selectLayout("default"); }
+function discardAndSwitch() { const to = pendingSwitch; state = stateFromIni(base); confirmReset = false; selectLayout(to); remember(); }
+function resetLayout() { state = stateFromIni(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); remember(); }
+// Deleting a layout of yours (after "Delete "name"?"): a toast offers to bring it back.
+function deleteLayout() {
+  const name = layoutName(cur);
+  confirmDelete = null; askFrom = null;
+  layouts = layouts.filter(l => l.id !== cur); selectLayout("default"); remember();
+  offerUndo(t("Deleted \"{name}\"", { name }));
+  $("layoutSel").focus({ preventScroll: true });
+}
 $("layoutSel").addEventListener("change", e => {
   const v = e.target.value;
   if (v === "__import") { $("importCard").hidden = false; $("importCard").scrollIntoView({ behavior: "smooth", block: "start" }); renderLayoutBar(); return; }
   if (dirty()) { switchWarn = true; pendingSwitch = v; renderLayoutBar(); return; }
-  selectLayout(v);
+  selectLayout(v); remember();
 });
 $("createBtn").addEventListener("click", () => { naming = "create"; switchWarn = false; confirmReset = false; renderLayoutBar(); });
-$("resetBtn").addEventListener("click", askReset);
+$("resetBtn").addEventListener("click", e => askFirst("reset", e.currentTarget));
 function importText(text, from) {
   if (!/\[(Move|Buttons|Keys)\]/i.test(text)) { $("importStatus").textContent = t("That doesn't look like a WASD mod settings file."); return; }
   if (dirty() && !BUILTIN[cur]) saveChanges(); // keep unsaved edits to your layout before switching
@@ -2366,15 +2455,19 @@ const fileName = () => {
   const d = new Date(), p = n => String(n).padStart(2, "0");
   return "wasdmod-" + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getFullYear() % 100) + ".txt";
 };
-async function downloadFile() {
-  const text = iniText(state), name = fileName();
+async function downloadFile(opts) {
+  const text = iniText(state), name = fileName(), auto = !!(opts && opts.auto === true), saved = stateFromIni(text);
   if (host) {
     $("saveStatus").textContent = t("Saving…");
     try {
       const used = await host.save(name, text);
       if (!used || used === name) host.game = { file: name, text };
       renderLayoutBar();
-      $("saveStatus").textContent = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. A running game switches to it within a second.", { file: name });
+      let msg = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. A running game switches to it within a second.", { file: name });
+      // "Keep the game's keys in sync": the game's own keyboard settings follow (not for the
+      // save that follows the game's keys themselves).
+      if (!auto && gameSyncOn()) { const more = await syncGameKeys(saved); if (more) msg += " " + more; }
+      $("saveStatus").textContent = msg;
       wave();
     } catch (e) {
       // "saved:" starts the app's messages for a file that was saved but can't be used yet.
@@ -2385,7 +2478,7 @@ async function downloadFile() {
     return;
   }
   if (downloads) {
-    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = t("Saved {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name }); }
+    try { await downloads.save({ filename: name, data: text }); $("saveStatus").textContent = t("Saved {file}. Load it with wasdmod (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name }); }
     catch (e) { $("saveStatus").textContent = e && e.code === "declined" ? t("Not saved.") : t("Saving isn't available here. Use Copy text instead."); }
     return;
   }
@@ -2393,7 +2486,7 @@ async function downloadFile() {
   a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
   a.download = name; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod-Windows.exe (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name });
+  $("saveStatus").textContent = t("Downloaded {file}. Load it with wasdmod (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.", { file: name });
 }
 $("saveBtn").addEventListener("click", downloadFile);
 $("downloadTop").addEventListener("click", () => downloadFile());
@@ -2409,17 +2502,194 @@ if (host) $("whereItGoes").hidden = true;
 // A toast for what happened (saved, copied, imported…: the text of #saveStatus). In the
 // apps also: no web page right-click menu, and the pinned layout bar's height for the
 // sticky side column.
-let toastTimer = 0;
-function toast(text) {
+let toastTimer = 0, toastAction = null;
+function toast(text, action) {
   if (!text) return;
-  const box = $("toast"); box.textContent = text; box.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => box.classList.remove("show"), Math.min(10000, 3000 + text.length * 40));
+  const box = $("toast"); box.replaceChildren(text); box.classList.toggle("act", !!action); toastAction = action || null;
+  if (action) box.append(el("button", { type: "button", class: "toast-btn", text: action.label, title: action.title || null, onclick: () => { hideToast(); action.run(); } }));
+  box.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, action ? 10000 : Math.min(10000, 3000 + text.length * 40));
 }
+function hideToast() { clearTimeout(toastTimer); $("toast").classList.remove("show"); toastAction = null; }
+$("toast").addEventListener("mouseenter", () => { if (toastAction) clearTimeout(toastTimer); });
+$("toast").addEventListener("mouseleave", () => { if (toastAction) { clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 4000); } });
 new MutationObserver(() => toast($("saveStatus").textContent)).observe($("saveStatus"), { childList: true, characterData: true, subtree: true });
 if (inApp) {
   document.addEventListener("contextmenu", e => { if (!e.target.closest("input, textarea, pre, .path")) e.preventDefault(); });
   new ResizeObserver(() => document.documentElement.style.setProperty("--bar-h", document.querySelector("header").offsetHeight + "px")).observe(document.querySelector("header"));
 }
+
+// ---------------------------------------------------------------- the game's own keys, both ways (apps)
+// "Set the game's keys to this layout" writes the game's keyboard settings file (the rows it
+// has names for); "Set this layout to the game's keys" is the other way round. With "Keep the
+// game's keys in sync" on (the default, kept per user), every Save to game also sets the
+// game's keys. The game must be closed for that; if it's running, the game's keys follow
+// once it's closed (when the app is back in front, or within half a minute).
+const SET_GAME = _("Set the game's keys to this layout"), SET_LAYOUT = _("Set this layout to the game's keys");
+const gameSyncOn = () => store.get("d2kb-gamesync") !== "0";
+let gameSyncPending = false, syncingGame = false, gameSyncTimer = 0;
+// What the game's file needs for a state: { want: {row: [first, second]}, n (keys), names (actions) }.
+function gameKeyChanges(st) {
+  const want = {}, names = [];
+  let n = 0;
+  for (const r of recommendations(st)) if (GAME_ACTIONS[r.a.id]) { (want[r.a.id] = want[r.a.id] || (st.game[r.a.id] || []).slice(0, 2))[r.slot] = r.want; names.push(t(r.a.game)); n++; }
+  return { want, n, names: uniq(names) };
+}
+// The app's "the game is running" answer (the Mac app's and the Windows setup's wording, as sent).
+const RUNNING = [_("Minecraft Dungeons II is running. Quit it, then try again."), _("Minecraft Dungeons II is running. Close it, then try again.")];
+const isRunning = m => RUNNING.some(r => m === r || m === t(r));
+// Sets the game's keys for a state; says what happened, for the save message ("" if nothing to do).
+async function syncGameKeys(st) {
+  if (!controls || !host || !host.writeGameControls) return "";
+  const ch = gameKeyChanges(st);
+  if (!ch.n) { gameSyncPending = false; return ""; }
+  try {
+    syncingGame = true;
+    try { await host.writeGameControls(toB64(writeControls(controls, ch.want))); gameSyncPending = false; await readControls(); } finally { syncingGame = false; }
+    return t("The game's own keys now match: {actions}.", { actions: andList(ch.names) });
+  } catch (e) {
+    const m = String(e && e.message || e);
+    if (isRunning(m)) { gameSyncPending = true; clearInterval(gameSyncTimer); gameSyncTimer = setInterval(retryGameSync, 30000); return t("The game's own keys update once you close the game."); }
+    return t("The game's own keys weren't changed: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so the editor left it alone.") : m });
+  }
+}
+// The game was running at the last save: once it's closed, its keys follow the layout in the game.
+async function retryGameSync() {
+  if (!gameSyncPending || !gameSyncOn() || !host || !host.game || !host.game.text) { if (!gameSyncPending) clearInterval(gameSyncTimer); return; }
+  const msg = await syncGameKeys(applyReal(stateFromIni(host.game.text)));
+  if (!gameSyncPending) { clearInterval(gameSyncTimer); if (msg) { $("saveStatus").textContent = msg; toast(msg); } }
+}
+// The switch, in the checklist card (its text says what happens in its state, as the options do).
+function gameSyncSwitch() {
+  const sub = on => on ? t("Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)")
+    : t("Save to game only saves the layout; the game's own keyboard settings stay as they are");
+  const note = el("span", { class: "sub", text: sub(gameSyncOn()) });
+  return el("label", { class: "menu-switch game-sync", for: "o-gamesync" },
+    el("input", { type: "checkbox", id: "o-gamesync", checked: gameSyncOn(), onchange: e => {
+      store.set("d2kb-gamesync", e.target.checked ? "1" : "0"); note.textContent = sub(e.target.checked);
+      if (!e.target.checked) { gameSyncPending = false; clearInterval(gameSyncTimer); }
+    } }),
+    el("span", {}, t("Keep the game's keys in sync"), note));
+}
+
+// ---------------------------------------------------------------- undo, redo, and asking first
+// Every change in the editor can be taken back: your keys and options, moves on the map,
+// Reset, "Use the game's keys", Done, switching, creating or deleting layouts. Each step
+// is a snapshot of the editor (the settings on screen, the selected layout, its saved
+// version, your layouts), up to 50, kept until the window closes. Changes in one go (a
+// handler that saves and then switches) are one step; a slider is one step per drag.
+// Undo only changes the editor: a layout saved to the game, or the game's own keyboard
+// settings after "Set the game's keys to this layout", stay as they are.
+const HISTORY_MAX = 50;
+let undoStack = [], redoStack = [], shownSnap = null, pendingStep = false, restoring = false;
+const snapshot = () => ({ ini: iniText(state), cur, base, layouts: JSON.stringify(layouts) });
+const sameSnap = (a, b) => a.ini === b.ini && a.cur === b.cur && a.base === b.base && a.layouts === b.layouts;
+// After a change of yours: the step is written once the current event is handled.
+function remember() {
+  if (restoring || pendingStep) return;
+  pendingStep = true;
+  queueMicrotask(() => {
+    pendingStep = false;
+    const now = snapshot();
+    if (!shownSnap) { shownSnap = now; return renderHistory(); }
+    if (sameSnap(now, shownSnap)) return;
+    undoStack.push(shownSnap); if (undoStack.length > HISTORY_MAX) undoStack.shift();
+    redoStack = []; shownSnap = now;
+    if (toastAction && toastAction.step !== undoStack.length) hideToast(); // its Undo was for an older step
+    renderHistory();
+  });
+}
+// What's on screen now is where undo starts (at load, and when the game's own keys come in).
+function historyRebase() { if (!pendingStep) shownSnap = snapshot(); renderHistory(); }
+function restoreSnap(snap) {
+  restoring = true;
+  try {
+    state = stateFromIni(snap.ini); cur = snap.cur; base = snap.base; layouts = JSON.parse(snap.layouts);
+    naming = null; switchWarn = false; pendingSwitch = null; confirmReset = false; confirmDelete = null; confirmApply = false; gameClashes = [];
+    render(); persist();
+  } finally { restoring = false; }
+  shownSnap = snap; renderHistory();
+}
+// Whether the settings on screen are the ones in the game (the app's last save).
+const inGame = () => !!(host && host.game && host.game.text) && iniText(applyReal(stateFromIni(host.game.text))) === iniText(state);
+function historyStep(from, to, done) {
+  if (!from.length || capturing) return;
+  const was = inGame();
+  to.push(shownSnap);
+  restoreSnap(from.pop());
+  // Taking back something that was saved to the game: the game keeps it until the next save.
+  toast(was && !inGame() ? t(done) + " " + t("The game still has the version you saved: click Save to game to use this one.") : t(done));
+}
+const undo = () => historyStep(undoStack, redoStack, _("Undone."));
+const redo = () => historyStep(redoStack, undoStack, _("Redone."));
+// A toast with an Undo button for the step just made (deleting a layout, "Use the game's keys").
+function offerUndo(text) {
+  queueMicrotask(() => {
+    const at = undoStack.length;
+    if (at) toast(text, { label: t("Undo"), title: t(UNDO_NOTE), step: at, run: () => { if (undoStack.length === at) undo(); } });
+  });
+}
+// Undo and redo in the layout bar, after Reset.
+const MAC_KEYS = isMacApp || /Mac|iPhone|iPad/.test(navigator.platform || "");
+const UNDO_NOTE = _("Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.");
+const arrowIcon = flip => {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
+  svg.setAttribute("viewBox", "0 0 16 16"); svg.setAttribute("aria-hidden", "true");
+  path.setAttribute("d", "M6 3.5 2.75 6.75 6 10M3 6.75h6.25a3.75 3.75 0 0 1 0 7.5H7.5");
+  if (flip) svg.style.transform = "scaleX(-1)";
+  svg.append(path); return svg;
+};
+const undoBtn = el("button", { type: "button", id: "undoBtn", onclick: () => undo() }, arrowIcon(false));
+const redoBtn = el("button", { type: "button", id: "redoBtn", onclick: () => redo() }, arrowIcon(true));
+$("resetBtn").after(el("span", { class: "undo-group" }, undoBtn, redoBtn));
+function renderHistory() {
+  const keys = MAC_KEYS ? ["⌘Z", "⇧⌘Z"] : ["Ctrl+Z", "Ctrl+Y"];
+  undoBtn.disabled = !undoStack.length; redoBtn.disabled = !redoStack.length;
+  undoBtn.setAttribute("aria-label", t("Undo")); redoBtn.setAttribute("aria-label", t("Redo"));
+  undoBtn.title = t("Undo ({keys})", { keys: keys[0] }) + "\n" + t(UNDO_NOTE);
+  redoBtn.title = t("Redo ({keys})", { keys: keys[1] });
+}
+// ⌘Z / ⇧⌘Z on a Mac, Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) elsewhere; not in a text field (its
+// own undo) and not while a key is being picked.
+const typingInField = () => { const a = document.activeElement; return !!a && (a.isContentEditable || a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(checkbox|radio|range|button|submit|reset|color|file)$/i.test(a.type))); };
+addEventListener("keydown", e => {
+  if (capturing || e.defaultPrevented || e.altKey || !(MAC_KEYS ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey)) return;
+  const k = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : e.code === "KeyZ" ? "z" : e.code === "KeyY" ? "y" : "";
+  const back = k === "z" && !e.shiftKey, again = (k === "z" && e.shiftKey) || (k === "y" && !MAC_KEYS && !e.shiftKey);
+  if ((!back && !again) || typingInField()) return;
+  e.preventDefault();
+  back ? undo() : redo();
+});
+// Asking first, in the editor itself (the Mac app shows no confirm() dialogs): Delete and
+// Reset in the layout bar, "Set the game's keys to this layout" (checklist, top notice). The question
+// takes the button's place, with the red button and Cancel (focused); Esc or a click
+// anywhere else is Cancel, and focus goes back to the button that asked.
+let confirmDelete = null, confirmApply = false, askFrom = null;
+const focusSoon = e => setTimeout(() => { if (e && e.isConnected) e.focus({ preventScroll: true }); }, 0);
+function askFirst(kind, from, where) {
+  askFrom = from ? keyPath(from) : null;
+  const apply = confirmApply;
+  naming = null; switchWarn = false; confirmReset = false; confirmDelete = null; confirmApply = false;
+  if (kind === "reset" && dirty()) confirmReset = true;
+  if (kind === "delete" && !BUILTIN[cur]) confirmDelete = cur;
+  if (kind === "apply") confirmApply = where || "recs"; // "recs": in the checklist, "top": in the notice
+  renderLayoutBar();
+  if (apply || confirmApply) keepView(renderAsks);
+}
+function renderAsks() { renderRecs(); renderMismatch(); }
+function cancelAsk() {
+  if (!confirmReset && !confirmDelete && !confirmApply) return;
+  const apply = confirmApply, back = askFrom;
+  confirmReset = false; confirmDelete = null; confirmApply = false; askFrom = null;
+  renderLayoutBar();
+  if (apply) keepView(renderAsks);
+  const f = back && findPath(back);
+  if (f && f.n === back.length) f.e.focus({ preventScroll: true });
+}
+addEventListener("keydown", e => { if (e.key === "Escape" && !capturing && (confirmReset || confirmDelete || confirmApply)) { e.preventDefault(); cancelAsk(); } });
+document.addEventListener("pointerdown", e => {
+  if ((confirmReset || confirmDelete || confirmApply) && !(e.target.closest && e.target.closest("[data-confirm]"))) cancelAsk();
+}, true);
 
 try { layouts = JSON.parse(store.get("d2kb-layouts") || "[]"); } catch (e) { layouts = []; }
 cur = store.get("d2kb-current") || "default";
@@ -2447,15 +2717,16 @@ async function adoptGameLayout() {
     layouts.push({ id: "l" + Date.now().toString(36), name: found, text: host.game.text });
   }
   const g = gameLayoutId();
-  if (g && g !== cur && !dirty()) selectLayout(g); else { render(); persist(); }
+  quietly(() => { if (g && g !== cur && !dirty()) selectLayout(g); else { render(); persist(); } });
   if (found) {
     $("saveStatus").textContent = t("Found {name} in the game folder and added it to your layouts.", { name: found });
     toast($("saveStatus").textContent);
   }
   if (realGame) await syncReal(); // the layout in the game, saved again if the game's keys moved
+  historyRebase(); // what the game had is where undo starts, not a step of yours
 }
-translatePage(); render(); persist();
+translatePage(); quietly(render); persist(); historyRebase();
 adoptGameLayout();
-window.addEventListener("focus", () => readControls()); // back from the game: its settings may have changed
+window.addEventListener("focus", () => readControls().then(retryGameSync)); // back from the game: its settings may have changed
 }
 </script>

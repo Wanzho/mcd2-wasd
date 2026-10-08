@@ -6,3 +6,5 @@ personal-wasdmod.txt
 backup/
 video/
 promo/
+dist/
+__pycache__/

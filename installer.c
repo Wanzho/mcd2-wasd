@@ -18,6 +18,12 @@
 //   /off, /on "<folder>"  turn the mod off (the game starts without it) or back on
 //   /recordon, /recordoff, /report "<folder>"   Record Logs, and the report file
 //   /serve "<folder>"     run the key layout editor's server and print its address
+//   /updated "<folder>"   (GitHub build) started by the previous version after it
+//                         updated this exe: finishes the update in the game folder
+//
+// Two builds: the GitHub one checks GitHub for a new version once a day and can
+// update itself (updater.inc); built with -DNEXUS (for Nexus Mods) it has no
+// internet code at all, and its button opens the mod's Nexus Mods page instead.
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 typedef unsigned long DWORD;
@@ -126,6 +132,9 @@ IMP HANDLE LoadImageW(HANDLE, const WCHAR *, UINT, int, int, UINT);
 IMP BOOL DrawIconEx(HANDLE, int, int, HANDLE, int, int, UINT, HANDLE, UINT);
 IMP BOOL RedrawWindow(HANDLE, const RECT *, HANDLE, UINT);
 IMP int MapWindowPoints(HANDLE, HANDLE, void *, UINT);
+IMP U64 SetTimer(HANDLE, U64, UINT, void *);
+IMP BOOL KillTimer(HANDLE, U64);
+IMP BOOL IsWindowVisible(HANDLE);
 // dwmapi
 IMP LONG DwmSetWindowAttribute(HANDLE, DWORD, const void *, DWORD);
 // gdiplus (flat API): antialiased round shapes
@@ -363,6 +372,9 @@ static int gamePathKind(const char *p) {
 #include "game_paths.inc"
 
 static int gameRunning(void) {
+#ifdef SELFTEST
+    { char f[PATHLEN]; if (GetEnvironmentVariableA("WASDMOD_TEST_GAME", f, sizeof(f))) return exists(f); } // tests: "running" while that file exists
+#endif
     HANDLE s = CreateToolhelp32Snapshot(2 /*TH32CS_SNAPPROCESS*/, 0);
     if (s == (HANDLE)-1) return 0;
     PROCESSENTRY e; memset(&e, 0, sizeof(e)); e.size = sizeof(e);
@@ -504,6 +516,23 @@ static int installState(const char *dir) {
     if (!isOurDll(dll)) return OTHER_DLL;
     return sameAs(dll, payloadDll, sizeof(payloadDll)) ? INSTALLED_LATEST : INSTALLED_OLDER;
 }
+// The version in the game folder's mod (" wasdmod 1.3.1, " in its log line), or ""
+// for versions before that line.
+static void modVersion(const char *dir, char *out, unsigned cap) {
+    char p[PATHLEN]; DWORD n = 0; out[0] = 0;
+    join(p, dir, "xinput1_4.dll"); char *b = readAll(p, &n);
+    if (!b) { join(p, dir, "xinput1_4.dll.off"); b = readAll(p, &n); }
+    if (!b) return;
+    for (DWORD i = 0; i + 10 < n; i++) {
+        if (b[i] != ' ' || !sameTextN(b + i + 1, "wasdmod ", 8) || b[i + 9] < '0' || b[i + 9] > '9') continue;
+        unsigned k = 0; DWORD j = i + 9;
+        while (j < n && ((b[j] >= '0' && b[j] <= '9') || b[j] == '.') && k + 1 < cap) out[k++] = b[j++];
+        out[k] = 0;
+        if (j < n && b[j] == ',') break;
+        out[0] = 0;
+    }
+    HeapFree(GetProcessHeap(), 0, b);
+}
 // The settings file the mod uses: the newest saved layout when it's newer than default.txt.
 static void activeSettings(const char *dir, char *out) {
     char ini[PATHLEN], txt[PATHLEN]; join(ini, dir, "default.txt");
@@ -528,10 +557,15 @@ static int useLayout(const char *dir, int which) {
     return OK;
 }
 
+#ifndef NEXUS
+#include "updater.inc"
+#endif
+
 // ---------------------------------------------------------------- window
 
-enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF, ID_RECORD };
-static HANDLE onOffBtn, recordBtn;
+enum { ID_PATH = 10, ID_BROWSE, ID_INSTALL, ID_UNINSTALL, ID_EDITOR, ID_LOAD, ID_SETTINGS, ID_STATUS, ID_DEFAULT, ID_RECOMMENDED, ID_OWN, ID_ONOFF, ID_RECORD,
+       ID_CHECK, ID_UPD_MAIN, ID_UPD_SECOND };
+static HANDLE onOffBtn, recordBtn, versionWnd, checkBtn; // checkBtn: Check for updates (Nexus build: Get updates on Nexus Mods)
 static HANDLE mainWnd, fontNormal, fontTitle, fontSmall, statusWnd, pathWnd, installBtn, uninstallBtn, editorBtn, loadBtn, settingsBtn, layoutBtn[3];
 static HANDLE titleWnd, introWnd, folderLabel, browseBtn, layoutLabel, recordHint, footerWnd, fontStrong, fontStatus, fontKey;
 static char gameDir[PATHLEN];
@@ -892,14 +926,15 @@ static WCHAR *W(const char *s) { // a few at a time (a message box needs two)
 static void setText(HANDLE c, const char *s) { SetWindowTextW(c, W(s)); }
 static void setPath(HANDLE c, const char *p) { WCHAR w[PATHLEN]; if (!MultiByteToWideChar(0 /*CP_ACP*/, 0, p, -1, w, PATHLEN)) w[0] = 0; SetWindowTextW(c, w); }
 static int ask(const char *text, UINT flags) { return MessageBoxW(mainWnd, W(text), W(TITLE), flags); }
-// "Saved {file} ..." with {file} filled in.
-static void fill(char *out, unsigned cap, const char *text, const char *value) {
-    out[0] = 0;
+// "Saved {file} ..." with {file} filled in; fillVar fills in any {name}.
+static void fillVar(char *out, unsigned cap, const char *text, const char *name, const char *value) {
+    unsigned m = slen(name); out[0] = 0;
     for (const char *p = text; *p; ) {
-        if (sameTextN(p, "{file}", 6)) { cat(out, cap, value); p += 6; continue; }
+        if (p[0] == '{' && sameTextN(p + 1, name, m) && p[m + 1] == '}') { cat(out, cap, value); p += m + 2; continue; }
         char c[2] = {*p++, 0}; cat(out, cap, c);
     }
 }
+static void fill(char *out, unsigned cap, const char *text, const char *value) { fillVar(out, cap, text, "file", value); }
 
 // ---------------------------------------------------------------- look
 //
@@ -922,6 +957,12 @@ static int canvasW, canvasH;
 static WNDPROC buttonProc;
 static RECT cards[4], dividers[6], statusIcon, statusRow, primaryPill, gamepad, sectionDot, hairline;
 static int cardCount, dividerCount;
+#ifndef NEXUS
+// The update card (above the status card) and its rows' signs; see "the update card" below.
+static HANDLE updRow[2], updMainBtn, updSecondBtn;
+static RECT updCard, updIcon[2], updBar, updMainPill;
+static int updKind[2], updPct = -1, updShown; // updPct: the download's percentage (-1: no bar)
+#endif
 #define RGB(r, g, b) ((COLORREF)((r) | ((g) << 8) | ((b) << 16)))
 #define ARGB(a, r, g, b) ((DWORD)(a) << 24 | (DWORD)(r) << 16 | (DWORD)(g) << 8 | (DWORD)(b))
 #define FOCUS_ROOM S(3) // around each button, for its focus ring
@@ -950,7 +991,9 @@ static void themeWindow(HANDLE w) {
 }
 static HANDLE editorWnd; // the key layout editor window (below)
 static void themeTitleBar(void) { themeWindow(mainWnd); if (editorWnd) themeWindow(editorWnd); }
-static COLORREF statusTone(void) { return statusKind == 1 ? C.ok : statusKind == 2 ? C.warn : statusKind == 3 ? C.off : C.accent; }
+// A sign's colour: 1 done, 2 warning, 3 off, else (0 info, 4 downloading, 5 waiting) blue.
+static COLORREF kindTone(int kind) { return kind == 1 ? C.ok : kind == 2 ? C.warn : kind == 3 ? C.off : C.accent; }
+static COLORREF statusTone(void) { return kindTone(statusKind); }
 
 // ---- GDI+ shapes and light
 static void *gfx(HANDLE dc) {
@@ -1050,9 +1093,10 @@ static void tick(void *g, REAL cx, REAL cy, REAL d, DWORD ink, REAL width) {
     GdipDeletePen(pen);
 }
 // The status sign: a lit ball in the state's colour, glowing, with a dark tick, "!",
-// "i" or a line (turned off) - the editor's notices have the same.
-static void drawOrb(void *g, RECT r) {
-    COLORREF tone = statusTone();
+// "i" or a line (turned off) - the editor's notices have the same. The update card's
+// rows also have an arrow (downloading) and two bars (waiting).
+static void drawOrb(void *g, RECT r, int kind) {
+    COLORREF tone = kindTone(kind);
     REAL d = (REAL)(r.right - r.left), cx = r.left + d / 2, cy = r.top + d / 2, u = d / 24;
     glow(g, cx, cy, d * 1.35f, d * 1.35f, tone, 130);
     fillCircle(g, cx, cy, d * 1.33f, argb(tone, 36));
@@ -1065,10 +1109,19 @@ static void drawOrb(void *g, RECT r) {
     GdipFillPath(g, b, p);
     GdipDeleteBrush(b); GdipDeletePath(p);
     DWORD ink = ARGB(255, 11, 11, 13); REAL pw = 2.6f * u;
-    if (statusKind == 1) tick(g, cx, cy, d, ink, pw);
-    else if (statusKind == 3) { void *pen = roundPen(ink, pw); GdipDrawLine(g, pen, cx - 5 * u, cy, cx + 5 * u, cy); GdipDeletePen(pen); }
-    else {
-        int warn = statusKind == 2; void *pen = roundPen(ink, pw);
+    if (kind == 1) tick(g, cx, cy, d, ink, pw);
+    else if (kind == 3) { void *pen = roundPen(ink, pw); GdipDrawLine(g, pen, cx - 5 * u, cy, cx + 5 * u, cy); GdipDeletePen(pen); }
+    else if (kind == 4) { // an arrow down
+        void *pen = roundPen(ink, pw);
+        GdipDrawLine(g, pen, cx, cy - 6 * u, cx, cy + 5 * u);
+        GdipDrawLine(g, pen, cx - 4.5f * u, cy + .5f * u, cx, cy + 5 * u); GdipDrawLine(g, pen, cx + 4.5f * u, cy + .5f * u, cx, cy + 5 * u);
+        GdipDeletePen(pen);
+    } else if (kind == 5) { // two bars: waiting
+        void *pen = roundPen(ink, pw);
+        GdipDrawLine(g, pen, cx - 3 * u, cy - 5 * u, cx - 3 * u, cy + 5 * u); GdipDrawLine(g, pen, cx + 3 * u, cy - 5 * u, cx + 3 * u, cy + 5 * u);
+        GdipDeletePen(pen);
+    } else {
+        int warn = kind == 2; void *pen = roundPen(ink, pw);
         GdipDrawLine(g, pen, cx, cy + (warn ? -6 : -1) * u, cx, cy + (warn ? 1.5f : 6) * u);
         GdipDeletePen(pen);
         fillCircle(g, cx, cy + (warn ? 5.6f : -5.4f) * u, 3.1f * u, ink);
@@ -1131,6 +1184,9 @@ static void paintCanvas(int w, int h) {
         GdipDeleteBrush(b);
     }
     for (int i = 0; i < cardCount; i++) drawCard(g, cards[i]);
+#ifndef NEXUS
+    if (updCard.right) drawCard(g, updCard);
+#endif
     // the status card: the state's colour in its corner and along its edge, like the editor's notices
     if (cardCount && statusRow.right) {
         RECT c = cards[0]; COLORREF tone = statusTone();
@@ -1149,7 +1205,21 @@ static void paintCanvas(int w, int h) {
         GdipFillRectangle(g, line, (REAL)d.left, (REAL)d.top, (REAL)(d.right - d.left), (REAL)(d.bottom - d.top));
     }
     GdipDeleteBrush(line);
-    if (statusIcon.right) drawOrb(g, statusIcon);
+    if (statusIcon.right) drawOrb(g, statusIcon, statusKind);
+#ifndef NEXUS
+    // the update card: its rows' signs, the download's progress, and its blue button's glow
+    for (int i = 0; i < 2; i++) if (updIcon[i].right) drawOrb(g, updIcon[i], updKind[i]);
+    if (updBar.right) {
+        REAL bx = (REAL)updBar.left, by = (REAL)updBar.top, bw = (REAL)(updBar.right - updBar.left), bh2 = (REAL)(updBar.bottom - updBar.top);
+        fillRound(g, bx, by, bw, bh2, bh2 / 2, ARGB(26, 255, 255, 255));
+        REAL done = bw * (updPct < 0 ? 0 : updPct > 100 ? 100 : updPct) / 100;
+        if (done >= bh2) { blurRound(g, bx, by, done, bh2, bh2 / 2, (REAL)S(4), C.accent, 120); fillRound(g, bx, by, done, bh2, bh2 / 2, argb(C.accent, 255)); }
+    }
+    if (updMainPill.right) {
+        RECT p = updMainPill; REAL pw2 = (REAL)(p.right - p.left), ph = (REAL)(p.bottom - p.top);
+        blurRound(g, p.left + S(8), p.top + S(12), pw2 - S(16), ph - S(14), (ph - S(14)) / 2, (REAL)S(12), C.accent, 150);
+    }
+#endif
     // the main button's blue glow (it sits on top)
     if (primaryBtn && primaryPill.right) {
         RECT p = primaryPill; REAL pw = (REAL)(p.right - p.left), ph = (REAL)(p.bottom - p.top);
@@ -1301,6 +1371,14 @@ static int flowLabel(HANDLE c, HANDLE dc, int width, int draw) {
     HANDLE old = SelectObject(dc, c == footerWnd ? fontSmall : fontNormal);
     SetTextColor(dc, C.text2);
     if (c == footerWnd) h = flowText(dc, t, n, width, 0, draw, 1, S(21));
+#ifndef NEXUS
+    else if (c == updRow[0] || c == updRow[1]) { // a headline, and under it in grey what goes with it
+        int k = 0; while (k < n && t[k] != '\n') k++;
+        SelectObject(dc, fontStatus); SetTextColor(dc, C.text);
+        h = flowText(dc, t, k, width, 0, draw, 0, 0);
+        if (k + 1 < n) { SelectObject(dc, fontNormal); SetTextColor(dc, C.text2); h = flowText(dc, t + k + 1, n - k - 1, width, h + S(2), draw, 0, 0); }
+    }
+#endif
     else if (c == statusWnd) {
         int k = statusSplit(t, n);
         SelectObject(dc, fontStatus); SetTextColor(dc, C.text);
@@ -1356,7 +1434,11 @@ static void drawButton(DRAWITEM *d) {
         RECT t = {(int)(mx + dd / 2) + S(12), 0, (int)(x + w) - S(10), hgt}; tr = t;
     } else {
         // a pill: blue for the thing to do, dark otherwise; it sinks a little when pressed
-        int primary = d->wnd == primaryBtn && !off;
+        int primary = (d->wnd == primaryBtn
+#ifndef NEXUS
+                       || d->wnd == updMainBtn
+#endif
+                      ) && !off;
         if (down) { x += 1; y += 1; w -= 2; h -= 2; }
         rr = h / 2;
         if (primary) {
@@ -1435,6 +1517,12 @@ static int arrange(int want, int *cards_) {
     int inner = want; // the cards' width
     inner = max2(inner, 2 * px + editor + load + settings + 2 * gap);
     inner = max2(inner, 2 * px + S(24) + S(14) + S(200) + S(16) + install);
+    int check = buttonWidth(checkBtn, 0);
+    inner = max2(inner, S(8) + S(120) + check);
+#ifndef NEXUS
+    int updMain = updShown && IsWindowVisible(updMainBtn) ? buttonWidth(updMainBtn, 96) : 0, updSecond = updShown && IsWindowVisible(updSecondBtn) ? buttonWidth(updSecondBtn, 96) : 0;
+    inner = max2(inner, 2 * px + updMain + updSecond + gap);
+#endif
     int x = m, cx = m + px, cw = inner - 2 * px, y = S(18);
     // header: the gamepad in its light, the wordmark, what it is
     int art = S(4), padW = 16 * art, padH = 9 * art; // the icon's rows 3 to 11 have the gamepad
@@ -1447,6 +1535,36 @@ static int arrange(int want, int *cards_) {
     y += head + S(10);
     RECT hl = {m, y, m + inner, y + max2(1, S(1))}; hairline = hl;
     y += S(11);
+#ifndef NEXUS
+    // the update card, while there's an update to tell about: one or two rows (step 1
+    // the app, step 2 the mod in the game), each a sign and text; the download's bar;
+    // its buttons on the right under them
+    RECT nothing = {0, 0, 0, 0};
+    updCard = updIcon[0] = updIcon[1] = updBar = updMainPill = nothing;
+    if (updShown) {
+        int top = y; y += py;
+        int d = S(20), ux = cx + d + S(14), uw = cw - d - S(14);
+        for (int i = 0; i < 2; i++) {
+            if (!IsWindowVisible(updRow[i])) continue;
+            if (i && updIcon[0].right) y += S(12);
+            int uh = labelHeight(updRow[i], uw, 20);
+            RECT ic = {cx, y + S(1), cx + d, y + S(1) + d}; updIcon[i] = ic;
+            place(updRow[i], ux, y, uw, uh);
+            y += uh;
+            if (!i && updPct >= 0 && updPct <= 100) { RECT bar = {ux, y + S(10), ux + uw, y + S(16)}; updBar = bar; y += S(16); }
+        }
+        if (updMain || updSecond) {
+            y += S(12);
+            int bx = cx + cw;
+            if (updMain) { bx -= updMain; placeButton(updMainBtn, bx, y, updMain, bh); RECT mp = {bx, y, bx + updMain, y + bh}; updMainPill = mp; bx -= gap; }
+            if (updSecond) { bx -= updSecond; placeButton(updSecondBtn, bx, y, updSecond, bh); }
+            y += bh;
+        }
+        y += py;
+        RECT uc = {x, top, x + inner, y}; updCard = uc;
+        y += S(12);
+    }
+#endif
     // card 1: the state and what to do, the game folder, turn off / uninstall
     int top = y; y += py;
     int orb = S(24), sx = cx + orb + S(14), sw = cw - orb - S(14) - S(16) - install;
@@ -1490,7 +1608,12 @@ static int arrange(int want, int *cards_) {
     y += row + py; card(x, top, inner, y);
     // what to remember, with the keys as keycaps
     y += S(11);
-    int fh = labelHeight(footerWnd, inner - S(8), 18); place(footerWnd, m + S(4), y, inner - S(8), fh); y += fh + S(13);
+    int fh = labelHeight(footerWnd, inner - S(8), 18); place(footerWnd, m + S(4), y, inner - S(8), fh); y += fh + S(8);
+    // the version, and Check for updates (Nexus build: Get updates on Nexus Mods)
+    int vh = textHeight(versionWnd, 0, 16);
+    place(versionWnd, m + S(4), y + (bh - vh) / 2, inner - S(16) - check, vh);
+    placeButton(checkBtn, m + inner - check, y, check, bh);
+    y += bh + S(13);
     *cards_ = inner;
     return y;
 }
@@ -1514,12 +1637,25 @@ static void layout(void) {
 }
 static void setStatus(const char *text) { setText(statusWnd, text); layout(); }
 
+// The status while the game folder has an older mod than this app: which versions,
+// and what to do (quit the game first, if it's running).
+static const char *olderText(char *out, unsigned cap) {
+    char v[40], tmp[600]; int running = gameRunning();
+    modVersion(gameDir, v, sizeof(v));
+    if (!v[0]) return running ? T("The mod in the game is an older version. Quit the game, then click Update.") : T("The mod in the game is an older version. Click Update to update it.");
+    fillVar(tmp, sizeof(tmp), running ? T("The mod in the game is still {version}; this app is {app}. Quit the game, then click Update.")
+                                      : T("The mod in the game is still {version}; this app is {app}. Click Update to update it."), "version", v);
+    fillVar(out, cap, tmp, "app", VERSION);
+    return out;
+}
+
 static void refresh(void) {
     int have = gameDir[0] != 0, state = have ? installState(gameDir) : NOT_INSTALLED;
+    char older[600];
     if (have) setPath(pathWnd, gameDir); else setText(pathWnd, T("(not found)"));
     const char *text = !have ? T("Game not found in Steam or XboxGames. Click Browse and pick Dungeons*.exe (in Dungeons\\Binaries) or Dungeons.exe.")
         : state == INSTALLED_LATEST ? T("Installed and up to date. Start (or restart) the game to use it.")
-        : state == INSTALLED_OLDER ? T("An older version is installed. Click Update.")
+        : state == INSTALLED_OLDER ? olderText(older, sizeof(older))
         : state == OTHER_DLL ? T("The game folder has a different xinput1_4.dll (another mod?). Install replaces it and keeps a copy as xinput1_4.dll.other.")
         : state == TURNED_OFF ? T("Turned off: the game starts without wasdmod. Your layouts are kept; click Turn on to use it again.")
         : T("Not installed yet.");
@@ -1555,6 +1691,181 @@ static void refresh(void) {
     }
     layout();
 }
+#ifndef NEXUS
+// ---------------------------------------------------------------- the update card
+//
+// Above the status card while there's an update to tell about, in two steps so it's
+// clear what's done and what isn't:
+//   a newer version on GitHub:   "wasdmod 1.4.0 is available"   [What's new] [Update now]
+//   step 1 of 2, the app:        downloading (with a bar), checking, installing, reopening
+//   after the update (the old setup started this one with /updated):
+//     step 1 done ("The app is updated to 1.4.0"), then step 2 of 2: the mod in the game,
+//     installed again here. While the game runs, step 2 waits and finishes by itself
+//     once the game is closed (or with Finish update). Not installed: only step 1, and
+//     installing is the next thing to do.
+enum { UP_NONE, UP_AVAILABLE, UP_DOWNLOADING, UP_FAILED, UP_SAVED, UP_AFTER };
+enum { S2_NONE, S2_BUSY, S2_DONE, S2_DONE_OFF, S2_CURRENT, S2_WAIT, S2_FAILED, S2_INSTALL };
+#define TIMER_GAME_CLOSED 7
+static int upPhase, upError, upStep2, upStep2Error, upChecking, upManual, upStage, upDownloaded; // upStage while updating: 0 download, 1 check, 2 install, 3 reopen
+static char upSummary[480], upGameVersion[40];
+static WCHAR upSaved[PATHLEN];
+
+// Step 2: the mod in the game folder, from this (new) setup. Installs it again when
+// it's older; keeps it turned off if it was off. Returns an S2_ state.
+static int step2Run(void) {
+    if (!gameDir[0]) return S2_NONE;
+    int st = installState(gameDir);
+    char off[PATHLEN]; join(off, gameDir, "xinput1_4.dll.off");
+    if (st == NOT_INSTALLED || st == OTHER_DLL) return S2_INSTALL;
+    if (st == INSTALLED_LATEST || (st == TURNED_OFF && sameAs(off, payloadDll, sizeof(payloadDll)))) return S2_CURRENT;
+    modVersion(gameDir, upGameVersion, sizeof(upGameVersion));
+    int r = install(gameDir, 0);
+    if (r == OK && st == TURNED_OFF) turnOn(gameDir, 0);
+    upStep2Error = r;
+    return r == OK ? (st == TURNED_OFF ? S2_DONE_OFF : S2_DONE) : r == ERR_RUNNING ? S2_WAIT : S2_FAILED;
+}
+
+// The card's text and buttons for the state it's in.
+static void updTexts(void) {
+    static char a[1600], b[1200]; char t[900], name[PATHLEN];
+    const char *main = 0, *second = 0;
+    a[0] = b[0] = 0; updKind[0] = 0; updKind[1] = -1; updPct = -1;
+    if (upPhase == UP_AVAILABLE) {
+        fillVar(a, sizeof(a), T("wasdmod {version} is available"), "version", updRelease.version);
+        if (updRelease.summary[0]) { fillVar(t, sizeof(t), T("New: {summary}"), "summary", updRelease.summary); cat(a, sizeof(a), "\n"); cat(a, sizeof(a), t); }
+        updKind[0] = 4; main = T("Update now"); second = T("What's new");
+    } else if (upPhase == UP_DOWNLOADING) {
+        fillVar(a, sizeof(a), T("Step 1 of 2: updating the app to {version}."), "version", updRelease.version);
+        cat(a, sizeof(a), "\n");
+        if (upStage == 0) { char pct[8]; num10((unsigned)upDownloaded, pct); fillVar(t, sizeof(t), T("Downloading… {percent}%"), "percent", pct); cat(a, sizeof(a), t); updPct = upDownloaded; }
+        else cat(a, sizeof(a), upStage == 1 ? T("Checking the download…") : upStage == 2 ? T("Installing…") : T("Reopening…"));
+        updKind[0] = 4; if (upStage == 0) second = T("Cancel");
+    } else if (upPhase == UP_FAILED) {
+        scpy(a, sizeof(a), T("The app wasn't updated; nothing was changed.")); cat(a, sizeof(a), "\n"); cat(a, sizeof(a), T(updErrorText[upError]));
+        updKind[0] = 2; main = T("Try again"); second = T("What's new");
+    } else if (upPhase == UP_SAVED) {
+        BOOL lost = 0; const WCHAR *base = upSaved; for (const WCHAR *q = upSaved; *q; q++) if (*q == '\\') base = q + 1;
+        if (WideCharToMultiByte(65001, 0, base, -1, name, sizeof(name), 0, &lost) <= 0) name[0] = 0;
+        scpy(a, sizeof(a), T("The new version is in your Downloads folder.")); cat(a, sizeof(a), "\n");
+        fill(t, sizeof(t), T("wasdmod can't write to this copy's folder, so it saved {file} in Downloads. Run that one; your layouts are kept."), name); cat(a, sizeof(a), t);
+        updKind[0] = 0; second = T("Close");
+    } else if (upPhase == UP_AFTER) {
+        int two = upStep2 != S2_INSTALL && upStep2 != S2_NONE;
+        fillVar(a, sizeof(a), two ? T("Step 1 of 2: the app is updated to {version}.") : T("The app is updated to {version}."), "version", VERSION);
+        if (upSummary[0]) { fillVar(t, sizeof(t), T("New: {summary}"), "summary", upSummary); cat(a, sizeof(a), "\n"); cat(a, sizeof(a), t); }
+        updKind[0] = 1;
+        switch (upStep2) {
+        case S2_BUSY: scpy(b, sizeof(b), T("Step 2 of 2: updating the mod in the game…")); updKind[1] = 4; break;
+        case S2_DONE: case S2_DONE_OFF:
+            scpy(b, sizeof(b), T("Step 2 of 2: the mod in the game is updated.")); cat(b, sizeof(b), "\n");
+            cat(b, sizeof(b), upStep2 == S2_DONE ? T("Start the game to use it.") : T("It's still turned off: click Turn on to use it."));
+            updKind[1] = 1; second = T("Close"); break;
+        case S2_CURRENT: scpy(b, sizeof(b), T("Step 2 of 2: the mod in the game is up to date.")); updKind[1] = 1; second = T("Close"); break;
+        case S2_WAIT:
+            scpy(b, sizeof(b), T("Step 2 of 2: quit the game to finish.")); cat(b, sizeof(b), "\n");
+            if (upGameVersion[0]) fillVar(t, sizeof(t), T("The mod in the game is still {version}. The update finishes by itself once you close the game."), "version", upGameVersion);
+            else scpy(t, sizeof(t), T("The mod in the game is still the old version. The update finishes by itself once you close the game."));
+            cat(b, sizeof(b), t); updKind[1] = 5; main = T("Finish update"); break;
+        case S2_FAILED:
+            scpy(b, sizeof(b), T("Step 2 of 2: the mod in the game wasn't updated.")); cat(b, sizeof(b), "\n"); cat(b, sizeof(b), T(errorText[upStep2Error]));
+            updKind[1] = 2; main = T("Try again"); break;
+        case S2_INSTALL:
+            scpy(b, sizeof(b), T("Next: install the mod in the game.")); cat(b, sizeof(b), "\n"); cat(b, sizeof(b), T("Click Install below."));
+            updKind[1] = 0; second = T("Close"); break;
+        default: second = T("Close"); // no game folder: the status card says what to do
+        }
+    }
+    updShown = upPhase != UP_NONE;
+    setText(updRow[0], a); setText(updRow[1], b);
+    ShowWindow(updRow[0], updShown ? 5 : 0); ShowWindow(updRow[1], updShown && b[0] ? 5 : 0);
+    if (main) setText(updMainBtn, main);
+    if (second) setText(updSecondBtn, second);
+    ShowWindow(updMainBtn, updShown && main ? 5 : 0); ShowWindow(updSecondBtn, updShown && second ? 5 : 0);
+}
+static void updShow(void) { updTexts(); layout(); }
+
+// Step 2, shown: busy, then done, waiting for the game to close, or failed.
+static void step2Show(void) {
+    upStep2 = S2_BUSY; updShow(); RedrawWindow(mainWnd, 0, 0, 0x1 | 0x80 | 0x100 /*RDW_UPDATENOW*/);
+    upStep2 = step2Run();
+    if (upStep2 == S2_WAIT) SetTimer(mainWnd, TIMER_GAME_CLOSED, 2000, 0); else KillTimer(mainWnd, TIMER_GAME_CLOSED);
+    refresh(); updShow();
+}
+
+// This setup was started by the old one after it updated (/updated): step 1 is done.
+static void updAfterStart(void) {
+    HANDLE t = CreateThread(0, 0, updCleanThread, (void *)1, 0, 0); if (t) CloseHandle(t); // the old exe, once it has quit
+    updReadMarker(upSummary, sizeof(upSummary));
+    upPhase = UP_AFTER;
+    step2Show();
+}
+
+// The new setup is downloaded and checked: put it in this one's place and start it.
+static void updInstall(void) {
+    upStage = 2; updShow(); RedrawWindow(mainWnd, 0, 0, 0x1 | 0x80 | 0x100);
+    int r = updReplaceSelf();
+    if (r == UPD_READONLY) { // a folder it can't change (Program Files...): the new setup goes to Downloads
+        if (updSaveToDownloads(upSaved)) {
+            WCHAR args[PATHLEN + 16] = L"/select,\""; wcat(args, PATHLEN + 16, upSaved); wcat(args, PATHLEN + 16, L"\"");
+            ShellExecuteW(mainWnd, L"open", L"explorer.exe", args, 0, 1);
+            upPhase = UP_SAVED;
+        } else { upPhase = UP_FAILED; upError = UPD_WRITE; }
+        updFree(&updFile); updShow(); return;
+    }
+    if (r) { upPhase = UP_FAILED; upError = r; updFree(&updFile); updShow(); return; }
+    updWriteMarker();
+    upStage = 3; updShow(); RedrawWindow(mainWnd, 0, 0, 0x1 | 0x80 | 0x100);
+    r = updRelaunch(gameDir);
+    if (r) { // this one stays
+        char p[PATHLEN]; updUndoReplace(); updMarkerFile(p); if (p[0]) DeleteFileA(p);
+        upPhase = UP_FAILED; upError = r; updFree(&updFile); updShow(); return;
+    }
+    if (editorWnd) DestroyWindow(editorWnd);
+    ExitProcess(0); // the new setup takes over (and finishes step 2)
+}
+
+static void updMessage(UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == WM_UPD_CHECKED) {
+        int manual = upManual; (void)wp;
+        upChecking = upManual = 0; EnableWindow(checkBtn, 1); setText(checkBtn, T("Check for updates"));
+        int r = (int)lp, newer = r == UPD_OK && relNewer(updRelease.version, VERSION);
+        if (newer && upPhase != UP_DOWNLOADING) { upPhase = UP_AVAILABLE; updShow(); }
+        else if (manual && r == UPD_OK) { char t[300]; fillVar(t, sizeof(t), T("wasdmod {version} is the newest version."), "version", VERSION); ask(t, 0x40); }
+        else if (manual) ask(T(updErrorText[r]), 0x30); // an automatic check that fails stays quiet
+        else layout();
+    } else if (msg == WM_UPD_PROGRESS) {
+        if (upPhase != UP_DOWNLOADING) return;
+        if (wp > 100) upStage = 1; else { if ((int)wp == upDownloaded) return; upDownloaded = (int)wp; }
+        updShow();
+    } else if (msg == WM_UPD_DOWNLOADED) {
+        if (upPhase != UP_DOWNLOADING) return;
+        if (wp == UPD_CANCELLED) { upPhase = UP_AVAILABLE; updShow(); return; }
+        if (wp != UPD_OK) { upPhase = UP_FAILED; upError = (int)wp; updShow(); return; }
+        updInstall();
+    }
+}
+
+// One thing at a time: a check and a download never run together.
+static void updCheck(int manual) {
+    if (manual) { upManual = 1; EnableWindow(checkBtn, 0); setText(checkBtn, T("Checking…")); layout(); }
+    if (upChecking || upPhase == UP_DOWNLOADING) return; // (a running check's answer is shown as this one's)
+    upChecking = 1; updStartCheck(0);
+}
+static void updStartUpdate(void) {
+    if (upChecking) return;
+    upPhase = UP_DOWNLOADING; upStage = 0; upDownloaded = 0; updShow(); updStartDownload();
+}
+static void updCommand(int id) {
+    int isMain = id == ID_UPD_MAIN;
+    if (upPhase == UP_AVAILABLE || upPhase == UP_FAILED) {
+        if (isMain) updStartUpdate();
+        else ShellExecuteA(mainWnd, "open", updRelease.page[0] ? updRelease.page : REL_PAGES, 0, 0, 1); // What's new
+    } else if (upPhase == UP_DOWNLOADING) updCancel = 1;
+    else if (upPhase == UP_AFTER && isMain) step2Show(); // Finish update / Try again
+    else { upPhase = UP_NONE; KillTimer(mainWnd, TIMER_GAME_CLOSED); updShow(); } // Close
+}
+#endif
+
 // All the window's text, in the current language (again after a change in the editor).
 static void applyTexts(void) {
     cardsWidth = 0; // the window's width suits the language's text
@@ -1569,8 +1880,15 @@ static void applyTexts(void) {
     setText(loadBtn, T("Load layout file..."));
     setText(settingsBtn, T("Open settings file"));
     setText(uninstallBtn, T("Uninstall"));
-    setText(recordHint, T("Something not working? Record logs, play until it happens, then stop: a report file for GitHub."));
+    setText(recordHint, T("If something isn't working, record logs, play until it happens, then stop to save a report file for GitHub."));
     setText(footerWnd, T("Layout changes reach a running game within a second; restart it after installing. In game: Tab opens the menu wheel, F9 shows the key list, backtick (`) turns the mod off and on."));
+    setText(versionWnd, "wasdmod " VERSION);
+#ifdef NEXUS
+    setText(checkBtn, T("Get updates on Nexus Mods"));
+#else
+    setText(checkBtn, T("Check for updates"));
+    updTexts();
+#endif
     refresh();
 }
 
@@ -1594,6 +1912,17 @@ static int pickFile(const char *title, const char *kind, const char *pattern, co
 
 static void onCommand(int id) {
     char p[PATHLEN];
+    if (id == ID_CHECK) {
+#ifdef NEXUS
+        ShellExecuteA(mainWnd, "open", "https://www.nexusmods.com/minecraftdungeons2/mods/104", 0, 0, 1); // the browser; nothing is downloaded here
+#else
+        updCheck(1);
+#endif
+        return;
+    }
+#ifndef NEXUS
+    if (id == ID_UPD_MAIN || id == ID_UPD_SECOND) { updCommand(id); return; }
+#endif
     if (id == ID_BROWSE) {
         if (!pickFile(T("Find Minecraft Dungeons II"), T("Minecraft Dungeons II (*.exe)"), "*.exe", 0, p)) return;
         char dir[PATHLEN];
@@ -1698,6 +2027,15 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         recordHint = control("STATIC", 0x0D, 0, fontNormal);
         recordBtn = control("BUTTON", BUTTON, ID_RECORD, fontNormal);
         footerWnd = control("STATIC", 0x0D /*SS_OWNERDRAW: its keys are drawn as keycaps*/, 0, fontSmall);
+        versionWnd = control("STATIC", LABEL, 0, fontSmall);
+        checkBtn = control("BUTTON", BUTTON, ID_CHECK, fontNormal);
+#ifndef NEXUS
+        updRow[0] = control("STATIC", 0x0D /*SS_OWNERDRAW: a headline and the rest*/, 0, fontStatus);
+        updRow[1] = control("STATIC", 0x0D, 0, fontStatus);
+        updMainBtn = control("BUTTON", BUTTON, ID_UPD_MAIN, fontStrong);
+        updSecondBtn = control("BUTTON", BUTTON, ID_UPD_SECOND, fontNormal);
+        updNotify = w;
+#endif
         applyTexts();
         return 0;
     }
@@ -1709,7 +2047,7 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         HANDLE c = (HANDLE)lp, dc = (HANDLE)wp; PT p = {0, 0};
         MapWindowPoints(c, w, &p, 1); SetBrushOrgEx(dc, -p.x, -p.y, 0);
         SetBkMode(dc, 1 /*TRANSPARENT*/);
-        SetTextColor(dc, c == introWnd || c == pathWnd || c == recordHint ? C.text2 : C.text);
+        SetTextColor(dc, c == introWnd || c == pathWnd || c == recordHint || c == versionWnd ? C.text2 : C.text);
         return (LRESULT)(canvasBrush ? canvasBrush : bgBrush);
     }
     if (msg == WM_EDITOR_SAVED) {
@@ -1719,6 +2057,10 @@ static LRESULT wndProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     if (msg == WM_LANGUAGE) { applyTexts(); return 0; } // picked in the key layout editor
+#ifndef NEXUS
+    if (msg == WM_UPD_CHECKED || msg == WM_UPD_PROGRESS || msg == WM_UPD_DOWNLOADED) { updMessage(msg, wp, lp); return 0; }
+    if (msg == 0x113 /*WM_TIMER*/ && wp == TIMER_GAME_CLOSED) { if (!gameRunning()) { KillTimer(w, TIMER_GAME_CLOSED); step2Show(); } return 0; }
+#endif
     if (msg == 0x02) { PostQuitMessage(0); return 0; } // WM_DESTROY
     return DefWindowProcW(w, msg, wp, lp);
 }
@@ -1996,11 +2338,99 @@ static const char *nextArg(const char *c, char *out, unsigned cap) {
     return c;
 }
 
+#if defined(SELFTEST) && !defined(NEXUS)
+// Test builds only: the update without the window (under Wine, or in a VM), each
+// step logged to the console and to the file WASDMOD_TEST_LOG.
+static void testLog(const char *a, const char *b) {
+    char p[PATHLEN]; DWORD n;
+    say(a); say(b); say("\r\n");
+    if (!GetEnvironmentVariableA("WASDMOD_TEST_LOG", p, sizeof(p))) return;
+    HANDLE f = CreateFileA(p, 4 /*FILE_APPEND_DATA*/, 1 | 2, 0, 4 /*OPEN_ALWAYS*/, 0x80, 0);
+    if (f == (HANDLE)-1) return;
+    WriteFile(f, a, slen(a), &n, 0); WriteFile(f, b, slen(b), &n, 0); WriteFile(f, "\r\n", 2, &n, 0);
+    CloseHandle(f);
+}
+static const char *const UPDNAME[] = {"ok", "offline", "rate limited", "http error", "refused address", "too big", "cancelled", "not a release",
+                                      "no file", "no SHA256SUMS", "checksum mismatch", "not the setup", "read-only folder", "write failed", "launch failed"};
+static const char *const S2NAME[] = {"none (no game folder)", "busy", "done", "done (still turned off)", "already up to date", "waiting for the game to close", "failed", "not installed: install is next"};
+// /selftest-update [check]: what Update now does: check, download both files, check
+// the setup, put it in this exe's place and start it with /updated.
+// WASDMOD_TEST_GAMEROOT: the test stops unless the game folder is inside it (never the player's own game).
+static void testGuard(void) {
+    char root[PATHLEN];
+    if (GetEnvironmentVariableA("WASDMOD_TEST_GAMEROOT", root, sizeof(root)) && (!gameDir[0] || !sameTextN(gameDir, root, slen(root)))) {
+        testLog("test guard: not a test game folder: ", gameDir[0] ? gameDir : "(none)"); gameDir[0] = 0;
+    }
+}
+static void selfTestUpdate(const char *what) {
+    char *b; DWORD n; char line[700];
+    testGuard();
+    testLog("this setup: ", VERSION);
+    int r = updGet(updApi, &b, &n, 4 << 20, 0);
+    if (r == UPD_OK) { r = relParse(b, n, "wasdmod-", ".exe", &updRelease) ? UPD_OK : UPD_NOTRELEASE; updFree(&b); }
+    testLog("check: ", UPDNAME[r]);
+    if (r) ExitProcess(10 + r);
+    scpy(line, sizeof(line), updRelease.version); cat(line, sizeof(line), relNewer(updRelease.version, VERSION) ? " (newer)" : " (not newer)");
+    cat(line, sizeof(line), ", new: "); cat(line, sizeof(line), updRelease.summary);
+    testLog("latest: ", line);
+    if (sameText(what, "check") || !relNewer(updRelease.version, VERSION)) ExitProcess(0);
+    testLog("file: ", updRelease.assetName);
+    r = updDownload(); testLog("download and checksum: ", UPDNAME[r]);
+    if (r) ExitProcess(10 + r);
+    r = updReplaceSelf(); testLog("replace this exe: ", UPDNAME[r]);
+    if (r == UPD_READONLY) { WCHAR w[PATHLEN]; r = updSaveToDownloads(w) ? UPD_OK : UPD_WRITE; testLog("saved to Downloads instead: ", UPDNAME[r]); ExitProcess(r ? 10 + r : 3); }
+    if (r) ExitProcess(10 + r);
+    updWriteMarker();
+    r = updRelaunch(gameDir); testLog("start the new one: ", UPDNAME[r]);
+    if (r) { updUndoReplace(); ExitProcess(10 + r); }
+    ExitProcess(0);
+}
+// The new setup, started with /updated: step 1's clean-up, then step 2 (waiting while
+// the game runs, at most a minute).
+static void selfTestAfter(void) {
+    char summary[480], v[40]; WCHAR old[PATHLEN + 8];
+    testGuard();
+    testLog("after the update, this setup: ", VERSION);
+    updCleanThread((void *)1);
+    updOldName(updSelf, old);
+    testLog("old exe removed: ", GetFileAttributesW(old) == 0xFFFFFFFF ? "yes" : "no");
+    testLog("marker for this version: ", updReadMarker(summary, sizeof(summary)) ? "yes" : "no");
+    testLog("summary: ", summary);
+    testLog("game folder: ", gameDir);
+    int last = -1;
+    for (int i = 0; i < 120; i++) {
+        int s2 = step2Run();
+        if (s2 != last) { testLog("step 2: ", S2NAME[s2]); if (s2 == S2_WAIT) testLog("  the mod in the game is still ", upGameVersion); last = s2; }
+        if (s2 != S2_WAIT) break;
+        Sleep(500);
+    }
+    modVersion(gameDir, v, sizeof(v)); testLog("mod in the game now: ", v);
+    ExitProcess(0);
+}
+#endif
+
 void start(void) {
     SetProcessDPIAware();
     char arg[PATHLEN], val[PATHLEN];
     const char *c = nextArg(GetCommandLineA(), arg, sizeof(arg)); // program name
     c = nextArg(c, arg, sizeof(arg)); nextArg(c, val, sizeof(val));
+#ifndef NEXUS
+    int updated = 0;
+#ifdef SELFTEST
+    updTestSetup();
+    if (sameText(arg, "/selftest-update")) {
+        if (!GetEnvironmentVariableA("WASDMOD_TEST_GAMEDIR", gameDir, sizeof(gameDir)) || !isGameDir(gameDir)) { gameDir[0] = 0; findGame(gameDir); }
+        selfTestUpdate(val);
+    }
+#endif
+    if (sameText(arg, "/updated")) { // the previous version just put this exe in its place
+        updated = 1; arg[0] = 0;
+        if (val[0] && isGameDir(val)) scpy(gameDir, sizeof(gameDir), val);
+#ifdef SELFTEST
+        char h[8]; if (GetEnvironmentVariableA("WASDMOD_TEST_HEADLESS", h, sizeof(h))) { if (!gameDir[0]) findGame(gameDir); selfTestAfter(); }
+#endif
+    }
+#endif
     if (arg[0] == '/' || arg[0] == '-') {
         const char *cmd = arg + 1; int code = 0;
         if (sameText(cmd, "find")) { if (val[0] ? dirFromPick(val, gameDir) : findGame(gameDir)) { say(gameDir); say("\r\n"); } else { say("not found\r\n"); code = 1; } }
@@ -2037,10 +2467,17 @@ void start(void) {
         }
         ExitProcess(code);
     }
-    findGame(gameDir);
+    if (!gameDir[0]) findGame(gameDir);
     pickLanguage();
     CoInitializeEx(0, 2 /*COINIT_APARTMENTTHREADED*/); // WebView2 (the editor window) needs it
     HANDLE w = createMain();
+#ifndef NEXUS
+    if (updated) updAfterStart(); // step 1 is done; step 2: the mod in the game
+    else {
+        HANDLE t = CreateThread(0, 0, updCleanThread, 0, 0, 0); if (t) CloseHandle(t); // a NAME.old an earlier update left
+        if (updDue()) updCheck(0); // at most once a day
+    }
+#endif
     MSG m;
     while (GetMessageW(&m, 0, 0, 0) > 0) if (!IsDialogMessageW(w, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     ExitProcess(0);

@@ -3,7 +3,8 @@
 # uninstall.command). Installs the Minecraft Dungeons II controller mod into the
 # CrossOver bottle that has the game.
 #
-#   wasdmod.sh status             game=, state=none|current|older|other|off, layout=, own=
+#   wasdmod.sh status             game=, state=none|current|older|other|off, layout=, own=,
+#                                 recording=, modversion= (the game folder's mod), running=yes|no
 #   wasdmod.sh install            FORCE=1 replaces another mod's xinput1_4.dll (kept as .other)
 #   wasdmod.sh uninstall          ALL=1 also deletes the saved layouts
 #   wasdmod.sh off | on           the game starts without the mod (xinput1_4.dll.off) / with it again
@@ -49,7 +50,10 @@ fi
 fail() { echo "$*" >&2; exit 1; }
 ours() { grep -q -E "WASD mod loaded|Controller mod loaded" "$1"; }
 # The [p] keeps pgrep from matching a shell whose command line has the name in it.
-running() { [ -z "$WASDMOD_TEST_NOGAME" ] && pgrep -f 'Dungeons-Win64-Shi[p]ping' >/dev/null; } # tests: a game in another bottle doesn't count
+running() { # tests: WASDMOD_TEST_NOGAME, a game in another bottle doesn't count; WASDMOD_TEST_GAME=FILE, "running" while FILE exists
+    [ -n "$WASDMOD_TEST_GAME" ] && { [ -e "$WASDMOD_TEST_GAME" ]; return; }
+    [ -z "$WASDMOD_TEST_NOGAME" ] && pgrep -f 'Dungeons-Win64-Shi[p]ping' >/dev/null
+}
 needGame() { [ -d "$GAME" ] || fail "Minecraft Dungeons II wasn't found in a CrossOver bottle."; }
 needQuit() { running && fail "Minecraft Dungeons II is running. Quit it, then try again."; return 0; }
 # The mod reads whichever settings file is newest.
@@ -92,6 +96,11 @@ status)
     echo "layout=$(active)"
     echo "own=$(own)"
     [ -f "$GAME/wasdmod-record.flag" ] && echo "recording=yes" || echo "recording=no"
+    # The version of the mod in the game folder (its log line has it: " wasdmod 1.3.1, ").
+    for f in "$GAME/xinput1_4.dll" "$GAME/xinput1_4.dll.off"; do
+        [ -f "$f" ] && { echo "modversion=$(LC_ALL=C grep -a -o -E ' wasdmod [0-9][0-9.]*, ' "$f" | head -1 | LC_ALL=C sed -E 's/ wasdmod ([0-9.]*), /\1/')"; break; }
+    done
+    running && echo "running=yes" || echo "running=no"
     ;;
 install)
     needGame; needQuit

@@ -112,37 +112,48 @@ static int argNum(const char *cmd, char key, int fallback) {
 // --overlay: a 960x540 window like the game's in the bottom-right corner of the screen
 // (bright.bmp, or dark.bmp with "dark", next to this exe), redrawn every frame, never
 // brought to the front. At T ms it types T (typing mode), holds W from W to W+700 ms
-// (the banner shakes), at E ms presses Esc ("Back to playing"), and ends at Z ms
-// (defaults T=600 W=1600 E=3000 Z=4800; change them like "T=900"). It prints how long
+// (the banner shakes), at E ms presses Esc ("Back to playing"), at O ms presses the
+// toggle key (Backtick: "wasdmod off"), at N ms presses it again ("wasdmod on"), and
+// ends at Z ms (defaults T=600 W=1600 E=3000 O=3300 N=4200 Z=4800; change them like
+// "T=900"; a time past Z leaves that step out; X= and Y= move the window). It prints how long
 // this window's frames took meanwhile: the overlays run on their own thread and
 // shouldn't make them late. With RequireFocus=0 in default.txt the overlays show even
 // though this window isn't in front (KeepCursorInWindow=0 and MouseMoveSwitches=0 too:
 // the bottle shares the real mouse).
 // --overlay focus: the same with RequireFocus=1: as this window isn't in front, none of
-// the overlays may show (they'd float over other apps).
+// the overlays may show (they'd float over other apps). (The toggle key isn't taken
+// either then, so the mod doesn't switch off.)
 static void overlayTest(int dark, int focusCase, const char *cmd) {
     int tT = argNum(cmd, 'T', 600), tW = argNum(cmd, 'W', 1600), tE = argNum(cmd, 'E', 3000), tEnd = argNum(cmd, 'Z', 4800);
-    num("timeline: T ", tT); num("  W ", tW); num("  E ", tE); num("  Z ", tEnd);
+    int tO = argNum(cmd, 'O', 3300), tN = argNum(cmd, 'N', 4200);
+    num("timeline: T ", tT); num("  W ", tW); num("  E ", tE); num("  O ", tO); num("  N ", tN); num("  Z ", tEnd);
     static const unsigned short bright[] = {'b','r','i','g','h','t','.','b','m','p',0}, darkName[] = {'d','a','r','k','.','b','m','p',0};
     backdrop = LoadImageW(0, dark ? darkName : bright, 0 /*IMAGE_BITMAP*/, 0, 0, 0x10 /*LR_LOADFROMFILE*/);
     WNDCLASSA wc; char *z = (char *)&wc; for (unsigned i = 0; i < sizeof(wc); i++) z[i] = 0;
     wc.proc = gameProc; wc.className = "WasdTestGame";
     RegisterClassA(&wc);
     RECT r = {0, 0, GAME_W, GAME_H}; AdjustWindowRect(&r, 0x00CF0000 /*WS_OVERLAPPEDWINDOW*/, 0);
-    HANDLE screen = GetDC(0);
-    int sw = screen ? GetDeviceCaps(screen, 8 /*HORZRES*/) : 1440, sh = screen ? GetDeviceCaps(screen, 10 /*VERTRES*/) : 900;
+    // The screen in window coordinates (GetSystemMetrics: the screen DC's size can differ,
+    // e.g. under CrossOver's Retina mode); X= and Y= place the window elsewhere.
+    HANDLE screen = GetDC(0), u32 = LoadLibraryA("user32.dll");
+    int (*metrics)(int) = u32 ? GetProcAddress(u32, "GetSystemMetrics") : 0;
+    int sw = metrics ? metrics(0 /*SM_CXSCREEN*/) : screen ? GetDeviceCaps(screen, 8 /*HORZRES*/) : 1440;
+    int sh = metrics ? metrics(1 /*SM_CYSCREEN*/) : screen ? GetDeviceCaps(screen, 10 /*VERTRES*/) : 900;
     int ww = r.right - r.left, wh = r.bottom - r.top;
-    HANDLE w = CreateWindowExA(0x08000000 /*NOACTIVATE*/, "WasdTestGame", "wasd test game", 0x00CF0000, sw - ww - 16, sh - wh - 80, ww, wh, 0, 0, 0, 0);
+    num("screen ", sw); num("  x ", sh);
+    HANDLE w = CreateWindowExA(0x08000000 /*NOACTIVATE*/, "WasdTestGame", "wasd test game", 0x00CF0000, argNum(cmd, 'X', sw - ww - 16), argNum(cmd, 'Y', sh - wh - 80), ww, wh, 0, 0, 0, 0);
     ShowWindow(w, 4 /*SW_SHOWNOACTIVATE*/);
     HANDLE m = LoadLibraryA(".\\xinput1_4.dll");
     DWORD (*get)(DWORD, STATE *) = m ? GetProcAddress(m, "XInputGetState") : 0;
     if (!get) { out("FAIL load\r\n"); DestroyWindow(w); ExitProcess(1); }
-    struct { int from, to; const char *name; } parts[5] = {
+    #define PARTS 7
+    struct { int from, to; const char *name; } parts[PARTS] = {
         {300, tT, "before typing"}, {tT, tT + 1000, "typing: banner drops in, frame traces"}, {tT + 1000, tW, "typing, idle (caret blinks)"},
-        {tW + 400, tW + 1100, "typing: banner shakes, frame blinks"}, {tE, tE + 1700, "Esc: fade out, \"Back to playing\""}};
-    static long long sum[5], worst[5]; static int frames[5], late[5], worstAt[5], lateAt[24], lateUs[24], lates, maxSeen;
+        {tW + 400, tW + 1100, "typing: banner shakes, frame blinks"}, {tE, tE + 300, "Esc: fade out, \"Back to playing\""},
+        {tO, tO + 600, "toggle key: \"wasdmod off\" drops in"}, {tN, tN + 600, "toggle key again: \"wasdmod on\""}};
+    static long long sum[PARTS], worst[PARTS]; static int frames[PARTS], late[PARTS], worstAt[PARTS], lateAt[24], lateUs[24], lates, maxSeen;
     long long f, start, last, now; QueryPerformanceFrequency(&f); QueryPerformanceCounter(&start); last = start;
-    int typed = 0, held = 0, released = 0, escaped = 0;
+    int typed = 0, held = 0, released = 0, escaped = 0, toggles = 0;
     for (;;) {
         MSG msg; while (PeekMessageA(&msg, 0, 0, 0, 1)) DispatchMessageA(&msg);
         STATE s; get(0, &s);
@@ -154,14 +165,18 @@ static void overlayTest(int dark, int focusCase, const char *cmd) {
         int ms = (int)((now - start) * 1000 / f), dt = (int)((now - last) * 1000000 / f); // microseconds
         last = now;
         if (dt > 25000 && ms > 1000 && lates < 24) { lateAt[lates] = ms; lateUs[lates++] = dt; }
-        for (int p = 0; p < 5; p++) if (ms >= parts[p].from && ms < parts[p].to) { sum[p] += dt; frames[p]++; if (dt > worst[p]) { worst[p] = dt; worstAt[p] = ms; } if (dt > 25000) late[p]++; }
+        for (int p = 0; p < PARTS; p++) if (ms >= parts[p].from && ms < parts[p].to) { sum[p] += dt; frames[p]++; if (dt > worst[p]) { worst[p] = dt; worstAt[p] = ms; } if (dt > 25000) late[p]++; }
         if (!typed && ms >= tT) { typed = 1; PostMessageA(w, 0x100, 'T', 0x00140001); }
         if (!held && ms >= tW) { held = 1; keybd_event('W', 0x11, 0, 0); }
         if (!released && ms >= tW + 700) { released = 1; keybd_event('W', 0x11, 2 /*KEYUP*/, 0); }
         if (!escaped && ms >= tE) { escaped = 1; PostMessageA(w, 0x100, 0x1B, 0x00010001); }
+        // The toggle key (Backtick), held for 80 ms: down at O, up, down at N, up.
+        int at[4] = {tO, tO + 80, tN, tN + 80};
+        if (toggles < 4 && ms >= at[toggles] && at[toggles] < tEnd) { keybd_event(0xC0, 0x29, toggles & 1 ? 2 /*KEYUP*/ : 0, 0); toggles++; }
         if (ms >= tEnd) break;
     }
     if (held && !released) keybd_event('W', 0x11, 2, 0);
+    if (toggles & 1) keybd_event(0xC0, 0x29, 2, 0); // never left down
     DestroyWindow(w);
     if (focusCase) {
         num("focus: overlay windows seen while the game window wasn't in front (0 expected) ", maxSeen);
@@ -170,7 +185,7 @@ static void overlayTest(int dark, int focusCase, const char *cmd) {
     }
     num("key list shown ", legendSeen); num("typing banner shown ", bannerSeen);
     for (int i = 0; i < lates; i++) { num("late frame at ms ", lateAt[i]); num("  took us ", lateUs[i]); }
-    for (int p = 0; p < 5; p++) {
+    for (int p = 0; p < PARTS; p++) {
         out(parts[p].name); num(": frames ", frames[p]);
         num("  average us ", frames[p] ? (long)(sum[p] / frames[p]) : 0); num("  worst us ", (long)worst[p]); num("  worst at ms ", worstAt[p]);
         num("  over 25 ms ", late[p]);
