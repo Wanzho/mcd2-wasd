@@ -581,6 +581,7 @@
   "Downloaded {file}. Load it with wasdmod (Load layout file) or move it into the game's Win64 folder; a running game switches to it within a second. On a Mac, the wasdmod app has this editor built in.": "已下载 {file}。用 wasdmod 的“导入键位文件”导入，或者直接放进游戏的 Win64 文件夹；正在运行的游戏会在一秒内生效。Mac 上的 wasdmod 应用自带这个编辑器。",
   "{apply} changes the game's keyboard settings to this layout, for every key it can (the rest stay in the list). Close the game first; the original settings file stays as a backup.": "{apply}会把游戏的键盘设置改成这套键位，能改的都会改（改不了的会留在清单里）。请先关闭游戏；原来的设置文件会备份保留。",
   "{use} does the opposite: this layout takes the game's keys, except keys you move with.": "{use}则反过来：让这套键位改用游戏的按键，和你的移动键重复的除外。",
+  "{use} changes this layout to the game's keys, except keys you move with.": "{use}会让这套键位改用游戏的按键，和你的移动键重复的除外。",
   "<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, which is \"{move}\" here, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and click Done on it in the checklist; this note then goes away.": "<b>轮盘菜单现在在 {key} 键上。</b>游戏原本用的是 {game} 键，而它在这里是“{move}”，所以按 {key} 时，模组会替你向游戏发送 {game}。在游戏里把{action}改成 {key}（设置 › 控制 › 键盘），再在清单里点该项的“已改”，这条提示就会消失。",
   "<b>The menu wheel is on {key}.</b> The game's own key for it is {game}, so pressing {key} sends the game its {game}. Set {action} to {key} in the game (Settings › Controls › Keyboard) and click Done on it in the checklist; this note then goes away.": "<b>轮盘菜单现在在 {key} 键上。</b>游戏原本用的是 {game} 键，所以按 {key} 时，模组会替你向游戏发送 {game}。在游戏里把{action}改成 {key}（设置 › 控制 › 键盘），再在清单里点该项的“已改”，这条提示就会消失。",
   "tap: dodge the way you're moving · hold, move the mouse, let go: dodge that way": "短按：朝移动方向闪避 · 按住并移动鼠标再松开：朝鼠标移动的方向闪避",
@@ -639,15 +640,13 @@
   "The game's own keys now match: {actions}.": "游戏按键已同步：{actions}。",
   "The game's own keys update once you close the game.": "关闭游戏后，游戏按键就会更新。",
   "The game's own keys weren't changed: {error}": "游戏按键没有修改：{error}",
-  "Keep the game's keys in sync": "游戏按键保持同步",
+  "The game's own keyboard settings follow this layout: each change reaches them a moment after you make it, or once you close the game if it's running. The first change keeps a backup of the original settings file.": "游戏的键盘设置会自动和这套键位保持一致：每次改动片刻后生效；游戏开着的话，关闭后生效。第一次改动时，原来的设置文件会备份保留。",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "手柄上 A 键是跳跃和交互；游戏的键盘设置里，交互在攻击键上",
   "Set the game's keys to this layout": "把游戏按键改成这套方案",
   "Set this layout to the game's keys": "把这套方案改成游戏按键",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "撤销只影响编辑器：已应用到游戏的方案，以及已同步的游戏按键，都不会跟着变。",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II 正在运行，请先退出游戏再试。",
   "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II 正在运行，请先关闭游戏再试。",
-  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "这里的每次改动都会同步到游戏的键盘设置（仅限游戏里能设置的键）。游戏开着的话，会在关闭后更新。第一次改动时，原来的设置文件会备份保留。",
-  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "游戏的键盘设置保持不变。要改的话，可以用清单，或点“{apply}”。",
   "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "撤销会改回编辑器里的内容，游戏按键也会跟着同步。已应用到游戏的方案不会变。"
  }
 }

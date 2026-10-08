@@ -1145,8 +1145,8 @@ static LRESULT legendProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, msg, wp, lp);
 }
 
-// A hidden 1x1 window whose 30 ms timer keeps the cursor in the game window, shows
-// the typing banner and does the cursor-key nudge.
+// A hidden 1x1 window whose 30 ms timer (250 ms while the game is in the background)
+// keeps the cursor in the game window, shows the typing banner and does the cursor-key nudge.
 static HANDLE tickWnd;
 
 // ---------------------------------------------------------------- banners: typing mode, mod off
@@ -1795,9 +1795,14 @@ static void warmUp(void) {
 }
 
 static LRESULT tickProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
-    if (msg == 0x113) { // WM_TIMER, every 30 ms
+    if (msg == 0x113) { // WM_TIMER, every 30 ms (250 ms with the game in the background)
         DWORD fgPid = 0; HANDLE fg = GetForegroundWindow(); if (fg) GetWindowThreadProcessId(fg, &fgPid);
         int front = gameInFront(fg);
+        {   // With the game in the background there's nothing to do but notice it coming
+            // back: the timer slows to 4 times a second until then.
+            static int tickFast = 1;
+            if (front != tickFast) { tickFast = front; SetTimer(w, 2, front ? 30 : 250, 0); }
+        }
         if (!front && legendShown) legendAway(); // at once, not at the key list's next check
         showTyping(front);
         int inControl = gameWnd && active();
@@ -1808,9 +1813,8 @@ static LRESULT tickProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         // measure mouse travel), and only while the game window is in front.
         int sane = gameWnd && gameWidth >= 400 && gameHeight >= 300 && fgPid == GetCurrentProcessId();
         int buttonsHeld = (GetAsyncKeyState(0x01) | GetAsyncKeyState(0x02) | GetAsyncKeyState(0x04) | GetAsyncKeyState(0x05) | GetAsyncKeyState(0x06)) & 0x8000;
-        if (inControl && sane) keepCursorInside();
-        if (inControl && cfg.clipCursor && sane && !buttonsHeld && movementHeld()) {
-            POINT p; GetCursorPos(&p);
+        POINT p; int haveP = inControl && sane && keepCursorInside(&p); // (the cursor is read once a tick)
+        if (inControl && cfg.clipCursor && sane && !buttonsHeld && movementHeld() && (haveP || GetCursorPos(&p))) {
             LONG cx = gameLeft + gameWidth / 2, cy = gameTop + gameHeight / 2;
             LONG dx = p.x - cx, dy = p.y - cy, lim = (gameWidth < gameHeight ? gameWidth : gameHeight) / 3;
             if (dx > lim || dx < -lim || dy > lim || dy < -lim) SetCursorPos(cx, cy);

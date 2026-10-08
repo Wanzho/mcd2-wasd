@@ -803,9 +803,10 @@ static void updateModes(void) {
         static int haveRef; static POINT ref;
         int busy = movementHeld() || ((GetAsyncKeyState(0x01) | GetAsyncKeyState(0x02) | GetAsyncKeyState(0x04) | GetAsyncKeyState(0x05) | GetAsyncKeyState(0x06)) & 0x8000);
         int watch = cfg.mouseMoveSwitches ? cfg.mouseWakePx : cfg.bumpNudgePct;
+        // The cursor is only read while it's watched: under CrossOver, GetCursorPos with a
+        // mouse that hasn't moved lately asks the Mac side (~60 us, the dearest call here).
         POINT p;
-        int gotPos = GetCursorPos(&p);
-        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !gotPos) haveRef = 0;
+        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !GetCursorPos(&p)) haveRef = 0;
         else if (busy || !haveRef) { ref = p; haveRef = 1; }
         else {
             static POINT last; static int haveLast; static U64 movedAt;
@@ -843,13 +844,16 @@ IMP BOOL SetCursorPos(int, int);
 // Controller mode: the game hides its cursor, so keep that invisible cursor inside
 // the game window (a few pixels in from the edges) -- a click can't land in another
 // app, and it can't get lost. Checked every poll; mouse mode leaves it free.
-static void keepCursorInside(void) {
+// Returns 1 with where the cursor is now in *at, 0 if it wasn't read.
+static int keepCursorInside(POINT *at) {
     LONG l = gameLeft, t = gameTop, w = gameWidth, h = gameHeight;
-    if (!cfg.clipCursor || w < 400 || h < 300) return;
-    POINT p; if (!GetCursorPos(&p)) return;
+    if (!cfg.clipCursor || w < 400 || h < 300) return 0;
+    POINT p; if (!GetCursorPos(&p)) return 0;
     LONG x = p.x < l + 4 ? l + 4 : p.x > l + w - 5 ? l + w - 5 : p.x;
     LONG y = p.y < t + 4 ? t + 4 : p.y > t + h - 5 ? t + h - 5 : p.y;
     if (x != p.x || y != p.y) SetCursorPos(x, y);
+    at->x = x; at->y = y;
+    return 1;
 }
 
 static Smooth moveSmooth;
