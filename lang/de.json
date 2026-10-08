@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "Die Tasten im Spiel passen jetzt: {actions}.",
   "The game's own keys update once you close the game.": "Die Tasten im Spiel werden angepasst, sobald du das Spiel schließt.",
   "The game's own keys weren't changed: {error}": "Die Tasten im Spiel wurden nicht geändert: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "„Ins Spiel speichern“ stellt auch die Tastatureinstellungen des Spiels auf diese Belegung, für jede Taste, die es kann (vorher das Spiel schließen; die ursprüngliche Einstellungsdatei bleibt als Sicherung erhalten)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "„Ins Spiel speichern“ speichert nur die Belegung; die Tastatureinstellungen des Spiels bleiben, wie sie sind",
   "Keep the game's keys in sync": "Tasten im Spiel synchron halten",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "am Controller ist A Springen und Interagieren; in den Tastatureinstellungen des Spiels liegt Interagieren auf der Angriffstaste",
   "Set the game's keys to this layout": "Tasten des Spiels auf diese Belegung setzen",
   "Set this layout to the game's keys": "Diese Belegung auf die Tasten des Spiels setzen",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Rückgängig ändert nur den Editor: Eine Belegung, die du ins Spiel gespeichert hast, und die Tasten im Spiel, sobald sie gesetzt sind, bleiben, wie sie sind.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II läuft. Beende es und versuche es erneut.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II läuft. Schließe es und versuche es erneut."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II läuft. Schließe es und versuche es erneut.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Jede Änderung hier stellt auch die Tastatureinstellungen des Spiels passend ein, für jede Taste, für die das Spiel eine Einstellung hat. Läuft das Spiel, werden sie angepasst, sobald du es schließt. Bei der ersten Änderung bleibt die ursprüngliche Einstellungsdatei als Sicherung erhalten.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Die Tastatureinstellungen des Spiels bleiben, wie sie sind. Ändere sie über die Checkliste oder mit „{apply}“.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Rückgängig ändert den Editor, und die Tasten im Spiel ziehen mit. Eine Belegung, die du ins Spiel gespeichert hast, bleibt, wie sie ist."
  }
 }

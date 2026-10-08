@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "Les touches du jeu correspondent maintenant : {actions}.",
   "The game's own keys update once you close the game.": "Les touches du jeu seront mises à jour quand vous fermerez le jeu.",
   "The game's own keys weren't changed: {error}": "Les touches du jeu n'ont pas été changées : {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "« Enregistrer dans le jeu » règle aussi les touches clavier du jeu sur cette configuration, pour chaque touche possible (fermez d'abord le jeu ; le fichier de réglages d'origine est gardé en sauvegarde)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "« Enregistrer dans le jeu » enregistre seulement la configuration ; les réglages clavier du jeu restent tels quels",
   "Keep the game's keys in sync": "Garder les touches du jeu synchronisées",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "à la manette, A sert à sauter et à interagir ; dans les réglages clavier du jeu, interagir est sur la touche d'attaque",
   "Set the game's keys to this layout": "Régler les touches du jeu sur cette configuration",
   "Set this layout to the game's keys": "Régler cette configuration sur les touches du jeu",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Annuler ne change que l'éditeur : une configuration enregistrée dans le jeu, et les touches du jeu une fois réglées, restent telles quelles.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II est lancé. Quittez-le, puis réessayez.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II est lancé. Fermez-le, puis réessayez."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II est lancé. Fermez-le, puis réessayez.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Chaque modification ici règle aussi les touches clavier du jeu pour qu'elles correspondent, pour chaque touche que le jeu permet de régler. Si le jeu est lancé, elles suivent dès que vous le fermez. La première modification garde le fichier de réglages d'origine en sauvegarde.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Les réglages clavier du jeu restent tels quels. Pour les changer, utilisez la liste ou « {apply} ».",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Annuler change l'éditeur, et les touches du jeu suivent. Une configuration enregistrée dans le jeu reste telle quelle."
  }
 }

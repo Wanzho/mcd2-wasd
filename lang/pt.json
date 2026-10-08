@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "As teclas do jogo agora batem: {actions}.",
   "The game's own keys update once you close the game.": "As teclas do jogo são atualizadas quando você fechar o jogo.",
   "The game's own keys weren't changed: {error}": "As teclas do jogo não foram alteradas: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "“Salvar no jogo” também ajusta as configurações de teclado do jogo para este layout, em todas as teclas possíveis (feche o jogo antes; o arquivo de configuração original fica como backup)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "“Salvar no jogo” só salva o layout; as configurações de teclado do jogo continuam como estão",
   "Keep the game's keys in sync": "Manter as teclas do jogo sincronizadas",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "no controle, A é pular e interagir; nas configurações de teclado do jogo, interagir fica na tecla de ataque",
   "Set the game's keys to this layout": "Ajustar as teclas do jogo a este layout",
   "Set this layout to the game's keys": "Ajustar este layout às teclas do jogo",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Desfazer só muda o editor: um layout que você salvou no jogo e as teclas do jogo, depois de ajustadas, continuam como estão.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "O Minecraft Dungeons II está aberto. Encerre o jogo e tente de novo.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "O Minecraft Dungeons II está aberto. Feche o jogo e tente de novo."
+  "Minecraft Dungeons II is running. Close it, then try again.": "O Minecraft Dungeons II está aberto. Feche o jogo e tente de novo.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Cada mudança aqui também ajusta as configurações de teclado do jogo para combinar, em cada tecla que o jogo deixa configurar. Se o jogo estiver aberto, elas mudam quando você fechá-lo. Na primeira mudança, o arquivo de configuração original fica como backup.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "As configurações de teclado do jogo continuam como estão. Para mudá-las, use a lista ou “{apply}”.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Desfazer muda o editor, e as teclas do jogo acompanham. Um layout que você salvou no jogo continua como está."
  }
 }

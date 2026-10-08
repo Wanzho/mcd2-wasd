@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "Las teclas del juego ya coinciden: {actions}.",
   "The game's own keys update once you close the game.": "Las teclas del juego se actualizarán cuando cierres el juego.",
   "The game's own keys weren't changed: {error}": "Las teclas del juego no se cambiaron: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "«Guardar en el juego» también pone la configuración de teclado del juego como este esquema, en todas las teclas que pueda (cierra antes el juego; el archivo de configuración original se guarda como copia de seguridad)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "«Guardar en el juego» solo guarda el esquema; la configuración de teclado del juego se queda como está",
   "Keep the game's keys in sync": "Mantener sincronizadas las teclas del juego",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "en el mando, A es saltar e interactuar; en la configuración de teclado del juego, interactuar está en la tecla de ataque",
   "Set the game's keys to this layout": "Poner las teclas del juego como este esquema",
   "Set this layout to the game's keys": "Poner este esquema como las teclas del juego",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Deshacer solo cambia el editor: un esquema que guardaste en el juego y las teclas del juego, una vez cambiadas, se quedan como están.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II está abierto. Ciérralo y vuelve a intentarlo.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II está abierto. Ciérralo y vuelve a intentarlo."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II está abierto. Ciérralo y vuelve a intentarlo.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Cada cambio aquí también ajusta la configuración de teclado del juego para que coincida, en cada tecla que el juego permite configurar. Si el juego está abierto, se actualiza cuando lo cierres. El primer cambio guarda el archivo de configuración original como copia de seguridad.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "La configuración de teclado del juego se queda como está. Para cambiarla, usa la lista o «{apply}».",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Deshacer cambia el editor, y las teclas del juego lo siguen. Un esquema que guardaste en el juego se queda como está."
  }
 }

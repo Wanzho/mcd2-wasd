@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "Spelets tangenter stämmer nu: {actions}.",
   "The game's own keys update once you close the game.": "Spelets tangenter uppdateras när du stänger spelet.",
   "The game's own keys weren't changed: {error}": "Spelets tangenter ändrades inte: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "”Spara i spelet” ställer också in spelets tangentbordsinställningar efter den här layouten, för varje tangent som går (stäng spelet först; den ursprungliga inställningsfilen sparas som säkerhetskopia)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "”Spara i spelet” sparar bara layouten; spelets tangentbordsinställningar förblir som de är",
   "Keep the game's keys in sync": "Håll spelets tangenter i synk",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "på en handkontroll är A hopp och interagera; i spelets tangentbordsinställningar ligger interagera på attacktangenten",
   "Set the game's keys to this layout": "Ställ in spelets tangenter efter den här layouten",
   "Set this layout to the game's keys": "Ställ in den här layouten efter spelets tangenter",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Ångra ändrar bara redigeraren: en layout du har sparat i spelet, och spelets tangenter när de väl är inställda, förblir som de är.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II körs. Avsluta spelet och försök igen.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II körs. Stäng spelet och försök igen."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II körs. Stäng spelet och försök igen.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Varje ändring här ställer också in spelets tangentbordsinställningar så att de stämmer, för varje tangent som spelet har en inställning för. Om spelet är igång följer de med när du stänger det. Vid första ändringen sparas den ursprungliga inställningsfilen som säkerhetskopia.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Spelets tangentbordsinställningar förblir som de är. Ändra dem med checklistan eller ”{apply}”.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Ångra ändrar redigeraren, och spelets tangenter följer med. En layout du har sparat i spelet förblir som den är."
  }
 }

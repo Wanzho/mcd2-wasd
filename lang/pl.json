@@ -654,14 +654,15 @@
   "The game's own keys now match: {actions}.": "Klawisze w grze już się zgadzają: {actions}.",
   "The game's own keys update once you close the game.": "Klawisze w grze zmienią się, gdy zamkniesz grę.",
   "The game's own keys weren't changed: {error}": "Nie zmieniono klawiszy w grze: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "„Zapisz w grze” ustawia też klawisze w grze zgodnie z tym układem, dla każdego klawisza, który się da (najpierw zamknij grę; oryginalny plik ustawień zostaje jako kopia zapasowa)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "„Zapisz w grze” zapisuje tylko układ; ustawienia klawiatury gry zostają bez zmian",
   "Keep the game's keys in sync": "Synchronizuj klawisze w grze",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "na kontrolerze A to skok i interakcja; w ustawieniach klawiatury gry interakcja jest na klawiszu ataku",
   "Set the game's keys to this layout": "Ustaw klawisze gry według tego układu",
   "Set this layout to the game's keys": "Ustaw ten układ według klawiszy gry",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Cofnij zmienia tylko edytor: układ zapisany w grze ani ustawione już klawisze w grze się nie zmienią.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II jest uruchomione. Zakończ grę i spróbuj ponownie.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II jest uruchomione. Zamknij grę i spróbuj ponownie."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II jest uruchomione. Zamknij grę i spróbuj ponownie.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Każda zmiana tutaj ustawia też tak samo klawisze w grze, dla każdego klawisza, który gra pozwala ustawić. Jeśli gra jest uruchomiona, klawisze zmienią się, gdy ją zamkniesz. Przy pierwszej zmianie oryginalny plik ustawień zostaje jako kopia zapasowa.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Ustawienia klawiatury w grze zostają bez zmian. Zmienisz je z listy albo przyciskiem „{apply}”.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Cofnij zmienia edytor, a klawisze w grze zmieniają się razem z nim. Układ zapisany w grze się nie zmienia."
  }
 }

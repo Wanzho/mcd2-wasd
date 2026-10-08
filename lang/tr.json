@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "Oyunun tuşları artık eşleşiyor: {actions}.",
   "The game's own keys update once you close the game.": "Oyunun tuşları oyunu kapattığınızda güncellenir.",
   "The game's own keys weren't changed: {error}": "Oyunun tuşları değiştirilmedi: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "„Oyuna kaydet” oyunun klavye ayarlarını da bu düzene göre ayarlar, yapabildiği her tuş için (önce oyunu kapatın; özgün ayar dosyası yedek olarak saklanır)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "„Oyuna kaydet” yalnızca düzeni kaydeder; oyunun klavye ayarları olduğu gibi kalır",
   "Keep the game's keys in sync": "Oyunun tuşlarını eşit tut",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "kumandada A zıplama ve etkileşimdir; oyunun klavye ayarlarında etkileşim saldırı tuşundadır",
   "Set the game's keys to this layout": "Oyunun tuşlarını bu düzene göre ayarla",
   "Set this layout to the game's keys": "Bu düzeni oyunun tuşlarına göre ayarla",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Geri alma yalnızca düzenleyiciyi değiştirir: oyuna kaydettiğiniz bir düzen ve ayarlandıktan sonra oyunun tuşları olduğu gibi kalır.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II çalışıyor. Oyundan çıkıp yeniden deneyin.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II çalışıyor. Kapatıp yeniden deneyin."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II çalışıyor. Kapatıp yeniden deneyin.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Burada yaptığınız her değişiklik, oyunda ayarı olan her tuş için oyunun klavye ayarlarını da aynı yapar. Oyun açıksa, kapattığınızda güncellenir. İlk değişiklikte özgün ayar dosyası yedek olarak saklanır.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Oyunun klavye ayarları olduğu gibi kalır. Değiştirmek için listeyi ya da „{apply}” düğmesini kullanın.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Geri alma düzenleyiciyi değiştirir, oyunun tuşları da ona uyar. Oyuna kaydettiğiniz bir düzen olduğu gibi kalır."
  }
 }

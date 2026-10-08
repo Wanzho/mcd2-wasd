@@ -639,14 +639,15 @@
   "The game's own keys now match: {actions}.": "게임 키를 맞췄습니다: {actions}.",
   "The game's own keys update once you close the game.": "게임을 종료하면 게임 키가 업데이트됩니다.",
   "The game's own keys weren't changed: {error}": "게임 키를 바꾸지 못했습니다: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "'게임에 적용'을 누르면 게임 키보드 설정도 이 배치에 맞춥니다(바꿀 수 있는 키만, 먼저 게임을 종료하세요. 원래 설정 파일은 백업으로 남습니다)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "'게임에 적용'은 배치만 저장하고, 게임 키보드 설정은 그대로 둡니다",
   "Keep the game's keys in sync": "게임 키 동기화",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "컨트롤러에서는 A가 점프와 상호작용이고, 게임 키보드 설정에서는 상호작용이 공격 키에 있습니다",
   "Set the game's keys to this layout": "게임 키를 이 배치로 맞추기",
   "Set this layout to the game's keys": "이 배치를 게임 키로 맞추기",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "실행 취소는 편집기 안에서만 되돌립니다. 게임에 적용한 배치나 이미 맞춘 게임 키는 그대로입니다.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II가 실행 중입니다. 게임을 종료한 뒤 다시 시도하세요.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II가 실행 중입니다. 게임을 끈 뒤 다시 시도하세요."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II가 실행 중입니다. 게임을 끈 뒤 다시 시도하세요.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "여기서 바꿀 때마다 게임 키보드 설정도 똑같이 맞춥니다(게임에서 설정할 수 있는 키만). 게임이 실행 중이면 종료할 때 반영됩니다. 처음 바꿀 때 원래 설정 파일을 백업으로 남깁니다.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "게임 키보드 설정은 그대로 둡니다. 바꾸려면 체크리스트나 '{apply}'를 사용하세요.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "실행 취소하면 편집기가 되돌아가고 게임 키도 따라 바뀝니다. 게임에 적용한 배치는 그대로입니다."
  }
 }

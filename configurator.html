@@ -1626,15 +1626,29 @@ async function syncReal() {
   if (host && host.game && gameLayoutId() === cur && !dirty() && iniText(stateFromIni(host.game.text)) !== iniText(state)) {
     await downloadFile({ auto: true });
     if (!syncingGame) toast(t("The game's controls changed, so the editor updated the layout in the game to match."));
-  }
+  } else if (syncingGame) await resaveGameLayout();
   historyRebase(); // the game's own keys coming in aren't a step to undo
 }
-async function applyControls() {
+// The editor just set the game's keys while what's on screen isn't the layout in the game as
+// saved (changes not saved yet, or another layout open): the layout in the game is saved again
+// with the game's new keys, so the mod sends the keys the game has now. Save to game then
+// brings what's on screen.
+async function resaveGameLayout() {
+  if (!host || !host.save || !host.game || !host.game.text || !host.game.file) return;
+  const was = iniText(stateFromIni(host.game.text)), text = iniText(applyReal(stateFromIni(host.game.text)));
+  if (text === was) return;
+  const file = host.game.file;
+  let used = null;
+  try { used = await host.save(file, text); } catch (e) { if (!String(e && e.message || e).startsWith("saved:")) return; } // "saved:": saved, the mod is off
+  if (!used || used === file) host.game = { file, text };
+}
+function applyControls() { return oneWrite(applyControlsNow); }
+async function applyControlsNow() {
   const want = gameKeyChanges(state).want;
   let msg;
   try {
     syncingGame = true;
-    try { await host.writeGameControls(toB64(writeControls(controls, want))); gameSyncPending = false; await readControls(); } finally { syncingGame = false; }
+    try { await host.writeGameControls(toB64(writeControls(controls, want))); gameSyncDone(); await readControls(); } finally { syncingGame = false; }
     msg = t("Done: the game's controls now match. The game uses them the next time it starts.");
   } catch (e) {
     const m = String(e && e.message || e);
@@ -2466,7 +2480,7 @@ async function downloadFile(opts) {
       let msg = used && used !== name ? t("Saved to the game as {file}. The game still uses {used} (it's newer).", { file: name, used }) : t("Saved to the game as {file}. A running game switches to it within a second.", { file: name });
       // "Keep the game's keys in sync": the game's own keyboard settings follow (not for the
       // save that follows the game's keys themselves).
-      if (!auto && gameSyncOn()) { const more = await syncGameKeys(saved); if (more) msg += " " + more; }
+      if (!auto && gameSyncOn()) { const r = await syncGameKeys(saved); if (r.msg) { msg += " " + r.msg; if (!r.wrote) autoSaid = r.msg; } }
       $("saveStatus").textContent = msg;
       wave();
     } catch (e) {
@@ -2522,12 +2536,17 @@ if (inApp) {
 // ---------------------------------------------------------------- the game's own keys, both ways (apps)
 // "Set the game's keys to this layout" writes the game's keyboard settings file (the rows it
 // has names for); "Set this layout to the game's keys" is the other way round. With "Keep the
-// game's keys in sync" on (the default, kept per user), every Save to game also sets the
-// game's keys. The game must be closed for that; if it's running, the game's keys follow
-// once it's closed (when the app is back in front, or within half a minute).
+// game's keys in sync" on (the default, kept per user), the game's keys follow the editor: a
+// moment after each change (each step undo has, and undo and redo themselves), and at Save to
+// game. The game must be closed for that; if it's running, the game's keys follow once it's
+// closed (when the app is back in front, or within half a minute).
 const SET_GAME = _("Set the game's keys to this layout"), SET_LAYOUT = _("Set this layout to the game's keys");
 const gameSyncOn = () => store.get("d2kb-gamesync") !== "0";
 let gameSyncPending = false, syncingGame = false, gameSyncTimer = 0;
+// The automatic sync: its timer, whether it has written yet (the first write says so), and the
+// last thing it said (said once, until a write goes through).
+let autoSyncTimer = 0, autoSynced = false, autoSaid = "";
+const AUTO_SYNC_MS = 800;
 // What the game's file needs for a state: { want: {row: [first, second]}, n (keys), names (actions) }.
 function gameKeyChanges(st) {
   const want = {}, names = [];
@@ -2538,36 +2557,67 @@ function gameKeyChanges(st) {
 // The app's "the game is running" answer (the Mac app's and the Windows setup's wording, as sent).
 const RUNNING = [_("Minecraft Dungeons II is running. Quit it, then try again."), _("Minecraft Dungeons II is running. Close it, then try again.")];
 const isRunning = m => RUNNING.some(r => m === r || m === t(r));
-// Sets the game's keys for a state; says what happened, for the save message ("" if nothing to do).
-async function syncGameKeys(st) {
-  if (!controls || !host || !host.writeGameControls) return "";
-  const ch = gameKeyChanges(st);
-  if (!ch.n) { gameSyncPending = false; return ""; }
-  try {
-    syncingGame = true;
-    try { await host.writeGameControls(toB64(writeControls(controls, ch.want))); gameSyncPending = false; await readControls(); } finally { syncingGame = false; }
-    return t("The game's own keys now match: {actions}.", { actions: andList(ch.names) });
-  } catch (e) {
-    const m = String(e && e.message || e);
-    if (isRunning(m)) { gameSyncPending = true; clearInterval(gameSyncTimer); gameSyncTimer = setInterval(retryGameSync, 30000); return t("The game's own keys update once you close the game."); }
-    return t("The game's own keys weren't changed: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so the editor left it alone.") : m });
-  }
+// One write of the game's file at a time (a save and the automatic sync can meet).
+let gameWrites = Promise.resolve();
+function oneWrite(fn) { const run = gameWrites.then(fn); gameWrites = run.catch(() => {}); return run; }
+const sameBytes = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+function gameSyncDone() { gameSyncPending = false; clearInterval(gameSyncTimer); autoSaid = ""; }
+// Sets the game's keys for a state (null: what's on screen when it's this one's turn), measured
+// against the game's real keys. Says what happened: { msg ("" if nothing to do), wrote, running }.
+function syncGameKeys(st) {
+  return oneWrite(async () => {
+    if (!controls || !host || !host.writeGameControls) return { msg: "" };
+    const ch = gameKeyChanges(applyReal(stateFromIni(iniText(st || state))));
+    const bytes = ch.n ? writeControls(controls, ch.want) : null;
+    if (!bytes || sameBytes(bytes, controls.bytes)) { gameSyncDone(); return { msg: "" }; } // nothing the file can take differs
+    try {
+      syncingGame = true;
+      try { await host.writeGameControls(toB64(bytes)); gameSyncDone(); await readControls(); } finally { syncingGame = false; }
+      return { msg: t("The game's own keys now match: {actions}.", { actions: andList(ch.names) }), wrote: true };
+    } catch (e) {
+      const m = String(e && e.message || e);
+      if (isRunning(m)) {
+        if (!gameSyncPending) { gameSyncPending = true; clearInterval(gameSyncTimer); gameSyncTimer = setInterval(retryGameSync, 30000); }
+        return { msg: t("The game's own keys update once you close the game."), running: true };
+      }
+      return { msg: t("The game's own keys weren't changed: {error}", { error: m === "format" ? t("the file is in a format this version doesn't know, so the editor left it alone.") : m }) };
+    }
+  });
 }
-// The game was running at the last save: once it's closed, its keys follow the layout in the game.
+// After a change in the editor: the game's keys follow a moment later (one write for a burst
+// of changes, a drag or a few keys in a row). The switch is the go-ahead, so it doesn't ask.
+function queueGameSync() {
+  clearTimeout(autoSyncTimer);
+  if (gameSyncOn() && controls && host && host.writeGameControls) autoSyncTimer = setTimeout(autoSyncGame, AUTO_SYNC_MS);
+}
+// Not in the middle of something the page drawing again would break (a key being picked, a key
+// on the map picked up or dragged, a slider held): a moment after it.
+let pressing = false;
+addEventListener("pointerdown", () => { pressing = true; }, true);
+for (const type of ["pointerup", "pointercancel", "blur"]) addEventListener(type, () => { pressing = false; }, true);
+async function autoSyncGame() {
+  if (!gameSyncOn()) return;
+  if (capturing || pick || pd || pressing) return queueGameSync();
+  const r = await syncGameKeys(null);
+  if (r.wrote) { if (!autoSynced) $("saveStatus").textContent = r.msg; autoSynced = true; }
+  else if (r.msg && r.msg !== autoSaid) { autoSaid = r.msg; $("saveStatus").textContent = r.msg; }
+}
+// The game was running: once it's closed, its keys follow what's in the editor.
 async function retryGameSync() {
-  if (!gameSyncPending || !gameSyncOn() || !host || !host.game || !host.game.text) { if (!gameSyncPending) clearInterval(gameSyncTimer); return; }
-  const msg = await syncGameKeys(applyReal(stateFromIni(host.game.text)));
-  if (!gameSyncPending) { clearInterval(gameSyncTimer); if (msg) { $("saveStatus").textContent = msg; toast(msg); } }
+  if (!gameSyncPending || !gameSyncOn()) { clearInterval(gameSyncTimer); return; }
+  const r = await syncGameKeys(null);
+  if (r.wrote) { autoSynced = true; $("saveStatus").textContent = r.msg; }
 }
 // The switch, in the checklist card (its text says what happens in its state, as the options do).
 function gameSyncSwitch() {
-  const sub = on => on ? t("Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)")
-    : t("Save to game only saves the layout; the game's own keyboard settings stay as they are");
+  const sub = on => on ? t("Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.")
+    : t("The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.", { apply: t(SET_GAME) });
   const note = el("span", { class: "sub", text: sub(gameSyncOn()) });
   return el("label", { class: "menu-switch game-sync", for: "o-gamesync" },
     el("input", { type: "checkbox", id: "o-gamesync", checked: gameSyncOn(), onchange: e => {
       store.set("d2kb-gamesync", e.target.checked ? "1" : "0"); note.textContent = sub(e.target.checked);
-      if (!e.target.checked) { gameSyncPending = false; clearInterval(gameSyncTimer); }
+      if (e.target.checked) queueGameSync(); else { clearTimeout(autoSyncTimer); gameSyncDone(); }
+      renderHistory(); // the undo button's note says whether the game's keys follow
     } }),
     el("span", {}, t("Keep the game's keys in sync"), note));
 }
@@ -2578,8 +2628,8 @@ function gameSyncSwitch() {
 // is a snapshot of the editor (the settings on screen, the selected layout, its saved
 // version, your layouts), up to 50, kept until the window closes. Changes in one go (a
 // handler that saves and then switches) are one step; a slider is one step per drag.
-// Undo only changes the editor: a layout saved to the game, or the game's own keyboard
-// settings after "Set the game's keys to this layout", stay as they are.
+// Undo only changes the editor: a layout saved to the game stays as it is, and so do the
+// game's own keyboard settings, unless "Keep the game's keys in sync" is on (they follow).
 const HISTORY_MAX = 50;
 let undoStack = [], redoStack = [], shownSnap = null, pendingStep = false, restoring = false;
 const snapshot = () => ({ ini: iniText(state), cur, base, layouts: JSON.stringify(layouts) });
@@ -2597,6 +2647,7 @@ function remember() {
     redoStack = []; shownSnap = now;
     if (toastAction && toastAction.step !== undoStack.length) hideToast(); // its Undo was for an older step
     renderHistory();
+    queueGameSync(); // "Keep the game's keys in sync"
   });
 }
 // What's on screen now is where undo starts (at load, and when the game's own keys come in).
@@ -2604,11 +2655,13 @@ function historyRebase() { if (!pendingStep) shownSnap = snapshot(); renderHisto
 function restoreSnap(snap) {
   restoring = true;
   try {
-    state = stateFromIni(snap.ini); cur = snap.cur; base = snap.base; layouts = JSON.parse(snap.layouts);
+    // The game's keys are the ones it has now, not the ones it had at that step.
+    state = applyReal(stateFromIni(snap.ini)); cur = snap.cur; base = realGame ? iniText(applyReal(stateFromIni(snap.base))) : snap.base; layouts = JSON.parse(snap.layouts);
     naming = null; switchWarn = false; pendingSwitch = null; confirmReset = false; confirmDelete = null; confirmApply = false; gameClashes = [];
     render(); persist();
   } finally { restoring = false; }
-  shownSnap = snap; renderHistory();
+  shownSnap = realGame ? snapshot() : snap; renderHistory();
+  queueGameSync(); // "Keep the game's keys in sync"
 }
 // Whether the settings on screen are the ones in the game (the app's last save).
 const inGame = () => !!(host && host.game && host.game.text) && iniText(applyReal(stateFromIni(host.game.text))) === iniText(state);
@@ -2626,12 +2679,14 @@ const redo = () => historyStep(redoStack, undoStack, _("Redone."));
 function offerUndo(text) {
   queueMicrotask(() => {
     const at = undoStack.length;
-    if (at) toast(text, { label: t("Undo"), title: t(UNDO_NOTE), step: at, run: () => { if (undoStack.length === at) undo(); } });
+    if (at) toast(text, { label: t("Undo"), title: undoNote(), step: at, run: () => { if (undoStack.length === at) undo(); } });
   });
 }
 // Undo and redo in the layout bar, after Reset.
 const MAC_KEYS = isMacApp || /Mac|iPhone|iPad/.test(navigator.platform || "");
 const UNDO_NOTE = _("Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.");
+const UNDO_NOTE_SYNC = _("Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.");
+const undoNote = () => t(controls && host && host.writeGameControls && gameSyncOn() ? UNDO_NOTE_SYNC : UNDO_NOTE);
 const arrowIcon = flip => {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
   svg.setAttribute("viewBox", "0 0 16 16"); svg.setAttribute("aria-hidden", "true");
@@ -2646,7 +2701,7 @@ function renderHistory() {
   const keys = MAC_KEYS ? ["⌘Z", "⇧⌘Z"] : ["Ctrl+Z", "Ctrl+Y"];
   undoBtn.disabled = !undoStack.length; redoBtn.disabled = !redoStack.length;
   undoBtn.setAttribute("aria-label", t("Undo")); redoBtn.setAttribute("aria-label", t("Redo"));
-  undoBtn.title = t("Undo ({keys})", { keys: keys[0] }) + "\n" + t(UNDO_NOTE);
+  undoBtn.title = t("Undo ({keys})", { keys: keys[0] }) + "\n" + undoNote();
   redoBtn.title = t("Redo ({keys})", { keys: keys[1] });
 }
 // ⌘Z / ⇧⌘Z on a Mac, Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) elsewhere; not in a text field (its

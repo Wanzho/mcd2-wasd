@@ -648,14 +648,15 @@
   "The game's own keys now match: {actions}.": "De toetsen van de game kloppen nu: {actions}.",
   "The game's own keys update once you close the game.": "De toetsen van de game worden bijgewerkt zodra je de game sluit.",
   "The game's own keys weren't changed: {error}": "De toetsen van de game zijn niet gewijzigd: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "‘Opslaan in de game’ zet ook de toetsenbordinstellingen van de game op deze indeling, voor elke toets die kan (sluit eerst de game; het oorspronkelijke instellingenbestand blijft bewaard als back-up)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "‘Opslaan in de game’ slaat alleen de indeling op; de toetsenbordinstellingen van de game blijven zoals ze zijn",
   "Keep the game's keys in sync": "Toetsen van de game gelijk houden",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "op een controller is A springen en interactie; in de toetsenbordinstellingen van de game zit interactie op de aanvalstoets",
   "Set the game's keys to this layout": "Toetsen van de game op deze indeling zetten",
   "Set this layout to the game's keys": "Deze indeling op de toetsen van de game zetten",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Ongedaan maken verandert alleen de editor: een indeling die je in de game hebt opgeslagen, en de toetsen van de game zodra ze zijn ingesteld, blijven zoals ze zijn.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II draait. Stop het en probeer het opnieuw.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II draait. Sluit het en probeer het opnieuw."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II draait. Sluit het en probeer het opnieuw.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Elke wijziging hier zet ook de toetsenbordinstellingen van de game gelijk, voor elke toets die de game laat instellen. Draait de game, dan volgen ze zodra je hem sluit. Bij de eerste wijziging blijft het oorspronkelijke instellingenbestand bewaard als back-up.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "De toetsenbordinstellingen van de game blijven zoals ze zijn. Wijzig ze via de checklist of met ‘{apply}’.",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Ongedaan maken verandert de editor, en de toetsen van de game volgen. Een indeling die je in de game hebt opgeslagen, blijft zoals hij is."
  }
 }

@@ -654,14 +654,15 @@
   "The game's own keys now match: {actions}.": "Клавиши в игре теперь совпадают: {actions}.",
   "The game's own keys update once you close the game.": "Клавиши в игре обновятся, когда вы закроете игру.",
   "The game's own keys weren't changed: {error}": "Клавиши в игре не изменены: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "«Сохранить в игру» также настраивает клавиатуру игры по этой раскладке, для всех клавиш, какие можно (сначала закройте игру; исходный файл настроек сохраняется как резервная копия)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "«Сохранить в игру» только сохраняет раскладку; настройки клавиатуры игры остаются как есть",
   "Keep the game's keys in sync": "Синхронизировать клавиши в игре",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "на геймпаде A — прыжок и взаимодействие; в настройках клавиатуры игры взаимодействие на клавише атаки",
   "Set the game's keys to this layout": "Настроить клавиши игры по этой раскладке",
   "Set this layout to the game's keys": "Настроить эту раскладку по клавишам игры",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Отмена меняет только редактор: раскладка, сохранённая в игру, и уже настроенные клавиши игры остаются как есть.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II запущена. Закройте её и попробуйте снова.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II запущена. Закройте её и попробуйте снова."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II запущена. Закройте её и попробуйте снова.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Каждое изменение здесь сразу меняет и настройки клавиатуры в игре, для всех клавиш, которые в игре можно настроить. Если игра запущена, они обновятся, когда вы её закроете. При первом изменении исходный файл настроек сохраняется как резервная копия.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Настройки клавиатуры в игре остаются как есть. Чтобы их изменить, используйте список или «{apply}».",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Отмена меняет редактор, и клавиши игры меняются вслед за ним. Раскладка, сохранённая в игру, остаётся как есть."
  }
 }

@@ -639,14 +639,15 @@
   "The game's own keys now match: {actions}.": "游戏按键已同步：{actions}。",
   "The game's own keys update once you close the game.": "关闭游戏后，游戏按键就会更新。",
   "The game's own keys weren't changed: {error}": "游戏按键没有修改：{error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "“应用到游戏”时，也会把游戏的键盘设置改成这套方案，能改的键都会改（请先关闭游戏；原来的设置文件会备份保留）",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "“应用到游戏”只保存键位方案，游戏的键盘设置保持不变",
   "Keep the game's keys in sync": "游戏按键保持同步",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "手柄上 A 键是跳跃和交互；游戏的键盘设置里，交互在攻击键上",
   "Set the game's keys to this layout": "把游戏按键改成这套方案",
   "Set this layout to the game's keys": "把这套方案改成游戏按键",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "撤销只影响编辑器：已应用到游戏的方案，以及已同步的游戏按键，都不会跟着变。",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II 正在运行，请先退出游戏再试。",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II 正在运行，请先关闭游戏再试。"
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II 正在运行，请先关闭游戏再试。",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "这里的每次改动都会同步到游戏的键盘设置（仅限游戏里能设置的键）。游戏开着的话，会在关闭后更新。第一次改动时，原来的设置文件会备份保留。",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "游戏的键盘设置保持不变。要改的话，可以用清单，或点“{apply}”。",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "撤销会改回编辑器里的内容，游戏按键也会跟着同步。已应用到游戏的方案不会变。"
  }
 }

@@ -654,14 +654,15 @@
   "The game's own keys now match: {actions}.": "Клавіші в грі тепер збігаються: {actions}.",
   "The game's own keys update once you close the game.": "Клавіші в грі оновляться, коли ви закриєте гру.",
   "The game's own keys weren't changed: {error}": "Клавіші в грі не змінено: {error}",
-  "Save to game also sets the game's own keyboard settings to this layout, for every key it can (close the game first; the original settings file stays as a backup)": "«Зберегти в гру» також налаштовує клавіатуру гри за цією розкладкою, для всіх клавіш, які можна (спершу закрийте гру; початковий файл налаштувань зберігається як резервна копія)",
-  "Save to game only saves the layout; the game's own keyboard settings stay as they are": "«Зберегти в гру» лише зберігає розкладку; налаштування клавіатури гри лишаються як є",
   "Keep the game's keys in sync": "Синхронізувати клавіші в грі",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "на геймпаді A — стрибок і взаємодія; у налаштуваннях клавіатури гри взаємодія на клавіші атаки",
   "Set the game's keys to this layout": "Налаштувати клавіші гри за цією розкладкою",
   "Set this layout to the game's keys": "Налаштувати цю розкладку за клавішами гри",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Відміна змінює лише редактор: розкладка, збережена в гру, і вже налаштовані клавіші гри лишаються як є.",
   "Minecraft Dungeons II is running. Quit it, then try again.": "Minecraft Dungeons II запущено. Закрийте гру й спробуйте знову.",
-  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II запущено. Закрийте гру й спробуйте знову."
+  "Minecraft Dungeons II is running. Close it, then try again.": "Minecraft Dungeons II запущено. Закрийте гру й спробуйте знову.",
+  "Every change here also sets the game's own keyboard settings to match, for each key the game has a setting for. If the game is running, they follow once you close it. The first change keeps the original settings file as a backup.": "Кожна зміна тут одразу змінює й налаштування клавіатури в грі, для всіх клавіш, які в грі можна налаштувати. Якщо гра запущена, вони оновляться, коли ви її закриєте. Під час першої зміни початковий файл налаштувань зберігається як резервна копія.",
+  "The game's own keyboard settings stay as they are. Use the checklist or {apply} to change them.": "Налаштування клавіатури в грі лишаються як є. Щоб їх змінити, скористайтеся списком або «{apply}».",
+  "Undo changes the editor, and the game's own keys follow it. A layout you saved to the game stays as it is.": "Відміна змінює редактор, і клавіші гри змінюються слідом. Розкладка, збережена в гру, лишається як є."
  }
 }
