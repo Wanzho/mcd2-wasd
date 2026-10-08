@@ -5,7 +5,10 @@ build/payload.h         the mod DLL, both built-in layouts, the key layout edito
                         WebView2Loader.dll, the wordmark's pixel font and the icon's pixel
                         art as C arrays, for the Windows installer
 build/installer.res     icon + manifest, in the .res format lld-link links directly
-build/wasdmod.iconset   the same icon for the Mac app (iconutil makes the .icns)
+build/wasdmod.iconset   the Mac app's icon (iconutil makes the .icns)
+
+The app icons are icon/png/*.png, rendered from icon/icon-mac.svg (on its tile, for
+the Mac) and icon/icon-flat.svg (without it, for Windows) by icon/render.sh.
 """
 import os, struct, zlib
 
@@ -25,7 +28,7 @@ with open("build/payload.h", "w") as f:
     f.write(c_array("payloadWebView2Loader", open(loader, "rb").read() if os.path.exists(loader) else b"\0"))
     f.write('#define WEBVIEW2_SDK "%s"\n' % os.environ.get("WEBVIEW2_SDK", "none"))
 
-# ---- icon: a 16x16 pixel-art gamepad, scaled up without smoothing
+# ---- the small pixel-art gamepad the Windows setup draws in its header
 ART = [
     "................",
     "................",
@@ -55,16 +58,8 @@ with open("build/payload.h", "a") as f:
     f.write('static const char iconKeys[] = "%s";\n' % "".join(COLORS))
     f.write("static const unsigned char iconRGBA[][4] = {%s};\n" % ", ".join("{%d, %d, %d, %d}" % c for c in COLORS.values()))
 
-def png(size):
-    scale = size // 16
-    raw = b""
-    for y in range(size):
-        row = ART[y // scale]
-        raw += b"\0" + b"".join(bytes(COLORS[row[x // scale]]) for x in range(size))
-    def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+def png(kind, size):
+    return open("icon/png/%s-%d.png" % (kind, size), "rb").read()
 
 MANIFEST = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
@@ -91,8 +86,8 @@ def resource(kind, ident, data, flags=0x1030, lang=0x0409):
     pad = b"\0" * (-len(data) % 4)
     return header + data + pad
 
-sizes = [16, 32, 48, 256]
-images = [png(s) for s in sizes]
+sizes = [16, 24, 32, 48, 64, 128, 256]
+images = [png("flat", s) for s in sizes]
 res = resource(0, 0, b"", flags=0, lang=0)  # the empty entry every .res starts with
 group = struct.pack("<HHH", 0, 1, len(sizes))
 for i, (s, img) in enumerate(zip(sizes, images)):
@@ -104,5 +99,5 @@ open("build/installer.res", "wb").write(res)
 
 os.makedirs("build/wasdmod.iconset", exist_ok=True)
 for n in [16, 32, 128, 256, 512]:
-    open("build/wasdmod.iconset/icon_%dx%d.png" % (n, n), "wb").write(png(n))
-    open("build/wasdmod.iconset/icon_%dx%d@2x.png" % (n, n), "wb").write(png(n * 2))
+    open("build/wasdmod.iconset/icon_%dx%d.png" % (n, n), "wb").write(png("mac", n))
+    open("build/wasdmod.iconset/icon_%dx%d@2x.png" % (n, n), "wb").write(png("mac", n * 2))
