@@ -50,7 +50,10 @@
   "Back to playing": "Zurück im Spiel",
   "wasdmod off": "wasdmod aus",
   "{key} to turn it on": "{key} zum Einschalten",
-  "wasdmod on": "wasdmod an"
+  "wasdmod on": "wasdmod an",
+  "Key layout loaded": "Tastenbelegung geladen",
+  "Official layout": "Offizielle Belegung",
+  "Recommended": "Empfohlen"
  },
  "setup": {
   "Install": "Installieren",
@@ -647,7 +650,7 @@
   "Change them for me": "Für mich ändern",
   "The game's controls below sync automatically with the game's own keyboard settings.": "Die Tasten unter „{ingame}“ gleichen sich automatisch mit der Tastatursteuerung des Spiels ab.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "am Controller ist A Springen und Interagieren; in den Tastatureinstellungen des Spiels liegt Interagieren auf der Angriffstaste",
-  "Set the game's controls to this layout": "Tasten des Spiels auf diese Belegung setzen",
+  "Apply this layout to the game's controls": "Diese Belegung auf die Spielsteuerung anwenden",
   "Set this layout to the game's controls": "Diese Belegung auf die Tasten des Spiels setzen",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Rückgängig ändert nur den Editor: Eine Belegung, die du ins Spiel gespeichert hast, und die Tasten im Spiel, sobald sie gesetzt sind, bleiben, wie sie sind."
  }

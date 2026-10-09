@@ -50,7 +50,10 @@
   "Back to playing": "Tillbaka i spelet",
   "wasdmod off": "wasdmod av",
   "{key} to turn it on": "{key} för att slå på",
-  "wasdmod on": "wasdmod på"
+  "wasdmod on": "wasdmod på",
+  "Key layout loaded": "Tangentlayout laddad",
+  "Official layout": "Officiell layout",
+  "Recommended": "Rekommenderad"
  },
  "setup": {
   "Install": "Installera",
@@ -647,7 +650,7 @@
   "Change them for me": "Ändra dem åt mig",
   "The game's controls below sync automatically with the game's own keyboard settings.": "Tangenterna ”{ingame}” synkas automatiskt med spelets egna tangentbordskontroller.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "på en handkontroll är A hopp och interagera; i spelets tangentbordsinställningar ligger interagera på attacktangenten",
-  "Set the game's controls to this layout": "Ställ in spelets tangenter efter den här layouten",
+  "Apply this layout to the game's controls": "Tillämpa den här layouten på spelets kontroller",
   "Set this layout to the game's controls": "Ställ in den här layouten efter spelets tangenter",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Ångra ändrar bara redigeraren: en layout du har sparat i spelet, och spelets tangenter när de väl är inställda, förblir som de är."
  }

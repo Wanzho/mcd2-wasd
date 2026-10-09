@@ -50,7 +50,10 @@
   "Back to playing": "De vuelta al juego",
   "wasdmod off": "wasdmod desactivado",
   "{key} to turn it on": "{key} para activarlo",
-  "wasdmod on": "wasdmod activado"
+  "wasdmod on": "wasdmod activado",
+  "Key layout loaded": "Esquema de teclas cargado",
+  "Official layout": "Esquema oficial",
+  "Recommended": "Recomendado"
  },
  "setup": {
   "Install": "Instalar",
@@ -647,7 +650,7 @@
   "Change them for me": "Cambiarlas por mí",
   "The game's controls below sync automatically with the game's own keyboard settings.": "Las teclas de «{ingame}» se sincronizan solas con los controles de teclado del juego.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "en el mando, A es saltar e interactuar; en la configuración de teclado del juego, interactuar está en la tecla de ataque",
-  "Set the game's controls to this layout": "Poner las teclas del juego como este esquema",
+  "Apply this layout to the game's controls": "Aplicar este esquema a los controles del juego",
   "Set this layout to the game's controls": "Poner este esquema como las teclas del juego",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Deshacer solo cambia el editor: un esquema que guardaste en el juego y las teclas del juego, una vez cambiadas, se quedan como están."
  }

@@ -1609,6 +1609,26 @@ let controls = null, realGame = null;
 const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const toB64 = u => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 function applyReal(st) { if (realGame) for (const [id, g] of Object.entries(realGame)) st.game[id] = g.slice(); return st; }
+// In the apps the game's own keys aren't part of a layout: they're the game's (read from its
+// file, or typed in for a row the file has no name for), the same whichever layout is open.
+// A layout is kept and compared without them: its text as if the game had its default keys,
+// with no [GameKeys]. The file saved to the game (and Export) gets the game's keys back.
+// The web page reads no game, so there the game's keys you type stay part of each layout.
+const gameApart = !!host;
+const cloneGame = g => Object.fromEntries(Object.entries(g || {}).map(([id, v]) => [id, (v || []).slice()]));
+function layoutForm(st) {
+  if (!gameApart) return iniText(st);
+  const game = {};
+  for (const a of ACTIONS) if (a.game) game[a.id] = [...(GAME_DEFAULTS[a.id] || ["?"])];
+  return iniText({ ...st, game }).replace(/\[GameKeys\]\n[^[]*/, "");
+}
+// A layout's text into the editor: your keys and options from it (read with its own
+// [GameKeys], if it has them), the game's keys as they are (apps).
+function fromLayout(text) {
+  const st = stateFromIni(text);
+  if (gameApart && state) st.game = cloneGame(state.game);
+  return applyReal(st);
+}
 // One read at a time (the watch below and a write of the editor's own can meet). `live`: the
 // game changed its keys while the editor was open, which is said once.
 let reads = Promise.resolve();
@@ -1629,29 +1649,39 @@ function renderSyncNote() {
   line.textContent = t("The game's controls below sync automatically with the game's own keyboard settings.", { ingame: t("game's controls") });
   if (line.hidden === show) keepView(() => { line.hidden = !show; });
 }
-// The game's real keys into what's on screen (not counted as a change). The layout in
-// the game sends some keys on to the game's own keys; when those moved, it's saved
-// again so the mod matches.
+// The game's real keys into what's on screen (not a change to the layout: layouts are
+// kept without them). The layout in the game sends some keys on to the game's own keys;
+// when those moved, it's saved again so the mod matches.
 async function syncReal(live) {
-  applyReal(state); base = iniText(applyReal(stateFromIni(base)));
-  const l = layouts.find(x => x.id === cur); if (l && !dirty()) l.text = base;
+  applyReal(state); gameWas = JSON.stringify(state.game);
   quietly(render); persist();
   if (await resaveGameLayout()) renderLayoutBar();
   if (live && !syncingGame) $("saveStatus").textContent = t("The game's keyboard settings changed, so the game's controls here now match.", { ingame: t("game's controls") });
   historyRebase(); // the game's own keys coming in aren't a step to undo
 }
-// The layout in the game, saved again with the game's keys as they are now (whatever is on
-// screen: changes not saved yet stay in the editor), so the mod sends the keys the game
-// has. True if it was saved.
-async function resaveGameLayout() {
+// The layout in the game, saved again with the game's keys as they are now (your keys as
+// they're in it: changes not saved yet stay in the editor), so the mod sends the keys the
+// game has. True if it was saved. One at a time.
+let resaving = Promise.resolve();
+function resaveGameLayout() { const run = resaving.then(resaveGameLayoutNow); resaving = run.catch(() => {}); return run; }
+async function resaveGameLayoutNow() {
   if (!host || !host.save || !host.game || !host.game.text || !host.game.file) return false;
-  const was = iniText(stateFromIni(host.game.text)), text = iniText(applyReal(stateFromIni(host.game.text)));
+  const was = iniText(stateFromIni(host.game.text)), text = iniText(fromLayout(host.game.text));
   if (text === was) return false;
   const file = host.game.file;
   let used = null;
   try { used = await host.save(file, text); } catch (e) { if (!String(e && e.message || e).startsWith("saved:")) return false; } // "saved:": saved, the mod is off
   if (!used || used === file) host.game = { file, text };
   return true;
+}
+// A key of the game's typed in by hand in the apps (a key under "game's controls" changed,
+// Done in the checklist, or one of those undone): it's the same for every layout, and the
+// layout in the game is saved again with it.
+let gameWas = null;
+function gameKeysTyped() {
+  if (!gameApart || !state) return;
+  const g = JSON.stringify(state.game); if (g === gameWas) return;
+  gameWas = g; resaveGameLayout().then(r => { if (r) renderLayoutBar(); });
 }
 // The game's settings file, watched while the editor is open: the app answers
 // host.waitGameControls(stamp) once the file's stamp (its size and time) isn't `stamp` any
@@ -2422,25 +2452,29 @@ let naming = null, switchWarn = false, confirmReset = false;
 let pendingSwitch = null; // the layout picked while there were unsaved changes: opened once they're saved or discarded
 const layoutName = id => BUILTIN[id] ? t(BUILTIN[id].name) : (layouts.find(l => l.id === id) || {}).name || t("Layout");
 const layoutText = id => BUILTIN[id] ? BUILTIN[id].text : (layouts.find(l => l.id === id) || {}).text;
-const dirty = () => iniText(state) !== base;
-// Which of the layouts here is the one in the game (the same settings), if any.
+const dirty = () => layoutForm(state) !== base; // the game's own keys aren't the layout's (apps)
+// Which of the layouts here is the one in the game (the same keys and options; in the apps
+// the game's own keys don't count), if any.
 function gameLayoutId() {
   if (!host || !host.game || !host.game.text) return null;
-  const want = iniText(applyReal(stateFromIni(host.game.text)));
-  return [...Object.keys(BUILTIN), ...layouts.map(l => l.id)].find(id => iniText(applyReal(stateFromIni(layoutText(id)))) === want) || null;
+  const want = layoutForm(stateFromIni(host.game.text));
+  return uniq([cur, ...Object.keys(BUILTIN), ...layouts.map(l => l.id)]).find(id => layoutText(id) && layoutForm(stateFromIni(layoutText(id))) === want) || null; // the open one first
 }
-function persist() { store.set("d2kb-ini", iniText(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur); }
+function persist() {
+  store.set("d2kb-ini", layoutForm(state)); store.set("d2kb-layouts", JSON.stringify(layouts)); store.set("d2kb-current", cur);
+  if (gameApart) store.set("d2kb-gamekeys", JSON.stringify(state.game)); // the game's keys, apart from the layouts (apps)
+}
 function save() { persist(); }
 function edited() { switchWarn = false; confirmReset = false; renderLayoutBar(); }
-function changed() { switchWarn = false; confirmReset = false; confirmDelete = null; confirmApply = false; save(); render(); remember(); }
+function changed() { switchWarn = false; confirmReset = false; confirmDelete = null; confirmApply = false; save(); render(); remember(); gameKeysTyped(); }
 function selectLayout(id) {
   const text = layoutText(id); if (!text) return;
-  state = applyReal(stateFromIni(text)); cur = id; base = iniText(state); naming = null; switchWarn = false; pendingSwitch = null;
+  state = fromLayout(text); cur = id; base = layoutForm(state); naming = null; switchWarn = false; pendingSwitch = null;
   render(); persist();
 }
 function newLayout(name) {
   const id = "l" + Date.now().toString(36);
-  const text = iniText(state);
+  const text = layoutForm(state);
   layouts.push({ id, name, text }); remember();
   cur = id; base = text; naming = null; switchWarn = false;
   render(); persist();
@@ -2450,12 +2484,12 @@ function newLayout(name) {
 function saveChanges() {
   if (BUILTIN[cur]) { naming = "save"; renderLayoutBar(); return; } // built-in layouts stay as they are
   const l = layouts.find(x => x.id === cur); if (!l) return;
-  l.text = iniText(state); base = l.text; switchWarn = false; render(); persist(); remember();
+  l.text = layoutForm(state); base = l.text; switchWarn = false; render(); persist(); remember();
   if (pendingSwitch) selectLayout(pendingSwitch);
 }
 // Leaving a changed layout for the one picked: its changes go, no second question.
-function discardAndSwitch() { const to = pendingSwitch; state = stateFromIni(base); confirmReset = false; selectLayout(to); remember(); }
-function resetLayout() { state = stateFromIni(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); remember(); }
+function discardAndSwitch() { const to = pendingSwitch; state = fromLayout(base); confirmReset = false; selectLayout(to); remember(); }
+function resetLayout() { state = fromLayout(base); naming = null; switchWarn = false; confirmReset = false; render(); persist(); remember(); }
 // Deleting a layout of yours (after "Delete "name"?"): a toast offers to bring it back.
 function deleteLayout() {
   const name = layoutName(cur);
@@ -2475,7 +2509,7 @@ $("resetBtn").addEventListener("click", e => askFirst("reset", e.currentTarget))
 function importText(text, from) {
   if (!/\[(Move|Buttons|Keys)\]/i.test(text)) { $("importStatus").textContent = t("That doesn't look like a WASD mod settings file."); return; }
   if (dirty() && !BUILTIN[cur]) saveChanges(); // keep unsaved edits to your layout before switching
-  state = applyReal(stateFromIni(text));
+  state = fromLayout(text); // your keys from the file; in the apps the game's keys stay the game's
   newLayout(String(from).replace(/\.(txt|ini)$/i, "") || t("Imported layout"));
   $("importCard").hidden = true;
   $("importStatus").textContent = ""; $("saveStatus").textContent = t("Imported {file} as a layout of yours.", { file: from });
@@ -2564,11 +2598,11 @@ if (inApp) {
 }
 
 // ---------------------------------------------------------------- the game's own keys, both ways (apps)
-// "Set the game's controls to this layout" (and "Change them for me" in the notice at the top)
+// "Apply this layout to the game's controls" (and "Change them for me" in the notice at the top)
 // writes the game's keyboard settings file, the rows it has names for, after asking; the game
 // must be closed for that. "Set this layout to the game's controls" is the other way round. The
 // "in game" keys themselves follow the game's file (see watchGameControls).
-const SET_GAME = _("Set the game's controls to this layout"), SET_LAYOUT = _("Set this layout to the game's controls");
+const SET_GAME = _("Apply this layout to the game's controls"), SET_LAYOUT = _("Set this layout to the game's controls");
 let syncingGame = false; // the editor is writing the game's file (its own change isn't news)
 // What the game's file needs for a state: { want: {row: [first, second]}, n (keys), names (actions) }.
 function gameKeyChanges(st) {
@@ -2585,11 +2619,13 @@ function gameKeyChanges(st) {
 // version, your layouts), up to 50, kept until the window closes. Changes in one go (a
 // handler that saves and then switches) are one step; a slider is one step per drag.
 // Undo only changes the editor: a layout saved to the game, or the game's own keyboard
-// settings after "Set the game's controls to this layout", stay as they are.
+// settings after "Apply this layout to the game's controls", stay as they are.
 const HISTORY_MAX = 50;
 let undoStack = [], redoStack = [], shownSnap = null, pendingStep = false, restoring = false;
-const snapshot = () => ({ ini: iniText(state), cur, base, layouts: JSON.stringify(layouts) });
-const sameSnap = (a, b) => a.ini === b.ini && a.cur === b.cur && a.base === b.base && a.layouts === b.layouts;
+// In the apps the game's keys are kept beside the layout (a key typed in by hand is a step;
+// keys coming in from the game's file aren't).
+const snapshot = () => ({ ini: layoutForm(state), game: gameApart ? JSON.stringify(state.game) : "", cur, base, layouts: JSON.stringify(layouts) });
+const sameSnap = (a, b) => a.ini === b.ini && a.game === b.game && a.cur === b.cur && a.base === b.base && a.layouts === b.layouts;
 // After a change of yours: the step is written once the current event is handled.
 function remember() {
   if (restoring || pendingStep) return;
@@ -2611,14 +2647,16 @@ function restoreSnap(snap) {
   restoring = true;
   try {
     // The game's keys are the ones it has now, not the ones it had at that step.
-    state = applyReal(stateFromIni(snap.ini)); cur = snap.cur; base = realGame ? iniText(applyReal(stateFromIni(snap.base))) : snap.base; layouts = JSON.parse(snap.layouts);
+    state = stateFromIni(snap.ini); if (gameApart) state.game = JSON.parse(snap.game);
+    applyReal(state); cur = snap.cur; base = snap.base; layouts = JSON.parse(snap.layouts);
     naming = null; switchWarn = false; pendingSwitch = null; confirmReset = false; confirmDelete = null; confirmApply = false; gameClashes = [];
     render(); persist();
   } finally { restoring = false; }
   shownSnap = realGame ? snapshot() : snap; renderHistory();
+  gameKeysTyped();
 }
 // Whether the settings on screen are the ones in the game (the app's last save).
-const inGame = () => !!(host && host.game && host.game.text) && iniText(applyReal(stateFromIni(host.game.text))) === iniText(state);
+const inGame = () => !!(host && host.game && host.game.text) && layoutForm(stateFromIni(host.game.text)) === layoutForm(state);
 function historyStep(from, to, done) {
   if (!from.length || capturing) return;
   const was = inGame();
@@ -2668,7 +2706,7 @@ addEventListener("keydown", e => {
   back ? undo() : redo();
 });
 // Asking first, in the editor itself (the Mac app shows no confirm() dialogs): Delete and
-// Reset in the layout bar, "Set the game's controls to this layout" (checklist, top notice). The question
+// Reset in the layout bar, "Apply this layout to the game's controls" (checklist, top notice). The question
 // takes the button's place, with the red button and Cancel (focused); Esc or a click
 // anywhere else is Cancel, and focus goes back to the button that asked.
 let confirmDelete = null, confirmApply = false, askFrom = null;
@@ -2705,11 +2743,18 @@ if (!store.get("d2kb-layouts") && working) {
   // Edits from the previous version of this page become a layout of yours.
   let old = null; try { old = JSON.parse(store.get("d2kb-profile") || "null"); } catch (e) {}
   if (old && !old.edited && BUILTIN[old.id]) cur = old.id;
-  else { layouts.push({ id: "l" + Date.now().toString(36), name: t("My layout"), text: working }); cur = layouts[0].id; }
+  else { layouts.push({ id: "l" + Date.now().toString(36), name: t("My layout"), text: layoutForm(stateFromIni(working)) }); cur = layouts[0].id; }
 }
 if (!layoutText(cur)) cur = "default";
-base = iniText(stateFromIni(layoutText(cur)));
+base = layoutForm(stateFromIni(layoutText(cur)));
 state = stateFromIni(working || layoutText(cur));
+// The apps: the game's keys as last seen (a working copy from before they were kept apart
+// still has them; the game's file, read next, has the last word on its rows).
+if (gameApart) {
+  let g = null; try { g = JSON.parse(store.get("d2kb-gamekeys") || "null"); } catch (e) {}
+  if (g && typeof g === "object") for (const a of ACTIONS) if (a.game && Array.isArray(g[a.id])) state.game[a.id] = g[a.id].slice(0, 2).map(k => typeof k === "string" ? k : null);
+  gameWas = JSON.stringify(state.game);
+}
 // The layout the game uses (host.game: its file and text, from the app): one made
 // outside this editor (an older version, a loaded file) joins your layouts, and the
 // editor opens on it unless there are unsaved changes on screen. Layouts are compared
@@ -2721,7 +2766,7 @@ async function adoptGameLayout() {
   let found = "";
   if (!gameLayoutId()) {
     found = String(host.game.file || "").replace(/\.(txt|ini)$/i, "") || t("My layout");
-    layouts.push({ id: "l" + Date.now().toString(36), name: found, text: host.game.text });
+    layouts.push({ id: "l" + Date.now().toString(36), name: found, text: layoutForm(stateFromIni(host.game.text)) });
   }
   const g = gameLayoutId();
   quietly(() => { if (g && g !== cur && !dirty()) selectLayout(g); else { render(); persist(); } });

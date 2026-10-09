@@ -50,7 +50,10 @@
   "Back to playing": "Terug in het spel",
   "wasdmod off": "wasdmod uit",
   "{key} to turn it on": "{key} om aan te zetten",
-  "wasdmod on": "wasdmod aan"
+  "wasdmod on": "wasdmod aan",
+  "Key layout loaded": "Toetsindeling geladen",
+  "Official layout": "Officiële indeling",
+  "Recommended": "Aanbevolen"
  },
  "setup": {
   "Install": "Installeren",
@@ -647,7 +650,7 @@
   "Change them for me": "Wijzig ze voor mij",
   "The game's controls below sync automatically with the game's own keyboard settings.": "De toetsen bij ‘{ingame}’ lopen automatisch gelijk met de toetsenbordbesturing van de game.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "op een controller is A springen en interactie; in de toetsenbordinstellingen van de game zit interactie op de aanvalstoets",
-  "Set the game's controls to this layout": "Toetsen van de game op deze indeling zetten",
+  "Apply this layout to the game's controls": "Deze indeling toepassen op de spelbesturing",
   "Set this layout to the game's controls": "Deze indeling op de toetsen van de game zetten",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Ongedaan maken verandert alleen de editor: een indeling die je in de game hebt opgeslagen, en de toetsen van de game zodra ze zijn ingesteld, blijven zoals ze zijn."
  }

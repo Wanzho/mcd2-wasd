@@ -50,7 +50,10 @@
   "Back to playing": "Знову в грі",
   "wasdmod off": "wasdmod вимкнено",
   "{key} to turn it on": "{key} — увімкнути",
-  "wasdmod on": "wasdmod увімкнено"
+  "wasdmod on": "wasdmod увімкнено",
+  "Key layout loaded": "Розкладку завантажено",
+  "Official layout": "Офіційна розкладка",
+  "Recommended": "Рекомендована"
  },
  "setup": {
   "Install": "Встановити",
@@ -653,7 +656,7 @@
   "Change them for me": "Змінити за мене",
   "The game's controls below sync automatically with the game's own keyboard settings.": "Клавіші «{ingame}» самі синхронізуються з налаштуваннями клавіатури в грі.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "на геймпаді A — стрибок і взаємодія; у налаштуваннях клавіатури гри взаємодія на клавіші атаки",
-  "Set the game's controls to this layout": "Налаштувати клавіші гри за цією розкладкою",
+  "Apply this layout to the game's controls": "Застосувати цю розкладку до керування в грі",
   "Set this layout to the game's controls": "Налаштувати цю розкладку за клавішами гри",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Відміна змінює лише редактор: розкладка, збережена в гру, і вже налаштовані клавіші гри лишаються як є."
  }

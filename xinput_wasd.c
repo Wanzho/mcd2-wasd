@@ -152,17 +152,25 @@ static struct {
 static volatile unsigned logBytes; // written this session (Record Logs stops at a limit)
 static void two(char *o, unsigned v) { o[0] = (char)('0' + v / 10 % 10); o[1] = (char)('0' + v % 10); }
 // Each line starts with the time: "12:34:56.789 Mouse mode (menu key)".
+// The file stays open: lines are written from the game's own thread too, and under
+// CrossOver opening a file costs a trip to the Mac side. One write per line, so lines
+// from different threads don't mix.
+static HANDLE logFile = (HANDLE)-1;
+static void logClose(void) { HANDLE h = logFile; logFile = (HANDLE)-1; if (h != (HANDLE)-1) CloseHandle(h); }
 static void logline(const char *s) {
     if (!cfg.log) return;
-    char path[1100] = {0}; append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
-    HANDLE h = CreateFileA(path, 4 /*FILE_APPEND_DATA*/, 3, 0, 4 /*OPEN_ALWAYS*/, 128, 0);
-    if (h == (HANDLE)-1) return;
+    if (logFile == (HANDLE)-1) {
+        char path[1100] = {0}; append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
+        logFile = CreateFileA(path, 4 /*FILE_APPEND_DATA*/, 7 /*share read, write, delete*/, 0, 4 /*OPEN_ALWAYS*/, 128, 0);
+        if (logFile == (HANDLE)-1) return;
+    }
     SYSTEMTIME t; GetLocalTime(&t);
-    char stamp[16] = "00:00:00.000 ";
-    two(stamp, t.hour); two(stamp + 3, t.minute); two(stamp + 6, t.second);
-    stamp[9] = (char)('0' + t.ms / 100 % 10); two(stamp + 10, t.ms % 100);
-    DWORD w; WriteFile(h, stamp, 13, &w, 0); WriteFile(h, s, len(s), &w, 0); WriteFile(h, "\r\n", 2, &w, 0); CloseHandle(h);
-    logBytes += 15 + len(s);
+    char line[600] = "00:00:00.000 ";
+    two(line, t.hour); two(line + 3, t.minute); two(line + 6, t.second);
+    line[9] = (char)('0' + t.ms / 100 % 10); two(line + 10, t.ms % 100);
+    append(line, sizeof(line) - 2, s); append(line, sizeof(line), "\r\n");
+    DWORD w, n = len(line); WriteFile(logFile, line, n, &w, 0);
+    logBytes += n;
 }
 
 // ---------------------------------------------------------------- language
@@ -497,7 +505,7 @@ static void init(void) {
         char path[1100] = {0}, old[1100] = {0}; FILEINFO fi;
         append(path, sizeof(path), dir); append(path, sizeof(path), "wasdmod.log");
         append(old, sizeof(old), dir); append(old, sizeof(old), "wasdmod.old.log");
-        if (GetFileAttributesExA(path, 0, &fi) && (fi.sizeHigh || fi.sizeLow > (1u << 20))) MoveFileExA(path, old, 1 /*REPLACE_EXISTING*/);
+        if (GetFileAttributesExA(path, 0, &fi) && (fi.sizeHigh || fi.sizeLow > (1u << 20))) { logClose(); MoveFileExA(path, old, 1 /*REPLACE_EXISTING*/); }
     }
     {   // Which build, on what: "=== 2026-10-03 wasdmod 1.0.0, Wine 9.0 ===".
         SYSTEMTIME t; GetLocalTime(&t);
@@ -706,6 +714,18 @@ static void recordPad(const XINPUT_GAMEPAD *g) {
 
 // The game window's client area in screen coordinates, kept current by the overlay thread.
 static volatile LONG gameLeft, gameTop, gameWidth, gameHeight;
+// The cursor as the overlay thread last read it (x in the high half, y in the low), and
+// when. The poll runs on the game's own thread, and under CrossOver GetCursorPos with a
+// mouse that hasn't moved for 100 ms waits for the Mac's main thread: ~60 us normally,
+// but while the Mac is busy the game froze for up to 1.6 s. So the poll uses this copy.
+static volatile U64 cursorSeen, cursorSeenAt;
+static void cursorRead(POINT p) { cursorSeen = (U64)(DWORD)p.x << 32 | (DWORD)p.y; cursorSeenAt = GetTickCount64(); }
+static int seenCursor(POINT *p) {
+    U64 at = cursorSeenAt, v = cursorSeen;
+    if (!at || GetTickCount64() - at > 100) return 0;
+    p->x = (LONG)(int)(DWORD)(v >> 32); p->y = (LONG)(int)(DWORD)v;
+    return 1;
+}
 static void releaseRemaps(void) {
     for (int vk = 1; vk < 256; vk++) if (remapSent[vk]) { remapSent[vk] = 0; keybd_event((BYTE)vk, (BYTE)MapVirtualKeyA(vk, 0), 2 /*KEYEVENTF_KEYUP*/, 0); }
 }
@@ -713,7 +733,6 @@ static int movementHeld(void) { return held(&moveUp) || held(&moveDown) || held(
 
 static void updateModes(void) {
     static int toggleWas, legendWas; static U64 checkedAt;
-    checkRecording();
     int t = held(&toggleKey), l = held(&legendKey);
     if (focused()) {
         if (t && !toggleWas && !commandHeld()) { releaseRemaps(); paused = !paused; logline(paused ? "Controller keys off (toggle key)" : "Controller keys on (toggle key)"); }
@@ -803,10 +822,9 @@ static void updateModes(void) {
         static int haveRef; static POINT ref;
         int busy = movementHeld() || ((GetAsyncKeyState(0x01) | GetAsyncKeyState(0x02) | GetAsyncKeyState(0x04) | GetAsyncKeyState(0x05) | GetAsyncKeyState(0x06)) & 0x8000);
         int watch = cfg.mouseMoveSwitches ? cfg.mouseWakePx : cfg.bumpNudgePct;
-        // The cursor is only read while it's watched: under CrossOver, GetCursorPos with a
-        // mouse that hasn't moved lately asks the Mac side (~60 us, the dearest call here).
+        // The cursor comes from the overlay thread (seenCursor), never read here.
         POINT p;
-        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !GetCursorPos(&p)) haveRef = 0;
+        if (!watch || mouseMode() || typing || typingManual || paused || !focused() || !seenCursor(&p)) haveRef = 0;
         else if (busy || !haveRef) { ref = p; haveRef = 1; }
         else {
             static POINT last; static int haveLast; static U64 movedAt;
@@ -847,12 +865,16 @@ IMP BOOL SetCursorPos(int, int);
 // Returns 1 with where the cursor is now in *at, 0 if it wasn't read.
 static int keepCursorInside(POINT *at) {
     LONG l = gameLeft, t = gameTop, w = gameWidth, h = gameHeight;
-    if (!cfg.clipCursor || w < 400 || h < 300) return 0;
+    if (w < 400 || h < 300) return 0;
     POINT p; if (!GetCursorPos(&p)) return 0;
-    LONG x = p.x < l + 4 ? l + 4 : p.x > l + w - 5 ? l + w - 5 : p.x;
-    LONG y = p.y < t + 4 ? t + 4 : p.y > t + h - 5 ? t + h - 5 : p.y;
-    if (x != p.x || y != p.y) SetCursorPos(x, y);
-    at->x = x; at->y = y;
+    if (cfg.clipCursor) {
+        LONG x = p.x < l + 4 ? l + 4 : p.x > l + w - 5 ? l + w - 5 : p.x;
+        LONG y = p.y < t + 4 ? t + 4 : p.y > t + h - 5 ? t + h - 5 : p.y;
+        if (x != p.x || y != p.y) SetCursorPos(x, y);
+        p.x = x; p.y = y;
+    }
+    cursorRead(p); // for the poll's mouse-move check
+    *at = p;
     return 1;
 }
 
@@ -1149,10 +1171,13 @@ static BOOL hookWindowThread(HANDLE w, LPARAM unused) {
     logline(h ? "Keyboard/mouse hidden from the game on a window thread" : "Could not hook a window thread");
     return 1;
 }
-// Rescans every ~2 seconds of polling to catch windows created after startup.
+// Rescans every 2 s to catch windows created after startup. From the overlay
+// thread: EnumWindows walks every window in the bottle (Steam's too), which the
+// game's own thread shouldn't wait for.
 static void ensureFilter(void) {
-    static unsigned polls;
-    if (polls++ % 240) return;
+    static U64 at; U64 now = GetTickCount64();
+    if (at && now - at < 2000) return;
+    at = now;
     EnumWindows(hookWindowThread, 0);
 }
 
@@ -1193,7 +1218,6 @@ static DWORD getState(const char *name, DWORD index, XINPUT_STATE *state) {
     DWORD r = fn ? fn(index, state) : ERROR_DEVICE_NOT_CONNECTED;
     if (index != 0) return r;
     long long start = 0; if (perfFreq) QueryPerformanceCounter(&start);
-    ensureFilter();
     updateModes();
     XINPUT_GAMEPAD k;
     int keys = keyboardPad(&k);

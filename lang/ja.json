@@ -50,7 +50,10 @@
   "Back to playing": "ゲームに戻りました",
   "wasdmod off": "wasdmod オフ",
   "{key} to turn it on": "{key} でオンにする",
-  "wasdmod on": "wasdmod オン"
+  "wasdmod on": "wasdmod オン",
+  "Key layout loaded": "キー配置を読み込みました",
+  "Official layout": "公式のキー配置",
+  "Recommended": "おすすめ"
  },
  "setup": {
   "Install": "インストール",
@@ -638,7 +641,7 @@
   "Change them for me": "代わりに変更する",
   "The game's controls below sync automatically with the game's own keyboard settings.": "「{ingame}」のキーは、ゲームのキーボード設定と自動で同期します。",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "コントローラーでは A がジャンプと調べる。ゲームのキーボード設定では「調べる」は攻撃キーにあります",
-  "Set the game's controls to this layout": "ゲームのキーをこの配置に合わせる",
+  "Apply this layout to the game's controls": "この配置をゲームの操作に適用する",
   "Set this layout to the game's controls": "この配置をゲームのキーに合わせる",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "取り消しで戻るのはエディタの中だけです。ゲームに反映した配置や、一度合わせたゲームのキーはそのままです。"
  }

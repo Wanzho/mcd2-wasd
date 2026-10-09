@@ -50,7 +50,10 @@
   "Back to playing": "De volta ao jogo",
   "wasdmod off": "wasdmod desativado",
   "{key} to turn it on": "{key} para ativar",
-  "wasdmod on": "wasdmod ativado"
+  "wasdmod on": "wasdmod ativado",
+  "Key layout loaded": "Layout de teclas carregado",
+  "Official layout": "Layout oficial",
+  "Recommended": "Recomendado"
  },
  "setup": {
   "Install": "Instalar",
@@ -647,7 +650,7 @@
   "Change them for me": "Mudar por mim",
   "The game's controls below sync automatically with the game's own keyboard settings.": "As teclas “{ingame}” se sincronizam sozinhas com os controles de teclado do jogo.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "no controle, A é pular e interagir; nas configurações de teclado do jogo, interagir fica na tecla de ataque",
-  "Set the game's controls to this layout": "Ajustar as teclas do jogo a este layout",
+  "Apply this layout to the game's controls": "Aplicar este layout aos controles do jogo",
   "Set this layout to the game's controls": "Ajustar este layout às teclas do jogo",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Desfazer só muda o editor: um layout que você salvou no jogo e as teclas do jogo, depois de ajustadas, continuam como estão."
  }

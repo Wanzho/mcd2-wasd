@@ -50,7 +50,10 @@
   "Back to playing": "已返回游戏",
   "wasdmod off": "wasdmod 已关闭",
   "{key} to turn it on": "按 {key} 重新开启",
-  "wasdmod on": "wasdmod 已开启"
+  "wasdmod on": "wasdmod 已开启",
+  "Key layout loaded": "已载入键位方案",
+  "Official layout": "官方键位方案",
+  "Recommended": "推荐"
  },
  "setup": {
   "Install": "安装",
@@ -638,7 +641,7 @@
   "Change them for me": "帮我改好",
   "The game's controls below sync automatically with the game's own keyboard settings.": "“{ingame}”按键会自动与游戏自己的键盘设置同步。",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "手柄上 A 键是跳跃和交互；游戏的键盘设置里，交互在攻击键上",
-  "Set the game's controls to this layout": "把游戏键位改成这套方案",
+  "Apply this layout to the game's controls": "把这套方案应用到游戏键位",
   "Set this layout to the game's controls": "把这套方案改成游戏键位",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "撤销只影响编辑器：已应用到游戏的方案，以及已同步的游戏按键，都不会跟着变。"
  }

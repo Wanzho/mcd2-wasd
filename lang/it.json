@@ -50,7 +50,10 @@
   "Back to playing": "Di nuovo in gioco",
   "wasdmod off": "wasdmod disattivato",
   "{key} to turn it on": "{key} per attivarlo",
-  "wasdmod on": "wasdmod attivato"
+  "wasdmod on": "wasdmod attivato",
+  "Key layout loaded": "Configurazione caricata",
+  "Official layout": "Configurazione ufficiale",
+  "Recommended": "Consigliata"
  },
  "setup": {
   "Install": "Installa",
@@ -647,7 +650,7 @@
   "Change them for me": "Cambiali tu",
   "The game's controls below sync automatically with the game's own keyboard settings.": "I tasti «{ingame}» si sincronizzano da soli con i comandi da tastiera del gioco.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "sul controller, A è salto e interazione; nelle impostazioni della tastiera del gioco, interagire è sul tasto d'attacco",
-  "Set the game's controls to this layout": "Imposta i tasti del gioco su questa configurazione",
+  "Apply this layout to the game's controls": "Applica questa configurazione ai comandi del gioco",
   "Set this layout to the game's controls": "Imposta questa configurazione sui tasti del gioco",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Annulla cambia solo l'editor: una configurazione salvata nel gioco, e i tasti del gioco una volta impostati, restano come sono."
  }

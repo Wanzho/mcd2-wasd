@@ -50,7 +50,10 @@
   "Back to playing": "Oyuna dönüldü",
   "wasdmod off": "wasdmod kapalı",
   "{key} to turn it on": "Açmak için {key}",
-  "wasdmod on": "wasdmod açık"
+  "wasdmod on": "wasdmod açık",
+  "Key layout loaded": "Tuş düzeni yüklendi",
+  "Official layout": "Resmî düzen",
+  "Recommended": "Önerilen"
  },
  "setup": {
   "Install": "Yükle",
@@ -647,7 +650,7 @@
   "Change them for me": "Benim için değiştir",
   "The game's controls below sync automatically with the game's own keyboard settings.": "„{ingame}” tuşları, oyunun kendi klavye kontrolleriyle otomatik olarak eşitlenir.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "kumandada A zıplama ve etkileşimdir; oyunun klavye ayarlarında etkileşim saldırı tuşundadır",
-  "Set the game's controls to this layout": "Oyunun tuşlarını bu düzene göre ayarla",
+  "Apply this layout to the game's controls": "Bu düzeni oyun kontrollerine uygula",
   "Set this layout to the game's controls": "Bu düzeni oyunun tuşlarına göre ayarla",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Geri alma yalnızca düzenleyiciyi değiştirir: oyuna kaydettiğiniz bir düzen ve ayarlandıktan sonra oyunun tuşları olduğu gibi kalır."
  }

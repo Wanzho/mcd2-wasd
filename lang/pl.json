@@ -50,7 +50,10 @@
   "Back to playing": "Z powrotem w grze",
   "wasdmod off": "wasdmod wyłączony",
   "{key} to turn it on": "{key}, aby włączyć",
-  "wasdmod on": "wasdmod włączony"
+  "wasdmod on": "wasdmod włączony",
+  "Key layout loaded": "Wczytano układ klawiszy",
+  "Official layout": "Oficjalny układ",
+  "Recommended": "Zalecany"
  },
  "setup": {
   "Install": "Zainstaluj",
@@ -653,7 +656,7 @@
   "Change them for me": "Zmień je za mnie",
   "The game's controls below sync automatically with the game's own keyboard settings.": "Klawisze „{ingame}” same synchronizują się ze sterowaniem klawiaturą w grze.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "na kontrolerze A to skok i interakcja; w ustawieniach klawiatury gry interakcja jest na klawiszu ataku",
-  "Set the game's controls to this layout": "Ustaw klawisze gry według tego układu",
+  "Apply this layout to the game's controls": "Zastosuj ten układ do sterowania w grze",
   "Set this layout to the game's controls": "Ustaw ten układ według klawiszy gry",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "Cofnij zmienia tylko edytor: układ zapisany w grze ani ustawione już klawisze w grze się nie zmienią."
  }

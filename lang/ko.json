@@ -50,7 +50,10 @@
   "Back to playing": "게임으로 돌아왔습니다",
   "wasdmod off": "wasdmod 꺼짐",
   "{key} to turn it on": "{key}로 켜기",
-  "wasdmod on": "wasdmod 켜짐"
+  "wasdmod on": "wasdmod 켜짐",
+  "Key layout loaded": "키 배치를 불러왔습니다",
+  "Official layout": "공식 키 배치",
+  "Recommended": "추천"
  },
  "setup": {
   "Install": "설치",
@@ -638,7 +641,7 @@
   "Change them for me": "대신 바꾸기",
   "The game's controls below sync automatically with the game's own keyboard settings.": "'{ingame}' 키는 게임 자체 키보드 설정과 자동으로 동기화됩니다.",
   "on a controller, A is jump and interact; in the game's keyboard settings, interact is on the attack key": "컨트롤러에서는 A가 점프와 상호작용이고, 게임 키보드 설정에서는 상호작용이 공격 키에 있습니다",
-  "Set the game's controls to this layout": "게임 키를 이 배치로 맞추기",
+  "Apply this layout to the game's controls": "이 배치를 게임 조작에 적용하기",
   "Set this layout to the game's controls": "이 배치를 게임 키로 맞추기",
   "Undo only changes the editor: a layout you saved to the game, and the game's own keys once they're set, stay as they are.": "실행 취소는 편집기 안에서만 되돌립니다. 게임에 적용한 배치나 이미 맞춘 게임 키는 그대로입니다."
  }

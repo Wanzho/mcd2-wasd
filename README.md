@@ -111,7 +111,7 @@ Opening a menu or moving the mouse switches to **mouse mode**, where the cursor 
 The key layout editor is the main window of the Mac app. On Windows, click **Edit key layout…** in the installer. The editor opens in its own window, and the installer has to stay open while you edit.
 
 - Pick **Official layout** or **Recommended** under Layout, or click **+ Create** to make your own. Click a key to change it, or drag it onto another key on the keyboard map to move what it does (if both keys do something, they swap).
-- Click **Save to game**. A running game switches to the layout within a second and shows the key list for a moment, so you don't need to restart.
+- Click **Save to game**. A running game switches to the layout within a second and shows a "Key layout loaded" banner with its name for a few seconds, so you don't need to restart.
 - **Export…** shows the layout's settings file for you to copy or download. Without the apps, you put that file in the game folder yourself.
 - If you change a built-in layout, the editor asks to save it as a new layout of yours. **Reset** goes back to the saved version.
 - Undo and redo cover up to 50 steps: ⌘Z and ⇧⌘Z on a Mac, Ctrl+Z and Ctrl+Y on Windows, or the buttons next to **Reset**. The editor asks before it deletes a layout.
@@ -121,7 +121,7 @@ The key layout editor is the main window of the Mac app. On Windows, click **Edi
 
 The game uses its own keyboard settings in menus, with the cursor and while you aim the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
 
-In the Mac app and the Windows editor window, the editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`), so the "game's controls" are the keys the game really has. When you change a key in the game's menu, the "game's controls" follow a second or so after the game saves it, even while you're playing, and the layout in the game is saved again so the mod still sends your keys to the right game keys. A line at the top of the editor says this. To write your layout's keys into the game instead, close the game and click **Set the game's controls to this layout** in the checklist or **Change them for me** in the yellow notice. The editor asks you first.
+In the Mac app and the Windows editor window, the editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`), so the "game's controls" are the keys the game really has. When you change a key in the game's menu, the "game's controls" follow a second or so after the game saves it, even while you're playing, and the layout in the game is saved again so the mod still sends your keys to the right game keys. A line at the top of the editor says this. To write your layout's keys into the game instead, close the game and click **Apply this layout to the game's controls** in the checklist or **Change them for me** in the yellow notice. The editor asks you first.
 
 The first write keeps your old settings as `EnhancedInputUserSettings.sav.wasdmod-backup`, and the game uses the new ones from its next start. A few rows the game hasn't saved yet (jump, artifacts 2 and 3, the guidance trail, teleports, map, emotes, event log) still have to be set in the game's menu.
 
