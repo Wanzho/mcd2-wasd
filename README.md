@@ -121,11 +121,11 @@ The key layout editor is the main window of the Mac app. On Windows, click **Edi
 
 The game uses its own keyboard settings in menus, with the cursor and while you aim the bow, and its on-screen button prompts show them too. If they differ from your layout, you're playing with two layouts. The yellow notice in the editor lists what to change in **Settings → Controls → Keyboard** (both columns), starting with the menu wheel on Tab. Leave the Controller tab at its defaults.
 
-In the Mac app and the Windows editor window you don't have to do that by hand. The editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`) and keeps them matched to your layout: it writes your keys into them when it opens and a moment after every change you make, undo and redo included, and the "in game" keys follow. A line at the top of the editor says so. If the game is running, it waits until you close it. While it waits, **Set the game's keys to this layout** in the checklist and **Change them for me** in the yellow notice are there to do it by hand once the game is closed, after asking you first.
+In the Mac app and the Windows editor window, the editor reads the game's keyboard settings itself (`AppData\Local\Dungeons2\Saved\SaveGames\EnhancedInputUserSettings.sav`), so the "game's controls" are the keys the game really has. When you change a key in the game's menu, the "game's controls" follow a second or so after the game saves it, even while you're playing, and the layout in the game is saved again so the mod still sends your keys to the right game keys. A line at the top of the editor says this. To write your layout's keys into the game instead, close the game and click **Set the game's controls to this layout** in the checklist or **Change them for me** in the yellow notice. The editor asks you first.
 
 The first write keeps your old settings as `EnhancedInputUserSettings.sav.wasdmod-backup`, and the game uses the new ones from its next start. A few rows the game hasn't saved yet (jump, artifacts 2 and 3, the guidance trail, teleports, map, emotes, event log) still have to be set in the game's menu.
 
-It works the other way too: **Set this layout to the game's keys** copies the keys from the game's keyboard settings into your layout. A game key that's one of your movement keys is left out, and the editor tells you to change it in the game. The game's own Menu Wheel key, for example, is S, which is "move down" with WASD.
+It works the other way too: **Set this layout to the game's controls** copies the keys from the game's keyboard settings into your layout. A game key that's one of your movement keys is left out, and the editor tells you to change it in the game. The game's own Menu Wheel key, for example, is S, which is "move down" with WASD.
 
 ## Languages
 
@@ -155,7 +155,7 @@ Click **Install** again, which sets CrossOver to send Option as Alt, and restart
 
 ### Keys do their old thing in menus
 
-The game's keyboard settings don't match your layout. The yellow notice in the editor lists what to change. The apps change them for you while the game is closed, and any rows they can't set stay in the list.
+The game's keyboard settings don't match your layout. The yellow notice in the editor lists what to change. In the apps, close the game and click **Change them for me** in that notice to have them set for you. Any rows the apps can't set stay in the list.
 
 ### Stuck without a cursor, or stuck typing
 

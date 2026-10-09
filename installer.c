@@ -77,6 +77,11 @@ IMP BOOL Process32Next(HANDLE, PROCESSENTRY *);
 IMP HANDLE CreateThread(void *, U64, DWORD (*)(void *), void *, DWORD, DWORD *);
 IMP BOOL CreateDirectoryA(const char *, void *);
 IMP void Sleep(DWORD);
+IMP U64 GetTickCount64(void);
+IMP HANDLE FindFirstChangeNotificationA(const char *, BOOL, DWORD);
+IMP BOOL FindNextChangeNotification(HANDLE);
+IMP BOOL FindCloseChangeNotification(HANDLE);
+IMP DWORD WaitForSingleObject(HANDLE, DWORD);
 IMP DWORD GetLogicalDrives(void);
 IMP UINT GetDriveTypeA(const char *);
 IMP int MultiByteToWideChar(UINT, DWORD, const char *, int, WCHAR *, int);
@@ -625,6 +630,7 @@ static const char *HOST_D = "\",\n"
 static const char *HOST_E = ",\n"
     "    set(k, v) { store[k] = v; const body = JSON.stringify(store).replace(/</g, \"\\\\u003c\"); chain = chain.then(() => send(\"store\", body)).catch(() => {}); },\n"
     "    async gameControls() { const r = await send(\"controls\", \"\"); const t = await r.text(); return r.ok && t ? t : null; },\n"
+    "    async waitGameControls(stamp) { const r = await send(\"controls-wait?\" + encodeURIComponent(stamp == null ? \"-\" : stamp), \"\"); if (!r.ok) throw new Error(await r.text()); return r.text(); },\n"
     "    async writeGameControls(data) { const r = await send(\"controls-write\", data); const t = await r.text(); if (!r.ok) throw new Error(t); return t; },\n"
     "    setLang(code) { chain = chain.then(() => send(\"lang?\" + encodeURIComponent(code), \"\")).catch(() => {}); },\n"
     "    async save(name, text) { const r = await send(\"save?name=\" + encodeURIComponent(name), text); const t = await r.text(); if (!r.ok) throw new Error(t); return t; }\n"
@@ -706,11 +712,45 @@ static void serveSave(SOCKET s, const char *query, const char *body, DWORD n) {
 // The game's own keyboard settings (Settings > Controls > Keyboard), which the editor
 // reads to show the game's real keys and can write while the game is closed (the
 // first write keeps the original as .wasdmod-backup). Sent as base64.
-static int controlsPath(char *out) {
-    char base[PATHLEN] = "";
+static int controlsFile(char *out) {
+    char base[PATHLEN] = ""; out[0] = 0;
     if (!GetEnvironmentVariableA("LOCALAPPDATA", base, 400)) return 0;
     join(out, base, "Dungeons2\\Saved\\SaveGames\\EnhancedInputUserSettings.sav");
-    return exists(out);
+    return 1;
+}
+static int controlsPath(char *out) { return controlsFile(out) && exists(out); }
+// The file's stamp: its size and the time it was written, in hex ("" when there's no file).
+static void controlsStamp(const char *p, char *out) {
+    FILEINFO x; DWORD v[3]; int k = 0; out[0] = 0;
+    if (!p[0] || !GetFileAttributesExA(p, 0, &x)) return;
+    v[0] = x.sizeLow; v[1] = x.written[1]; v[2] = x.written[0];
+    for (int i = 0; i < 3; i++) { if (i) out[k++] = '-'; for (int b = 28; b >= 0; b -= 4) out[k++] = "0123456789abcdef"[v[i] >> b & 15]; }
+    out[k] = 0;
+}
+// "controls-wait?<stamp>": answered with the file's stamp once it isn't <stamp> any more, or
+// after 25 seconds with the same one (the editor then asks again). In between this thread
+// sleeps until Windows says something in the SaveGames folder changed, so a key changed in
+// the game's menu reaches the editor within a moment, with nothing running while nothing
+// changes.
+static void serveControlsWait(SOCKET s, const char *have) {
+    char p[PATHLEN], dir[PATHLEN], now[40];
+    controlsFile(p); scpy(dir, sizeof(dir), p);
+    for (int i = slen(dir) - 1; i >= 0 && dir[i] != '\\'; i--) dir[i] = 0;
+    U64 until = GetTickCount64() + 25000;
+    HANDLE h = (HANDLE)-1;
+    for (;;) {
+        controlsStamp(p, now);
+        U64 t = GetTickCount64();
+        if (!sameText(now, have) || t >= until) break;
+        if (h == (HANDLE)-1 && dir[0]) h = FindFirstChangeNotificationA(dir, 0, 0x1 /*FILE_NAME*/ | 0x8 /*SIZE*/ | 0x10 /*LAST_WRITE*/);
+        if (h == (HANDLE)-1 || !h) { h = (HANDLE)-1; Sleep(until - t < 2000 ? (DWORD)(until - t) : 2000); continue; } // no folder yet: look again in a moment
+        DWORD w = WaitForSingleObject(h, (DWORD)(until - t));
+        if (w == 0x102 /*WAIT_TIMEOUT*/) continue;
+        if (w == 0 /*WAIT_OBJECT_0*/) Sleep(250); // the game writes the file in a few steps
+        if (w != 0 || !FindNextChangeNotification(h)) { FindCloseChangeNotification(h); h = (HANDLE)-1; } // the watch broke (folder gone): back to looking every 2 s
+    }
+    if (h != (HANDLE)-1) FindCloseChangeNotification(h);
+    replyText(s, "200 OK", now);
 }
 static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static void serveControls(SOCKET s) {
@@ -783,6 +823,12 @@ static DWORD serveOne(void *arg) {
             if (l >= 0) { langIndex = l; if (mainWnd) PostMessageA(mainWnd, WM_LANGUAGE, 0, 0); }
             replyText(s, "200 OK", "");
         } else if (ours && post && sameTextN(rest, "controls ", 9)) serveControls(s);
+        else if (ours && post && sameTextN(rest, "controls-wait?", 14)) {
+            char have[40]; unsigned k = 0;
+            for (const char *q = rest + 14; *q && *q != ' ' && k + 1 < sizeof(have); q++) have[k++] = *q;
+            have[k] = 0;
+            serveControlsWait(s, have);
+        }
         else if (ours && post && sameTextN(rest, "controls-write ", 15)) serveControlsWrite(s, body, n);
         else if (ours && post && sameTextN(rest, "save?", 5)) {
             char *q = rest + 5; char *e = q; while (*e && *e != ' ') e++;

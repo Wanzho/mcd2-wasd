@@ -37,8 +37,9 @@ struct Languages {
 #if SELFTEST
 let prefs = ProcessInfo.processInfo.environment["WASDMOD_TEST_DEFAULTS"].flatMap { UserDefaults(suiteName: $0) } ?? .standard
 // WASDMOD_TEST_UPDATE=check|update|after: the update flow without a window or Dock
-// icon (updater.swift), logged to WASDMOD_TEST_LOG.
-let testHeadless = ProcessInfo.processInfo.environment["WASDMOD_TEST_UPDATE"] != nil
+// icon (updater.swift), logged to WASDMOD_TEST_LOG. WASDMOD_TEST_WATCH=<a .sav copy>: the
+// watch on the game's keyboard settings (ControlsWatch), tried on that file, no window.
+let testHeadless = ProcessInfo.processInfo.environment["WASDMOD_TEST_UPDATE"] != nil || ProcessInfo.processInfo.environment["WASDMOD_TEST_WATCH"] != nil
 func testLog(_ s: String) {
     print(s); fflush(stdout)
     guard let path = ProcessInfo.processInfo.environment["WASDMOD_TEST_LOG"] else { return }
@@ -65,6 +66,74 @@ final class Banner: NSStackView {
     override var wantsUpdateLayer: Bool { true }
     override func updateLayer() {
         effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = tint.withAlphaComponent(0.12).cgColor }
+    }
+}
+
+// The game's keyboard settings file, watched for the editor. The editor asks for the file's
+// stamp (its size and time) with the one it has; the answer waits until the stamp is a
+// different one, or half a minute. While a question waits, the file and its folder are
+// watched with kqueue (DispatchSource): nothing runs until the file system says something
+// changed there, also while the app is in the background and the game in front.
+final class ControlsWatch {
+    var path: String? { didSet { if path != oldValue { answer() } } }
+    var timeout: TimeInterval = 30
+    #if SELFTEST
+    var stats = 0
+    #endif
+    private var waiters: [Int: (have: String?, reply: (String) -> Void)] = [:]
+    private var count = 0
+    private var sources: [DispatchSourceFileSystemObject] = []
+    private var settle: DispatchWorkItem?
+
+    var stamp: String {
+        #if SELFTEST
+        stats += 1
+        #endif
+        guard let path = path else { return "" }
+        var st = stat()
+        guard stat(path, &st) == 0 else { return "" }
+        return "\(st.st_size):\(st.st_mtimespec.tv_sec).\(st.st_mtimespec.tv_nsec)"
+    }
+    func wait(have: String?, reply: @escaping (String) -> Void) {
+        let now = stamp
+        if have != now { return reply(now) }
+        count += 1
+        let id = count
+        waiters[id] = (have, reply)
+        start()
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
+            guard let self = self, let w = self.waiters.removeValue(forKey: id) else { return }
+            w.reply(self.stamp)
+            if self.waiters.isEmpty { self.stop() }
+        }
+    }
+    private func start() {
+        guard sources.isEmpty, let path = path else { return }
+        let folder = (path as NSString).deletingLastPathComponent
+        let watched: [(String, DispatchSource.FileSystemEvent)] = [(folder, .write), (path, [.write, .extend, .attrib, .delete, .rename])]
+        for (p, mask) in watched {
+            let fd = open(p, O_EVTONLY)
+            if fd < 0 { continue }
+            let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: mask, queue: .main)
+            source.setEventHandler { [weak self] in self?.touched() }
+            source.setCancelHandler { close(fd) }
+            source.resume()
+            sources.append(source)
+        }
+    }
+    private func stop() { for s in sources { s.cancel() }; sources = [] }
+    // A moment after the last event: the game writes the file in a few steps, or replaces it.
+    private func touched() {
+        settle?.cancel()
+        let w = DispatchWorkItem { [weak self] in self?.answer() }
+        settle = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: w)
+    }
+    private func answer() {
+        stop() // the file may be a new one now: watched again below while someone waits
+        let now = stamp
+        for (id, w) in waiters where w.have != now { waiters[id] = nil; w.reply(now) }
+        if !waiters.isEmpty { start() }
     }
 }
 
@@ -102,7 +171,16 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     // The game's folder, picked by hand (wins over the automatic search while it exists).
     var gameDir: String? {
         get { prefs.string(forKey: "game") }
-        set { prefs.set(newValue, forKey: "game") }
+        set { prefs.set(newValue, forKey: "game"); controlsWatch.path = nil } // the game's settings file is looked for again
+    }
+    let controlsWatch = ControlsWatch()
+    // Where the game's keyboard settings file is (nil while there's none).
+    func findControls() -> String? {
+        #if SELFTEST
+        if let p = ProcessInfo.processInfo.environment["WASDMOD_TEST_CONTROLS"] { return p } // tests: a copy, never the game's own
+        #endif
+        let r = sh(["controls"])
+        return r.ok ? fields(r.out)["controls"] : nil
     }
     // A bottle picked by hand in earlier versions.
     var bottle: String? {
@@ -406,6 +484,7 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
             set(k, v) { store[k] = v; post({ cmd: "store", value: JSON.stringify(store) }); },
             setLang(code) { post({ cmd: "lang", value: code }); },
             gameControls() { return post({ cmd: "controls" }); },
+            waitGameControls(stamp) { return post({ cmd: "controls-wait", stamp }); },
             writeGameControls(data) { return post({ cmd: "controls-write", data }); },
             save(name, text) { return post({ cmd: "save", name, text }); }
           };
@@ -432,9 +511,15 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         }
         // The game's own keyboard settings file, as base64 (nil when there's none).
         if cmd == "controls" {
-            let r = sh(["controls"])
-            guard r.ok, let path = fields(r.out)["controls"], let data = FileManager.default.contents(atPath: path) else { return replyHandler(nil, nil) }
+            if controlsWatch.path.map({ !FileManager.default.fileExists(atPath: $0) }) ?? true { controlsWatch.path = findControls() }
+            guard let path = controlsWatch.path, let data = FileManager.default.contents(atPath: path) else { return replyHandler(nil, nil) }
             return replyHandler(data.base64EncodedString(), nil)
+        }
+        // The file's stamp, once it isn't the one the editor has (ControlsWatch).
+        if cmd == "controls-wait" {
+            if controlsWatch.path == nil { controlsWatch.path = findControls() }
+            controlsWatch.wait(have: body["stamp"] as? String) { replyHandler($0, nil) }
+            return
         }
         if cmd == "controls-write" {
             guard let text = body["data"] as? String, let data = Data(base64Encoded: text), data.starts(with: Array("GVAS".utf8)) else { return replyHandler(nil, "Unknown request.") }
@@ -479,6 +564,39 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
     }
 
     #if SELFTEST
+    // Test build only: ControlsWatch on a copy of the settings file (WASDMOD_TEST_WATCH). The
+    // file is written in place, then replaced (as a save that writes a new file does), then
+    // left alone; each answer is logged with how long it took and how many stamps were read.
+    func watchTest(_ path: String) {
+        let w = controlsWatch
+        w.path = path
+        w.timeout = 3
+        let t0 = Date()
+        func log(_ s: String) { testLog(String(format: "watch %.2fs stats=%d %@", Date().timeIntervalSince(t0), w.stats, s)) }
+        func later(_ s: Double, _ f: @escaping () -> Void) { DispatchQueue.global().asyncAfter(deadline: .now() + s, execute: f) }
+        let s0 = w.stamp
+        log("start \(s0)")
+        w.wait(have: "old") { log("changed-stamp answered at once: \($0 != "old")") }
+        w.wait(have: s0) { s1 in
+            log("in-place write seen: \(s1 != s0)")
+            w.wait(have: s1) { s2 in
+                log("replaced file seen: \(s2 != s1)")
+                let before = w.stats
+                w.wait(have: s2) { s3 in
+                    log("no change: answered at the timeout with the same stamp: \(s3 == s2), stamps read while idle: \(w.stats - before)")
+                    NSApp.terminate(nil)
+                }
+            }
+            later(1) { // replaced: a new file renamed over it
+                let tmp = path + ".tmp"
+                if let d = FileManager.default.contents(atPath: path) { try? (d + Data([0])).write(to: URL(fileURLWithPath: tmp)); rename(tmp, path); log("replaced") }
+            }
+        }
+        later(1) { // written in place
+            if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data([0])); h.closeFile(); log("wrote in place") }
+        }
+    }
+
     // Test build only (build with -D SELFTEST): runs WASDMOD_TEST_JS once the editor
     // has loaded, prints the result and the window number, and quits.
     func selfTest() {
@@ -573,6 +691,9 @@ final class App: NSObject, NSApplicationDelegate, NSToolbarDelegate, WKScriptMes
         window.center()
         window.setFrameAutosaveName("wasdmod")
         applyTexts()
+        #if SELFTEST
+        if let path = ProcessInfo.processInfo.environment["WASDMOD_TEST_WATCH"] { return watchTest(path) }
+        #endif
         #if !NEXUS
         updater.start() // finishes an update this app was started for, or checks (once a day)
         #endif
