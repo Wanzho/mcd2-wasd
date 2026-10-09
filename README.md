@@ -11,7 +11,7 @@ It comes in the same 16 languages as the game: English, Deutsch, Español, Fran�
 
 **Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.4.0/wasdmod-1.4.0.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.4.0/wasdmod-1.4.0.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.4.0/wasdmod-1.4.0.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
 
-**Website:** [wanzho.github.io/wasd](https://wanzho.github.io/wasd/), with a playable demo and an interactive key map.
+**Website:** [wasdmod.com](https://wasdmod.com/), with a playable demo and an interactive key map.
 
 ## Install
 
