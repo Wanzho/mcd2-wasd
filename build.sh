@@ -19,8 +19,8 @@ if [ -z "$LLD" ]; then
 fi
 [ -x "$LLD" ] || { echo "lld-link not found; set LLD=/path/to/lld-link"; exit 1; }
 mkdir -p build
-printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA SetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage GetModuleFileNameW MoveFileExW CreateFileW DeleteFileW GetFileAttributesW GetEnvironmentVariableW CreateProcessW FindFirstChangeNotificationA FindNextChangeNotification FindCloseChangeNotification WaitForSingleObject > build/kernel32.def
-printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW BeginPaint EndPaint SetWindowLongPtrW CallWindowProcW TrackMouseEvent IsWindowEnabled LoadImageW DrawIconEx RedrawWindow DestroyWindow SetForegroundWindow MapWindowPoints UpdateLayeredWindow KillTimer GetCaretBlinkTime IsIconic > build/user32.def
+printf 'LIBRARY KERNEL32.dll\nEXPORTS\n%s\n' FreeLibrary GetSystemDirectoryA LoadLibraryA GetProcAddress GetModuleFileNameA GetPrivateProfileIntA GetPrivateProfileStringA GetCurrentProcessId GetCurrentThreadId CreateFileA WriteFile CloseHandle GetStdHandle ExitProcess GetCommandLineA GetTickCount64 Sleep CreateThread GetPrivateProfileSectionA GetFileAttributesExA QueryPerformanceCounter QueryPerformanceFrequency GetModuleHandleA VirtualProtect FindFirstFileA FindNextFileA FindClose InitializeCriticalSection EnterCriticalSection LeaveCriticalSection ReadFile GetFileSize DeleteFileA CopyFileA GetFileAttributesA MoveFileExA SetFileTime GetSystemTimeAsFileTime GetProcessHeap HeapAlloc HeapFree GetEnvironmentVariableA SetEnvironmentVariableA CreateToolhelp32Snapshot Process32First Process32Next CreateDirectoryA GetLogicalDrives GetDriveTypeA GetLocalTime MultiByteToWideChar WideCharToMultiByte GetUserDefaultUILanguage GetModuleFileNameW MoveFileExW CreateFileW DeleteFileW GetFileAttributesW GetEnvironmentVariableW CreateProcessW FindFirstChangeNotificationA FindNextChangeNotification FindCloseChangeNotification WaitForSingleObject CreateEventA SetEvent ResetEvent GetLastError FormatMessageW > build/kernel32.def
+printf 'LIBRARY USER32.dll\nEXPORTS\n%s\n' GetAsyncKeyState GetForegroundWindow GetWindowThreadProcessId keybd_event mouse_event SetWindowsHookExW CallNextHookEx GetRawInputData EnumWindows CreateWindowExA DefWindowProcA PostMessageA PeekMessageA TranslateMessage GetFocus SetFocus RegisterClassA ShowWindow SetWindowPos GetClientRect ClientToScreen SetLayeredWindowAttributes GetMessageA DispatchMessageA SetTimer InvalidateRect BeginPaint EndPaint FillRect IsWindowVisible GetDC ReleaseDC GetCursorPos MapVirtualKeyA SetCursorPos ClipCursor RegisterClassA IsDialogMessageA PostQuitMessage SendMessageA SetWindowTextA MessageBoxA EnableWindow LoadCursorA LoadIconA AdjustWindowRect SetProcessDPIAware GetSysColorBrush RegisterClassW CreateWindowExW DefWindowProcW GetMessageW DispatchMessageW IsDialogMessageW SendMessageW SetWindowTextW GetWindowTextW MessageBoxW DrawTextW BeginPaint EndPaint SetWindowLongPtrW CallWindowProcW TrackMouseEvent IsWindowEnabled LoadImageW DrawIconEx RedrawWindow DestroyWindow SetForegroundWindow MapWindowPoints UpdateLayeredWindow KillTimer GetCaretBlinkTime IsIconic RegisterRawInputDevices > build/user32.def
 printf 'LIBRARY GDI32.dll\nEXPORTS\n%s\n' CreateFontA SelectObject SetTextColor SetBkMode TextOutA CreateSolidBrush GetTextExtentPoint32A CreatePen Ellipse GetStockObject DeleteObject Polygon GetDeviceCaps TextOutW GetTextExtentPoint32W GetTextFaceA CreateCompatibleDC CreateCompatibleBitmap DeleteDC BitBlt CreatePatternBrush SetBrushOrgEx AddFontMemResourceEx CreateDIBSection GdiFlush GetTextExtentExPointW GetTextMetricsW SetTextCharacterExtra > build/gdi32.def
 printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext > build/imm32.def
 "$LLD" /lib /machine:x64 /def:build/kernel32.def /out:build/kernel32.lib >/dev/null
@@ -30,18 +30,19 @@ printf 'LIBRARY IMM32.dll\nEXPORTS\n%s\n' ImmAssociateContext ImmCreateContext >
 printf 'LIBRARY ADVAPI32.dll\nEXPORTS\n%s\n' RegOpenKeyExA RegQueryValueExA RegCloseKey SystemFunction036 > build/advapi32.def
 printf 'LIBRARY SHELL32.dll\nEXPORTS\n%s\n' ShellExecuteA ShellExecuteW SHGetFolderPathA > build/shell32.def
 printf 'LIBRARY OLE32.dll\nEXPORTS\n%s\n' CoInitializeEx CoTaskMemFree > build/ole32.def
-printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameW > build/comdlg32.def
+printf 'LIBRARY COMDLG32.dll\nEXPORTS\n%s\n' GetOpenFileNameW GetSaveFileNameW > build/comdlg32.def
 printf 'LIBRARY WS2_32.dll\nEXPORTS\n%s\n' WSAStartup socket bind listen accept getsockname setsockopt recv send closesocket > build/ws2_32.def
 # WinHTTP: the GitHub build's update check and download (updater.inc) only.
 printf 'LIBRARY WINHTTP.dll\nEXPORTS\n%s\n' WinHttpOpen WinHttpConnect WinHttpOpenRequest WinHttpSendRequest WinHttpReceiveResponse WinHttpQueryHeaders WinHttpReadData WinHttpSetOption WinHttpSetTimeouts WinHttpCloseHandle > build/winhttp.def
 printf 'LIBRARY DWMAPI.dll\nEXPORTS\n%s\n' DwmSetWindowAttribute > build/dwmapi.def
 printf 'LIBRARY GDIPLUS.dll\nEXPORTS\n%s\n' GdiplusStartup GdipCreateFromHDC GdipDeleteGraphics GdipSetSmoothingMode GdipCreateSolidFill GdipDeleteBrush GdipCreatePen1 GdipDeletePen GdipSetPenStartCap GdipSetPenEndCap GdipCreatePath GdipDeletePath GdipAddPathArc GdipClosePathFigure GdipFillPath GdipDrawPath GdipFillEllipse GdipDrawLine GdipDrawArc GdipSetPixelOffsetMode GdipFillRectangle GdipAddPathEllipse GdipCreateLineBrushFromRect GdipSetLinePresetBlend GdipCreatePathGradientFromPath GdipSetPathGradientCenterColor GdipSetPathGradientSurroundColorsWithCount GdipSetPathGradientPresetBlend GdipSetPathGradientCenterPoint GdipSetPathGradientFocusScales GdipSetClipPath GdipResetClip GdipCreatePen2 > build/gdiplus.def
 for l in advapi32 shell32 comdlg32 ws2_32 dwmapi gdiplus ole32 winhttp; do "$LLD" /lib /machine:x64 /def:build/$l.def /out:build/$l.lib >/dev/null; done
-VERSION=1.4.0 # shown in the apps, the log and the release
+VERSION=1.5.0 # shown in the apps, the log and the release
 # The translations (lang/*.json) as C tables for the mod and the Windows setup, a
-# file for the Mac app, and Keybinder.html (the key layout editor with every language;
-# the Nexus build's doesn't load web fonts when opened as a page).
-WASDMOD_FLAVOR=$FLAVOR python3 lang.py
+# file for the Mac app, Keybinder.html (the key layout editor with every language;
+# the Nexus build's doesn't load web fonts when opened as a page), and the zip's
+# scripts with their text in build/zip/ (the Nexus build's without their update check).
+WASDMOD_FLAVOR=$FLAVOR WASDMOD_VERSION=$VERSION python3 lang.py
 CFLAGS="-DVERSION=\"$VERSION\" --target=x86_64-pc-windows-msvc -O2 -fno-stack-protector -fno-builtin -Wall -Wno-incompatible-pointer-types -Wno-int-conversion"
 clang $CFLAGS -Ibuild -c xinput_wasd.c -o build/xinput_wasd.obj
 "$LLD" /dll /brepro /nodefaultlib /entry:DllMain /machine:x64 /def:xinput1_4.def /out:build/xinput1_4.dll build/xinput_wasd.obj build/kernel32.lib build/user32.lib build/gdi32.lib
@@ -108,13 +109,19 @@ codesign --verify --deep --strict "$APP"
 # Finder window (mac/dmg), laid out without opening Finder.
 sh mac/make-dmg.sh "$APP" build/wasdmod-Mac.dmg "mac/Read me.txt"
 rm -rf "$STAGE" build/dmg
-# Manual install (Linux / Steam Deck, or Windows without the setup): the files in
-# a wasdmod folder, zipped.
+# The zip (Linux / Steam Deck, or Windows without the app): the mod's files in a
+# wasdmod folder, with two plain scripts that do what the apps do (manual/wasdmod.py
+# for Linux, started by wasdmod-linux.sh; manual/wasdmod.ps1 for Windows, started by
+# wasdmod-windows.cmd, which gets Windows' line ends). No program is in it but the
+# mod's DLL; copying the files by hand still works (Read me.txt).
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/wasdmod-zip.XXXXXX")
 mkdir "$STAGE/wasdmod"
 cp build/xinput1_4.dll default.txt author.txt "manual/Read me.txt" "$STAGE/wasdmod/"
 cp LICENSE "$STAGE/wasdmod/LICENSE.txt"
 cp Keybinder.html "$STAGE/wasdmod/Key Layout Editor.html"
+cp build/zip/wasdmod.py build/zip/wasdmod.ps1 build/zip/lang.json manual/wasdmod-linux.sh "$STAGE/wasdmod/"
+perl -pe 's/\r?\n/\r\n/' manual/wasdmod-windows.cmd > "$STAGE/wasdmod/wasdmod-windows.cmd"
+chmod 755 "$STAGE/wasdmod/wasdmod-linux.sh" "$STAGE/wasdmod/wasdmod.py"
 rm -f build/wasdmod.zip
 (cd "$STAGE" && zip -q -X -r "$OLDPWD/build/wasdmod.zip" wasdmod)
 rm -rf "$STAGE"

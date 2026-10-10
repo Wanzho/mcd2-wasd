@@ -1,8 +1,8 @@
-wasdmod: Minecraft Dungeons II controller mod (manual install)
-==============================================================
+wasdmod: Minecraft Dungeons II controller mod (the zip)
+=======================================================
 
 For Linux and Steam Deck (Proton), or for Windows if you'd rather not run the
-setup. On a Mac, use the wasdmod app (the .dmg) instead: it makes the CrossOver
+app. On a Mac, use the wasdmod app (the .dmg) instead: it makes the CrossOver
 settings the mod needs. To run the game in CrossOver, set it up with MCD2
 Crossover: https://github.com/Wanzho/mcd2-crossover
 
@@ -11,10 +11,76 @@ What's inside
 xinput1_4.dll            the mod
 default.txt              the Official key layout (the game's own keys)
 author.txt               the Recommended key layout (optional)
-Key Layout Editor.html   edit layouts in your browser
+Key Layout Editor.html   the key layout editor
+wasdmod-linux.sh         Linux / Steam Deck: starts wasdmod.py
+wasdmod.py               installs the mod and opens the editor (Python 3)
+wasdmod-windows.cmd      Windows: starts wasdmod.ps1
+wasdmod.ps1              installs the mod and opens the editor (PowerShell)
+lang.json                the two scripts' text in the game's 16 languages
 
-Install
--------
+The scripts are plain text: open them in a text editor to read what they do.
+They install nothing on your system and need no administrator or root rights.
+Keep the files of this folder together.
+
+Install on Linux / Steam Deck
+-----------------------------
+Not yet tested on Linux or a Steam Deck. The game must already run under Proton:
+start it once before you install. On a Steam Deck, switch to Desktop Mode.
+
+1. Start wasdmod-linux.sh: double-click it in the file manager and choose to
+   run it, or open a terminal in this folder and enter
+       ./wasdmod-linux.sh
+   It needs Python 3, which the Steam Deck and most Linux systems have.
+2. The key layout editor opens in your browser. It looks for the game in
+   Steam's libraries (also on an SD card). If it doesn't find it, open the
+   Game folder menu at the top, click "Choose game folder…" and pick the
+   game's Dungeons-Win64-Shipping.exe.
+3. Quit the game and click "Install Mod" at the top right.
+4. Start the game.
+
+Proton uses its own xinput1_4.dll unless it's told to load the one in the game
+folder. Install Mod says so for this game only, with one line in the game's
+Proton prefix (steamapps/compatdata/1912410/pfx/user.reg; the file as it was
+is kept beside it as user.reg.wasdmod-backup). Uninstall takes the line out
+again. If that can't be done safely (the game hasn't run yet, Wine is still
+running, or the file already says something about xinput1_4), nothing is
+changed there, and the line under the editor's buttons shows a launch option
+instead. In Steam, right-click the game > Properties > Launch Options, and
+paste it:
+    WINEDLLOVERRIDES="xinput1_4=n,b" %command%
+
+The script runs while the editor is open and ends a few seconds after you
+close the editor's window (or with Ctrl+C in the terminal). Start it again to
+change keys, disable the mod or uninstall it.
+
+Install on Windows
+------------------
+1. Unzip the whole folder first (right-click the zip > Extract All).
+2. Double-click wasdmod-windows.cmd. Windows asks first, because the file came
+   from the internet and isn't signed: in "Open File - Security Warning" ("The
+   publisher could not be verified"), click Run. (If you get "Windows
+   protected your PC" instead, click More info > Run anyway.)
+3. A window named "wasdmod" stays open while it runs, and the key layout
+   editor opens in a window of its own (Edge or Chrome, otherwise your
+   browser). It looks for the game in Steam and in XboxGames. If it doesn't
+   find it, open the Game folder menu at the top, click "Choose game folder…"
+   and pick the game's Dungeons-...-Shipping.exe.
+4. Quit the game, click "Install Mod" at the top right, and start the game.
+
+The script ends when you close the editor's window. Start it again to change
+keys, disable the mod or uninstall it.
+
+Without the editor
+------------------
+In a terminal (Linux) or a Command Prompt (Windows), in this folder:
+    ./wasdmod-linux.sh install          wasdmod-windows.cmd install
+The other commands are status, uninstall, off, on and find. The game's folder
+may follow each one, if it isn't found by itself.
+
+Install by hand
+---------------
+You don't need the scripts: copying the files does the same.
+
 1. Find the game folder (the one with the game's Dungeons-...-Shipping.exe):
    - Steam: right-click Minecraft Dungeons II > Manage > Browse local files,
      then open Dungeons > Binaries > Win64 (Dungeons-Win64-Shipping.exe).
@@ -27,22 +93,24 @@ Install
 3. Linux / Steam Deck only: in Steam, right-click the game > Properties >
    Launch Options, and enter:
        WINEDLLOVERRIDES="xinput1_4=n,b" %command%
-   (Proton uses its own xinput1_4.dll otherwise.) Not yet tested on Linux.
    Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles...): add the
    environment variable WINEDLLOVERRIDES=xinput1_4=n,b in that launcher's
    settings for the game instead.
 4. Start the game.
 
 In game: Tab opens the menu wheel (the game's own key, S, is "move down" now),
-F9 shows the key list, hold Alt for the cursor, T starts typing (Esc
+F9 shows the key list, hold left Alt for the cursor, T starts typing (Esc
 ends it), and the backtick key (`) turns the mod off and on.
 
 Change keys
 -----------
-Open "Key Layout Editor.html", pick Official layout or Recommended or
-"+ Create" your own, and click "Download file". Put the file in the same
-Win64 folder; a running game switches to it within a second. The mod uses
-the newest of default.txt, author.txt and wasdmod*.txt.
+Started by its script, the editor saves straight into the game: pick Official
+layout or Recommended (or make your own in "Manage Layouts…") and click
+"Install/Apply Layout". A running game switches to it within a second.
+
+By hand: open "Key Layout Editor.html", pick or make a layout and click
+"Download file". Put the file in the same Win64 folder. The mod uses the
+newest of default.txt, author.txt and wasdmod*.txt.
 
 Languages
 ---------
@@ -54,20 +122,33 @@ zh-Hans, zh-Hant).
 
 Problems
 --------
-Attach wasdmod.log (in the same Win64 folder) to a report on
-https://github.com/Wanzho/mcd2-wasd/issues. For a detailed log, put an empty
-file named wasdmod-record.flag in that folder while you play, then remove it.
+In the editor, click "Record logs" under Troubleshooting, play until the
+problem happens, then click "Stop and save logs". Attach the wasdmod-logs file
+it puts on your Desktop to a report on
+https://github.com/Wanzho/mcd2-wasd/issues.
+By hand: attach wasdmod.log (in the same Win64 folder). For a detailed log, put
+an empty file named wasdmod-record.flag in that folder while you play, then
+remove it.
 
 Turn off
 --------
-Rename xinput1_4.dll to xinput1_4.dll.off: the game starts without the mod and
-your layouts stay. Rename it back to turn it on. (In a running game, the
-backtick key turns it off until you press it again.)
+In the editor, click "Disable" (later "Enable"). By hand: rename xinput1_4.dll
+to xinput1_4.dll.off, and back to turn it on. The game then starts without the
+mod and your layouts stay. (In a running game, the backtick key turns it off
+until you press it again.)
 
 Uninstall
 ---------
-Delete xinput1_4.dll, default.txt, author.txt and any wasdmod*.txt from the
-Win64 folder (and remove the launch option on Linux).
+In the editor, click "Uninstall". By hand: delete xinput1_4.dll, default.txt,
+author.txt and any wasdmod*.txt from the Win64 folder (and remove the launch
+option on Linux).
+
+Updates
+-------
+The scripts from GitHub ask GitHub once a day, when they start, whether there
+is a newer version, and tell you if there is; nothing is downloaded. The ones
+from Nexus Mods have no internet code. To update, download the new zip, start
+its script and click "Update Mod".
 
 Unofficial project. Not an official Minecraft product; not approved by or
 associated with Mojang or Microsoft. MIT license:

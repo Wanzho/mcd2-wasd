@@ -2,10 +2,13 @@
 ; Edit and save: a running game switches to it within a second. The on-screen
 ; key list is built from this file.
 ;
-; A key is a letter or digit (W), a name (Space, Enter, Escape, Tab, Shift,
-; Ctrl, Alt, Backspace, CapsLock, Up, Down, Left, Right, Backtick, F1-F12,
-; Mouse1-Mouse5), None, or a virtual-key code (0x20). Several keys per line are allowed,
-; comma-separated (up to three). Mouse1 = left, Mouse2 = right, Mouse3 = middle, Mouse4/5 = side.
+; A key is a letter or digit (W), a name (Space, Enter, Escape, Tab, LShift,
+; RShift, LCtrl, RCtrl, LAlt, RAlt, Backspace, CapsLock, Up, Down, Left, Right,
+; Backtick, F1-F12, Mouse1-Mouse5), None, or a virtual-key code (0x20). The left
+; and right Shift, Ctrl and Alt are different keys; plain Shift, Ctrl or Alt is the
+; left one (on a Mac, LAlt and RAlt are the Option keys). Several keys per line
+; are allowed, comma-separated (up to three). Mouse1 = left, Mouse2 = right,
+; Mouse3 = middle, Mouse4/5 = side.
 ;
 ; The keys are the game's own keyboard defaults (Settings > Controls > Keyboard),
 ; each pressing the controller button the game uses for that action. Only the
@@ -73,7 +76,7 @@ DRight=Track quest / quest log
 ; Moving the mouse this far (pixels) after letting go of the movement keys
 ; switches to mouse mode (normal cursor and keyboard). 0 = off.
 MouseModeOnMovePx=40
-; 0: moving the mouse never leaves controller mode; only the cursor key (Alt),
+; 0: moving the mouse never leaves controller mode; only the cursor key (left Alt),
 ; the menu keys or the toggle key (`) give you the mouse.
 MouseMoveSwitches=1
 ; 1: when moving the mouse brings the cursor back, it starts from the middle of
@@ -118,13 +121,13 @@ TypeKey=T
 PassKeys=Z, F1, F2, F3, F4, X
 ; The game's own keys for actions you moved to other keys: they never reach the
 ; game, in any mode (typing aside). The key layout editor fills this in.
-DisabledKeys=Q, Shift
+DisabledKeys=Q, LShift
 ; Game keys of instant actions (teleports): a key remapped onto one doesn't switch
 ; to mouse mode. The key layout editor fills this in.
 InstantKeys=
 ; Hold for the normal mouse cursor (like Genshin's Alt). On a Mac this is the
-; Option key: install.command tells CrossOver to send Option as Alt.
-Cursor=Alt
+; left Option key: install.command tells CrossOver to send Option as Alt.
+Cursor=LAlt
 ; Hold = the cursor shows (in the middle) while the key is held; letting go hides
 ; it and goes back to the controller, like Genshin. Toggle = press once to show
 ; it, press again to hide it. A game menu that's open keeps the cursor.
@@ -151,8 +154,6 @@ tpplayer=Keyboard
 emotes=Keyboard
 
 [Options]
-; Hide mouse movement from the game in controller mode so it stays in controller mode.
-HideMouse=1
 ; Block every key the mod doesn't use (except MenuKeys/PassKeys) in controller
 ; mode, so a stray key can't flip the game into keyboard mode.
 BlockOtherKeys=1
@@ -162,6 +163,10 @@ TypedCharacters=0
 ; the game starts (0 = only on F9).
 Legend=1
 LegendSeconds=15
+; The banners at the top of the game: TypingBanner while you type (0: only the amber
+; frame shows), OffBanner while the mod is off. Each can also be closed with its x.
+TypingBanner=1
+OffBanner=1
 ; Language of the key list and the typing banner: Auto follows the game's own
 ; language setting (else the system's), or pick one: en, de, es, fr, it, ja, ko, nl,
 ; pl, pt, ru, sv, tr, uk, zh-Hans, zh-Hant.
@@ -200,4 +205,4 @@ emotes=G
 collect=U
 events=K
 heavy=Q, Mouse4
-root=Shift
+root=LShift

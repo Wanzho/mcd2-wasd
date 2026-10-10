@@ -1,7 +1,7 @@
 ; Recommended layout for the Minecraft Dungeons II controller mod.
 ; Bow on side button 4; the inventory (E) on the controller so you can keep moving;
 ; quests (V), social (/) and teleport (X) send the game's own keys; Tab opens the
-; menu wheel; Shift forward dodge.
+; menu wheel; left Shift forward dodge.
 ; Only the keys you press change; the game's own keys stay at their defaults.
 ; Put this file in the game's Win64 folder (Windows setup: Load layout file); a
 ; running game switches to it within a second. The newest of default.txt,
@@ -26,7 +26,7 @@ A=Space, F
 B=2
 X=Mouse1
 Y=Q
-LB=Shift
+LB=LShift
 RB=3
 LT=R
 RT=Mouse4, C
@@ -74,7 +74,7 @@ TypeKey=T
 PassKeys=X, Z, F1, F2, F3, F4
 DisabledKeys=Mouse5, 1, I, J, U
 InstantKeys=
-Cursor=Alt
+Cursor=LAlt
 CursorMode=Hold
 Toggle=Backtick
 Legend=F9
@@ -123,15 +123,16 @@ emotes=G
 collect=U
 events=K
 heavy=Q, Mouse4
-root=Shift
+root=LShift
 
 [Options]
-HideMouse=1
 BlockOtherKeys=1
 DetectTextBoxes=1
 TypedCharacters=0
 Legend=1
 LegendSeconds=15
+TypingBanner=1
+OffBanner=1
 Language=Auto
 RequireFocus=1
 AlwaysConnected=1

@@ -1,7 +1,8 @@
 // Loads the mod DLL from its own folder and checks the exports behave:
 // controller 0 appears connected, the stick is centred with no keys held,
 // and the builtin XInput backend is reachable.
-// test_load.exe --overlay [dark] shows the on-screen overlays instead (see overlayTest).
+// test_load.exe --overlay [dark] shows the on-screen overlays instead (see overlayTest);
+// --overlay close and --overlay nobanner test the banners' x and options (see closeTest).
 typedef unsigned long DWORD;
 typedef void *HANDLE;
 typedef unsigned short WORD;
@@ -22,6 +23,9 @@ __declspec(dllimport) void Sleep(DWORD);
 __declspec(dllimport) HANDLE ImmAssociateContext(HANDLE, HANDLE);
 __declspec(dllimport) HANDLE ImmCreateContext(void);
 __declspec(dllimport) void keybd_event(unsigned char, unsigned char, DWORD, unsigned long long);
+__declspec(dllimport) SHORT GetAsyncKeyState(int);
+typedef struct { unsigned short page, usage; DWORD flags; HANDLE target; } RAWINPUTDEVICE;
+__declspec(dllimport) int RegisterRawInputDevices(const RAWINPUTDEVICE *, UINT, UINT);
 
 // For --overlay: a window like the game's, redrawn every frame.
 typedef long LONG; typedef long long LRESULT; typedef unsigned long long WPARAM; typedef long long LPARAM;
@@ -54,6 +58,13 @@ __declspec(dllimport) HANDLE CreateFileA(const char *, DWORD, DWORD, void *, DWO
 __declspec(dllimport) int ReadFile(HANDLE, void *, DWORD, DWORD *, void *);
 __declspec(dllimport) int CloseHandle(HANDLE);
 __declspec(dllimport) int DeleteFileA(const char *);
+__declspec(dllimport) DWORD GetModuleFileNameA(HANDLE, char *, DWORD);
+typedef struct { LONG x, y; } POINT;
+__declspec(dllimport) int GetClientRect(HANDLE, RECT *);
+__declspec(dllimport) int ClientToScreen(HANDLE, POINT *);
+__declspec(dllimport) HANDLE GetForegroundWindow(void);
+__declspec(dllimport) int GetCursorPos(POINT *);
+__declspec(dllimport) void mouse_event(DWORD, DWORD, DWORD, DWORD, unsigned long long);
 
 typedef struct { DWORD packet; WORD buttons; unsigned char lt, rt; SHORT lx, ly, rx, ry; } STATE;
 typedef struct { unsigned char type, subtype; WORD flags; WORD b; unsigned char lt, rt; SHORT lx, ly, rx, ry; WORD m1, m2; } CAPS;
@@ -68,9 +79,11 @@ static void num(const char *label, long v) {
 }
 
 static HANDLE backdrop;
+static int gameClicks; // left clicks that reached the "game" window
 #define GAME_W 960
 #define GAME_H 540
 static LRESULT gameProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x201) gameClicks++;
     if (msg == 0x0F) { // WM_PAINT: the backdrop
         PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
         if (backdrop) { HANDLE m = CreateCompatibleDC(dc); HANDLE old = SelectObject(m, backdrop); BitBlt(dc, 0, 0, GAME_W, GAME_H, m, 0, 0, 0x00CC0020 /*SRCCOPY*/); SelectObject(m, old); }
@@ -83,24 +96,27 @@ static LRESULT gameProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
 // asked for once (asking sends a message to the overlay thread and waits for it).
 static int overlaysSeen, legendSeen, bannerSeen, known;
 static HANDLE knownWnd[64]; static int knownKind[64];
+static int shown[5], closeMade; static HANDLE closeSeen; // this pass: visible windows of each kind, the banner's x
 static int countOverlay(HANDLE w, LPARAM unused) {
     DWORD pid = 0; GetWindowThreadProcessId(w, &pid);
     if (pid != GetCurrentProcessId()) return 1;
     int kind = -1;
     for (int i = 0; i < known; i++) if (knownWnd[i] == w) kind = knownKind[i];
     if (kind < 0) {
-        static const char *names[] = {"Keyboard controls", "Typing mode", "Typing mode frame"};
+        static const char *names[] = {"Keyboard controls", "Typing mode", "Typing mode frame", "Close banner"};
         unsigned short t[64]; int n = GetWindowTextW(w, t, 64);
         kind = 0;
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 4; k++) {
             const char *e = names[k]; int i = 0;
             while (i < n && e[i] && t[i] == (unsigned short)e[i]) i++;
             if (i == n && !e[i]) kind = k + 1;
         }
         if (known < 64) { knownWnd[known] = w; knownKind[known++] = kind; }
     }
+    if (kind == 4) closeMade = 1; // (hidden or not)
     if (!kind || !IsWindowVisible(w)) return 1;
-    overlaysSeen++;
+    overlaysSeen++; shown[kind]++;
+    if (kind == 4) closeSeen = w;
     if (kind == 1) legendSeen = 1;
     if (kind == 2) bannerSeen = 1;
     return 1;
@@ -116,6 +132,49 @@ static void saveLayout(const char *name) {
     if (f == (HANDLE)-1) { out("reload: can't write the layout\r\n"); return; }
     WriteFile(f, text, n, &w, 0); CloseHandle(f);
 }
+// A file next to this exe (where the mod looks for layouts), whatever the current folder is.
+static const char *besideExe(const char *name) {
+    static char path[600]; DWORD n = GetModuleFileNameA(0, path, 500);
+    while (n && path[n - 1] != '\\') n--;
+    for (int i = 0; name[i] && n < 598; i++) path[n++] = name[i];
+    path[n] = 0; return path;
+}
+static void writeFile(const char *name, const char *text) {
+    DWORD n = 0, w; while (text[n]) n++;
+    HANDLE f = CreateFileA(besideExe(name), 0x40000000 /*GENERIC_WRITE*/, 3, 0, 2 /*CREATE_ALWAYS*/, 128, 0);
+    if (f == (HANDLE)-1) { out("can't write "); out(name); out("\r\n"); return; }
+    WriteFile(f, text, n, &w, 0); CloseHandle(f);
+}
+// A key message posted to the window and taken off the queue again: what the game would get.
+static UINT postPeek(HANDLE wnd, UINT message, unsigned long long wp, long long lp) {
+    MSG m; UINT r = 0xffff;
+    PostMessageA(wnd, message, wp, lp);
+    if (PeekMessageA(&m, wnd, 0, 0, 1)) r = m.message;
+    return r;
+}
+static void drain(HANDLE wnd) { MSG m; while (PeekMessageA(&m, wnd, 0, 0, 1)) {} }
+// Key messages as Windows sends them: the scan code in bits 16-23, the extended-key flag
+// (right Ctrl and Alt, the Windows keys) in bit 24.
+#define KEYLP(scan, ext) ((long long)(scan) << 16 | (long long)(ext) << 24 | 1)
+// The left / right key layout (--keys): Shift (= left Shift) on A, right Ctrl on B, right
+// Command on RB; left Alt blocked (DisabledKeys), right Alt converted to S; everything else
+// reaches the game (BlockOtherKeys=0), so a free right or left key shows as passing.
+static const char sidesLayout[] =
+    "[Options]\r\nRequireFocus=0\r\nBlockOtherKeys=0\r\nDetectTextBoxes=0\r\nLegend=0\r\nLegendSeconds=0\r\nLog=1\r\n"
+    "[Mouse]\r\nMouseMoveSwitches=0\r\nKeepCursorInWindow=0\r\nBumpNudgePct=0\r\nBowAimsWithMouse=0\r\n"
+    "[Move]\r\nUp=W\r\nLeft=A\r\nDown=S\r\nRight=D\r\nDodgeMouse=None\r\n"
+    "[Buttons]\r\nA=Shift\r\nB=RCtrl\r\nX=None\r\nY=None\r\nLB=None\r\nRB=RCmd\r\nLT=None\r\nRT=None\r\nBack=None\r\nStart=None\r\nLS=None\r\nRS=None\r\nDUp=None\r\nDDown=None\r\nDLeft=None\r\nDRight=None\r\n"
+    "[Keys]\r\nMenuKeys=\r\nBackKeys=\r\nPassKeys=\r\nDisabledKeys=LAlt\r\nTypeKey=\r\nCursor=None\r\nToggle=None\r\nLegend=None\r\nMouseAfter=None\r\n"
+    "[Remap]\r\nRAlt=S\r\n";
+// The same with BlockOtherKeys=1: Shift on A and right Shift on X, right Alt on B, right
+// Ctrl passed (PassKeys=RCtrl).
+static const char sidesLayout2[] =
+    "[Options]\r\nRequireFocus=0\r\nBlockOtherKeys=1\r\nDetectTextBoxes=0\r\nLegend=0\r\nLegendSeconds=0\r\nLog=1\r\n"
+    "[Mouse]\r\nMouseMoveSwitches=0\r\nKeepCursorInWindow=0\r\nBumpNudgePct=0\r\nBowAimsWithMouse=0\r\n"
+    "[Move]\r\nUp=W\r\nLeft=A\r\nDown=S\r\nRight=D\r\nDodgeMouse=None\r\n"
+    "[Buttons]\r\nA=Shift\r\nB=RAlt\r\nX=RShift\r\nY=None\r\nLB=None\r\nRB=None\r\nLT=None\r\nRT=None\r\nBack=None\r\nStart=None\r\nLS=None\r\nRS=None\r\nDUp=None\r\nDDown=None\r\nDLeft=None\r\nDRight=None\r\n"
+    "[Keys]\r\nMenuKeys=\r\nBackKeys=\r\nPassKeys=RCtrl\r\nDisabledKeys=\r\nTypeKey=\r\nCursor=None\r\nToggle=None\r\nLegend=None\r\nMouseAfter=None\r\n"
+    "[Remap]\r\nTab=S\r\n";
 static int argNum(const char *cmd, char key, int fallback) {
     for (const char *p = cmd; *p; p++) {
         if (p[0] != ' ' || p[1] != key || p[2] != '=') continue;
@@ -215,15 +274,140 @@ static void overlayTest(int dark, int focusCase, const char *cmd) {
     ExitProcess(0);
 }
 
+// --overlay close: the x on the banners. The clock starts once the mod has made its
+// windows (and hooked this window's thread). Typing mode (T at 200 ms); at 1250 the banner's
+// x is clicked (a real click from mouse_event, the pointer put back after): the banner
+// goes, the frame stays, the game window keeps the focus and gets no click. Esc, T
+// again: the banner is back. Then the toggle key ("wasdmod off"), its x clicked: gone;
+// on and off again: back. Ends at 5400 ms. (The key list is left out: LegendSeconds=0.)
+// --overlay nobanner: with TypingBanner=0 and OffBanner=0 (both runs use a layout
+// wasdmod-test.txt, deleted at the end): typing shows only the frame, "wasdmod off" nothing; a layout saved at
+// 2800 shows "Key layout loaded", its x is clicked: gone, and it stays away.
+static int closeFails;
+static void check(const char *what, int ok) {
+    out(ok ? "PASS " : "FAIL "); out(what);
+    if (!ok) { num("  (banner, frame strips, x on screen: ", shown[2]); num("   ", shown[3]); num("   ", shown[4]); closeFails++; } else out("\r\n");
+}
+static void scan(void) { for (int k = 0; k < 5; k++) shown[k] = 0; closeSeen = 0; overlaysSeen = 0; EnumWindows(countOverlay, 0); }
+static long absX(long x, int sw) { return (x * 65536 + sw / 2) / sw; }
+// A real click at the middle of the x's window (the screen is sw x sh); the pointer goes back after.
+static POINT clickFrom;
+static void clickClose(int step, int sw, int sh) {
+    RECT r; POINT o = {0, 0};
+    if (!closeSeen || !GetClientRect(closeSeen, &r) || !ClientToScreen(closeSeen, &o)) { if (step == 0) check("x window found to click", 0); return; }
+    long x = o.x + r.right / 2, y = o.y + r.bottom / 2;
+    DWORD at = 0x8000 | 0x1; // ABSOLUTE|MOVE
+    if (step == 0) { GetCursorPos(&clickFrom); mouse_event(at, absX(x, sw), absX(y, sh), 0, 0); }        // hover
+    if (step == 1) mouse_event(at | 0x2 /*LEFTDOWN*/, absX(x, sw), absX(y, sh), 0, 0);
+    if (step == 2) mouse_event(at | 0x4 /*LEFTUP*/, absX(x, sw), absX(y, sh), 0, 0);
+    if (step == 3) mouse_event(at, absX(clickFrom.x, sw), absX(clickFrom.y, sh), 0, 0); // back
+}
+static void bannerOptionsLayout(const char *name, int noBanner) {
+    // default.txt without the key list at startup (it would make "wasdmod off" step
+    // aside) and, for nobanner, with TypingBanner=0 and OffBanner=0, at the top of its
+    // [Options] (the first of a setting counts)
+    static char text[70000], outText[70100]; DWORD n = 0, w, o = 0;
+    HANDLE f = CreateFileA(besideExe("default.txt"), 0x80000000, 3, 0, 3, 128, 0);
+    if (f == (HANDLE)-1) { check("default.txt readable", 0); return; }
+    ReadFile(f, text, sizeof(text) - 1, &n, 0); CloseHandle(f);
+    static const char head[] = "[Options]";
+    const char *add = noBanner ? "\r\nLegendSeconds=0\r\nTypingBanner=0\r\nOffBanner=0" : "\r\nLegendSeconds=0";
+    for (DWORD i = 0; i < n; i++) {
+        outText[o++] = text[i];
+        int match = i + 1 >= sizeof(head) - 1;
+        for (DWORD k = 0; match && k < sizeof(head) - 1; k++) if (text[i + 1 - (sizeof(head) - 1) + k] != head[k]) match = 0;
+        if (match) for (DWORD k = 0; add[k]; k++) outText[o++] = add[k];
+    }
+    f = CreateFileA(besideExe(name), 0x40000000, 3, 0, 2, 128, 0);
+    if (f == (HANDLE)-1) { check("layout written", 0); return; }
+    WriteFile(f, outText, o, &w, 0); CloseHandle(f);
+}
+static void closeTest(int noBanner) {
+    bannerOptionsLayout("wasdmod-test.txt", noBanner); // the newest layout: the mod takes it
+    WNDCLASSA wc; char *z = (char *)&wc; for (unsigned i = 0; i < sizeof(wc); i++) z[i] = 0;
+    wc.proc = gameProc; wc.className = "WasdTestGame";
+    RegisterClassA(&wc);
+    RECT r = {0, 0, GAME_W, GAME_H}; AdjustWindowRect(&r, 0x00CF0000, 0);
+    HANDLE u32 = LoadLibraryA("user32.dll");
+    int (*metrics)(int) = u32 ? GetProcAddress(u32, "GetSystemMetrics") : 0;
+    int sw = metrics ? metrics(0) : 1440, sh = metrics ? metrics(1) : 900, ww = r.right - r.left, wh = r.bottom - r.top;
+    HANDLE w = CreateWindowExA(0x08000000, "WasdTestGame", "wasd test game", 0x00CF0000, sw - ww - 16, sh - wh - 80, ww, wh, 0, 0, 0, 0);
+    ShowWindow(w, 4);
+    HANDLE m = LoadLibraryA(".\\xinput1_4.dll");
+    DWORD (*get)(DWORD, STATE *) = m ? GetProcAddress(m, "XInputGetState") : 0;
+    if (!get) { out("FAIL load\r\n"); DestroyWindow(w); ExitProcess(1); }
+    // The steps: at ms, what. Keys: 'T' type, 0x1B Esc (both posted to the window), '`' the
+    // toggle key (held 80 ms); 'c' clicks the x (hover, down, up 60 ms apart, pointer back);
+    // checks: 'h' the banner hidden, frame up; 'b' banner and x up; 'o' "wasdmod off" and x up;
+    // 'g' gone (no banner, no x); 'f' only the frame; 'L' a layout saved.
+    static const struct { int ms; char what; } typing[] = {
+        {200, 'T'}, {1250, 'c'}, {1600, 'h'}, {1700, 0x1B}, {2000, 'T'}, {3050, 'b'}, {3100, 0x1B},
+        {3300, '`'}, {3900, 'o'}, {3950, 'c'}, {4300, 'g'}, {4400, '`'}, {4600, '`'}, {5200, 'o'}, {5250, '`'}, {5400, 0}},
+      none[] = {
+        {200, 'T'}, {1300, 'f'}, {1400, 0x1B}, {1700, '`'}, {2500, 'g'}, {2600, '`'}, {2800, 'L'}, {4300, 'b'}, {4350, 'c'},
+        {4700, 'g'}, {5400, 'g'}, {5600, 0}};
+    const struct { int ms; char what; } *steps = noBanner ? (const void *)none : (const void *)typing;
+    long long f, start = 0, now; QueryPerformanceFrequency(&f);
+    int next = 0, toggleUp = -1, click = -1, clickAt = 0, closeShownEver = 0; HANDLE fgBefore = 0;
+    for (;;) {
+        MSG msg; while (PeekMessageA(&msg, 0, 0, 0, 1)) DispatchMessageA(&msg);
+        STATE st; get(0, &st);
+        RedrawWindow(w, 0, 0, 0x1 | 0x100);
+        Sleep(15);
+        QueryPerformanceCounter(&now);
+        scan(); if (shown[4]) closeShownEver = 1;
+        if (!start) { if (closeMade) start = now + f * 3 / 10; continue; } // the clock starts 300 ms after the mod made its windows (and hooked this thread)
+        int ms = (int)((now - start) * 1000 / f);
+        if (ms < 0) continue;
+        if (toggleUp >= 0 && ms >= toggleUp) { keybd_event(0xC0, 0x29, 2, 0); toggleUp = -1; }
+        if (click >= 0 && click < 4 && ms >= clickAt) {
+            if (click == 0) fgBefore = GetForegroundWindow();
+            clickClose(click, sw, sh); click++; clickAt = ms + 60;
+            if (click == 4) {
+                HANDLE fg = GetForegroundWindow();
+                check("x click: the foreground window didn't change", fg == fgBefore);
+                check("x click: the x didn't come to the front", !fg || fg != closeSeen);
+                check("x click: no click reached the game window", gameClicks == 0);
+                if (st.buttons) num("pad buttons held during the click (0 expected): ", st.buttons);
+                check("x click: no controller button pressed", st.buttons == 0);
+            }
+        }
+        if (click >= 0 && click < 4 && st.buttons) check("x click: no controller button pressed while clicking", 0);
+        if (steps[next].ms > ms) continue;
+        char c = steps[next++].what;
+        if (c == 'T') PostMessageA(w, 0x100, 'T', 0x00140001);
+        if (c == 0x1B) PostMessageA(w, 0x100, 0x1B, 0x00010001);
+        if (c == '`') { keybd_event(0xC0, 0x29, 0, 0); toggleUp = ms + 80; }
+        if (c == 'c') { click = 0; clickAt = ms; }
+        if (c == 'L') bannerOptionsLayout("wasdmod-test.txt", noBanner);
+        if (c == 'h') { check("closed typing banner: banner hidden", !shown[2]); check("closed typing banner: frame stays", shown[3] == 4); check("closed typing banner: x hidden", !shown[4]); }
+        if (c == 'b') { check("banner shown again", shown[2] == 1); check("its x shown", shown[4] == 1); }
+        if (c == 'o') { check("\"wasdmod off\" shown", shown[2] == 1 && !shown[3]); check("its x shown", shown[4] == 1); }
+        if (c == 'g') { check("no banner", !shown[2] && !shown[3]); check("no x", !shown[4]); }
+        if (c == 'f') { check("TypingBanner=0: no typing banner", !shown[2]); check("TypingBanner=0: the frame shows", shown[3] == 4); check("TypingBanner=0: no x", !shown[4]); }
+        if (!c) break;
+    }
+    if (toggleUp >= 0) keybd_event(0xC0, 0x29, 2, 0);
+    if (click >= 1 && click < 3) clickClose(2, sw, sh); // never left down
+    DestroyWindow(w);
+    DeleteFileA(besideExe("wasdmod-test.txt"));
+    check("the x was shown at some point", closeShownEver);
+    out(closeFails ? "RESULT FAIL\r\n" : "RESULT PASS\r\n");
+    ExitProcess(closeFails != 0);
+}
+
 void mainCRTStartup(void) {
     int fail = 0;
     {
-        const char *c = GetCommandLineA(); int overlay = 0, dark = 0, focus = 0;
+        const char *c = GetCommandLineA(); int overlay = 0, dark = 0, focus = 0, close = 0, none = 0;
         for (const char *p = c; *p; p++) {
             if (p[0] == '-' && p[1] == '-' && p[2] == 'o' && p[3] == 'v' && p[4] == 'e' && p[5] == 'r') overlay = 1;
             if (p[0] == ' ' && p[1] == 'd' && p[2] == 'a' && p[3] == 'r' && p[4] == 'k') dark = 1;
             if (p[0] == ' ' && p[1] == 'f' && p[2] == 'o' && p[3] == 'c' && p[4] == 'u' && p[5] == 's') focus = 1;
+            if (p[0] == ' ' && p[1] == 'c' && p[2] == 'l' && p[3] == 'o' && p[4] == 's' && p[5] == 'e') close = 1;
+            if (p[0] == ' ' && p[1] == 'n' && p[2] == 'o' && p[3] == 'b' && p[4] == 'a' && p[5] == 'n') none = 1;
         }
+        if (overlay && (close || none)) closeTest(none);
         if (overlay) overlayTest(dark, focus, c);
     }
     HANDLE m = LoadLibraryA(".\\xinput1_4.dll");
@@ -249,7 +433,8 @@ void mainCRTStartup(void) {
         SetFocus(wnd);
         HANDLE imc = ImmAssociateContext(wnd, 0);
         get(0, &s); Sleep(60); // text box state refreshes every 50 ms
-        for (int i = 0; i < 240; i++) get(0, &s); // the mod rescans windows every 240 polls
+        for (int i = 0; i < 240; i++) get(0, &s);
+        Sleep(400); // the mod's overlay thread looks for new windows every tick until it has hooked one
         MSG msg; UINT m[4]; unsigned long long k[4];
         PostMessageA(wnd, 0x100, 'W', 0x00110001); // W keydown, scan code 0x11
         PostMessageA(wnd, 0x100, 'P', 0x00190001);
@@ -358,6 +543,92 @@ void mainCRTStartup(void) {
     get(0, &s); Sleep(200); get(0, &s); num("released: stick X ", s.lx); num("released: stick Y ", s.ly);
     if (s.lx || s.ly) fail = 1;
     num("packet number advanced ", s.packet != before); if (s.packet == before) fail = 1;
+    // Left and right Shift, Ctrl, Alt and Command are different keys; a plain name is the
+    // left one. With the layout above (wasdmod-sides.txt, the newest, so the mod takes it).
+    if (wnd) {
+        #define EXPECT(label, got, want) do { long g_ = (long)(got); num(label, g_); if (g_ != (long)(want)) { out("  ^ expected "); num("", (long)(want)); fail = 1; } } while (0)
+        writeFile("wasdmod-sides.txt", sidesLayout);
+        Sleep(1600); get(0, &s); drain(wnd);
+        EXPECT("sides: left Shift (bound as Shift) arrives as message (0 = hidden) ", postPeek(wnd, 0x100, 0x10, KEYLP(0x2A, 0)), 0);
+        EXPECT("sides: right Shift (free) arrives as message (256 = passes) ", postPeek(wnd, 0x100, 0x10, KEYLP(0x36, 0)), 0x100);
+        EXPECT("sides: left Ctrl (free) arrives as message (256 = passes) ", postPeek(wnd, 0x100, 0x11, KEYLP(0x1D, 0)), 0x100);
+        EXPECT("sides: right Ctrl (RCtrl on B) arrives as message (0 = hidden) ", postPeek(wnd, 0x100, 0x11, KEYLP(0x1D, 1)), 0);
+        EXPECT("sides: left Windows key (free) arrives as message (256 = passes) ", postPeek(wnd, 0x100, 0x5B, KEYLP(0x5B, 1)), 0x100);
+        EXPECT("sides: right Windows key (RCmd on RB) arrives as message (0 = hidden) ", postPeek(wnd, 0x100, 0x5C, KEYLP(0x5C, 1)), 0);
+        EXPECT("sides: left Alt (DisabledKeys=LAlt) arrives as message (0 = blocked) ", postPeek(wnd, 0x104, 0x12, KEYLP(0x38, 0) | 1 << 29), 0);
+        EXPECT("sides: left Alt sends nothing: S down ", (GetAsyncKeyState('S') & 0x8000) != 0, 0);
+        postPeek(wnd, 0x105, 0x12, KEYLP(0x38, 0) | 3LL << 30);
+        EXPECT("sides: right Alt (RAlt=S) arrives as message (0 = hidden, S sent) ", postPeek(wnd, 0x104, 0x12, KEYLP(0x38, 1) | 1 << 29), 0);
+        EXPECT("sides: right Alt pressed: S down ", (GetAsyncKeyState('S') & 0x8000) != 0, 1);
+        EXPECT("sides: right Alt released, arrives as message (0 = hidden) ", postPeek(wnd, 0x105, 0x12, KEYLP(0x38, 1) | 3LL << 30), 0);
+        EXPECT("sides: right Alt released: S down ", (GetAsyncKeyState('S') & 0x8000) != 0, 0);
+        // S is the game's menu wheel key, so that put the mod in mouse mode: W (a fight key) leaves it.
+        postPeek(wnd, 0x100, 'W', KEYLP(0x11, 0)); postPeek(wnd, 0x101, 'W', KEYLP(0x11, 0) | 3LL << 30);
+        drain(wnd);
+        // Held keys (real key events, taken off the queue as the game would: under Wine the
+        // mod tells the Shift keys apart from their messages): the controller buttons they press.
+        static const struct { const char *label; unsigned char vk, scan; DWORD ext; WORD want; } held[] = {
+            {"sides: left Shift held: buttons (4096 = A) ", 0xA0, 0x2A, 0, 0x1000},
+            {"sides: right Shift held: buttons (0: A is left Shift only) ", 0xA1, 0x36, 0, 0},
+            {"sides: right Ctrl held: buttons (8192 = B) ", 0xA3, 0x1D, 1, 0x2000},
+            {"sides: left Ctrl held: buttons (0: B is right Ctrl only) ", 0xA2, 0x1D, 0, 0},
+            {"sides: right Windows key held: buttons (512 = RB; a bound Command key isn't a shortcut key) ", 0x5C, 0x5C, 1, 0x200},
+        };
+        for (unsigned i = 0; i < sizeof(held) / sizeof(*held); i++) {
+            keybd_event(held[i].vk, held[i].scan, held[i].ext, 0);
+            Sleep(30); drain(wnd); get(0, &s); EXPECT(held[i].label, s.buttons, held[i].want);
+            if (s.buttons != held[i].want) { num("  key state L Shift ", GetAsyncKeyState(0xA0)); num("  R Shift ", GetAsyncKeyState(0xA1)); num("  Shift ", GetAsyncKeyState(0x10)); }
+            keybd_event(held[i].vk, held[i].scan, held[i].ext | 2, 0);
+            Sleep(30); drain(wnd); get(0, &s);
+        }
+        keybd_event(0x5B, 0x5B, 1, 0); keybd_event(0xA0, 0x2A, 0, 0); // left Command (free) + left Shift
+        Sleep(30); drain(wnd); get(0, &s); EXPECT("sides: left Windows key + left Shift held: buttons (0 = Command held, no key registers) ", s.buttons, 0);
+        keybd_event(0xA0, 0x2A, 2, 0); keybd_event(0x5B, 0x5B, 3, 0);
+        Sleep(30); drain(wnd); get(0, &s);
+        // Raw input (the game reads the keyboard this way too): a free right Shift's
+        // WM_INPUT passes, the bound left Shift's is hidden. Only if Wine sends this
+        // window raw input for injected keys (print only otherwise).
+        {
+            RAWINPUTDEVICE rid = {1, 6, 0x100 /*RIDEV_INPUTSINK*/, wnd};
+            if (RegisterRawInputDevices(&rid, 1, sizeof(rid))) {
+                UINT r[2]; MSG m;
+                for (int side = 0; side < 2; side++) {
+                    drain(wnd);
+                    keybd_event(side ? 0xA1 : 0xA0, side ? 0x36 : 0x2A, 0, 0); Sleep(30);
+                    r[side] = 0xfffe; if (PeekMessageA(&m, wnd, 0xFF, 0xFF, 1)) r[side] = m.message;
+                    keybd_event(side ? 0xA1 : 0xA0, side ? 0x36 : 0x2A, 2, 0); Sleep(30);
+                }
+                drain(wnd);
+                if (r[0] == 0xfffe && r[1] == 0xfffe) out("sides: raw input not delivered for injected keys here (not tested)\r\n");
+                else {
+                    EXPECT("sides: raw input, left Shift (bound) arrives as message (0 = hidden) ", r[0], 0);
+                    EXPECT("sides: raw input, right Shift (free) arrives as message (255 = WM_INPUT passes) ", r[1], 0xFF);
+                }
+                rid.flags = 1 /*RIDEV_REMOVE*/; rid.target = 0; RegisterRawInputDevices(&rid, 1, sizeof(rid));
+            } else out("sides: couldn't register for raw input (not tested)\r\n");
+        }
+        // Blocking and passing per side: BlockOtherKeys=1 with right Ctrl passed.
+        writeFile("wasdmod-sides.txt", sidesLayout2);
+        Sleep(1600); get(0, &s); drain(wnd);
+        EXPECT("sides 2: right Ctrl (PassKeys=RCtrl) arrives as message (256 = passes) ", postPeek(wnd, 0x100, 0x11, KEYLP(0x1D, 1)), 0x100);
+        EXPECT("sides 2: left Ctrl (free) arrives as message (0 = blocked) ", postPeek(wnd, 0x100, 0x11, KEYLP(0x1D, 0)), 0);
+        EXPECT("sides 2: right Shift (RShift on X) arrives as message (0 = hidden) ", postPeek(wnd, 0x100, 0x10, KEYLP(0x36, 0)), 0);
+        postPeek(wnd, 0x101, 0x10, KEYLP(0x36, 0) | 3LL << 30); drain(wnd);
+        static const struct { const char *label; unsigned char vk, scan; DWORD ext; WORD want; } held2[] = {
+            {"sides 2: right Shift held: buttons (16384 = X only) ", 0xA1, 0x36, 0, 0x4000},
+            {"sides 2: left Shift held: buttons (4096 = A only) ", 0xA0, 0x2A, 0, 0x1000},
+            {"sides 2: right Alt held: buttons (8192 = B) ", 0xA5, 0x38, 1, 0x2000},
+            {"sides 2: left Alt held: buttons (0: B is right Alt only) ", 0xA4, 0x38, 0, 0},
+        };
+        for (unsigned i = 0; i < sizeof(held2) / sizeof(*held2); i++) {
+            keybd_event(held2[i].vk, held2[i].scan, held2[i].ext, 0);
+            Sleep(30); drain(wnd); get(0, &s); EXPECT(held2[i].label, s.buttons, held2[i].want);
+            keybd_event(held2[i].vk, held2[i].scan, held2[i].ext | 2, 0);
+            Sleep(30); drain(wnd); get(0, &s);
+        }
+        DeleteFileA(besideExe("wasdmod-sides.txt"));
+        Sleep(1200); get(0, &s); drain(wnd);
+    }
     out(fail ? "RESULT FAIL\r\n" : "RESULT PASS\r\n");
     ExitProcess(fail);
 }

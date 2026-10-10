@@ -38,6 +38,7 @@ IMP HANDLE FindFirstFileA(const char *, FINDDATA *);
 IMP BOOL FindNextFileA(HANDLE, FINDDATA *);
 IMP BOOL FindClose(HANDLE);
 IMP DWORD GetCurrentProcessId(void);
+IMP DWORD GetCurrentThreadId(void);
 IMP U64 GetTickCount64(void);
 IMP HANDLE CreateFileA(const char *, DWORD, DWORD, void *, DWORD, DWORD, HANDLE);
 IMP BOOL WriteFile(HANDLE, const void *, DWORD, DWORD *, void *);
@@ -90,6 +91,7 @@ static int named(const char *s, const char *name) { while (*name) if (lower(*s++
 static HANDLE self, real;
 static char dir[1024], ini[1100];
 static long long perfFreq; // QueryPerformanceCounter ticks per second
+static int wineKeys; // running under Wine: see keyDown
 
 // ---------------------------------------------------------------- settings
 
@@ -143,6 +145,7 @@ static struct {
     int accelMs, decelMs, turnMs;
     int dodgeDragPx, dodgeFlickMs, menuTapMs, mouseWakePx, mouseMoveSwitches, bumpNudgePct;
     int bowMouseAim, cursorToggle;
+    int typingBanner, offBanner; // the typing and "wasdmod off" banners (off: typing shows only the frame)
     int clipCursor, cursorFromMiddle;
 } cfg;
 
@@ -237,7 +240,9 @@ static void pickLanguage(void) {
 }
 
 // A letter/digit ("W"), a key name ("Space", "Mouse1", "F5"), "None", or a
-// virtual-key code ("0x20").
+// virtual-key code ("0x20"). Shift, Ctrl, Alt and Cmd/Win each have a left and a right
+// key (LShift, RShift...); the plain name, like the plain code (0x10), is the left one,
+// so the right key stays free for something else.
 static int keyCode(const char *v) {
     if (!v[0] || named(v, "none")) return 0;
     if (!v[1]) {
@@ -250,7 +255,13 @@ static int keyCode(const char *v) {
     }
     static const struct { const char *name; BYTE vk; } names[] = {
         {"space", 0x20}, {"enter", 0x0D}, {"return", 0x0D}, {"escape", 0x1B}, {"esc", 0x1B}, {"tab", 0x09},
-        {"shift", 0x10}, {"lshift", 0xA0}, {"rshift", 0xA1}, {"ctrl", 0x11}, {"control", 0x11}, {"alt", 0x12},
+        {"shift", 0xA0}, {"lshift", 0xA0}, {"leftshift", 0xA0}, {"rshift", 0xA1}, {"rightshift", 0xA1},
+        {"ctrl", 0xA2}, {"control", 0xA2}, {"lctrl", 0xA2}, {"leftctrl", 0xA2}, {"lcontrol", 0xA2}, {"leftcontrol", 0xA2},
+        {"rctrl", 0xA3}, {"rightctrl", 0xA3}, {"rcontrol", 0xA3}, {"rightcontrol", 0xA3},
+        {"alt", 0xA4}, {"lalt", 0xA4}, {"leftalt", 0xA4}, {"option", 0xA4}, {"loption", 0xA4}, {"leftoption", 0xA4},
+        {"ralt", 0xA5}, {"rightalt", 0xA5}, {"roption", 0xA5}, {"rightoption", 0xA5},
+        {"cmd", 0x5B}, {"lcmd", 0x5B}, {"leftcmd", 0x5B}, {"command", 0x5B}, {"leftcommand", 0x5B}, {"win", 0x5B}, {"lwin", 0x5B}, {"leftwin", 0x5B},
+        {"rcmd", 0x5C}, {"rightcmd", 0x5C}, {"rightcommand", 0x5C}, {"rwin", 0x5C}, {"rightwin", 0x5C},
         {"backspace", 0x08}, {"capslock", 0x14}, {"up", 0x26}, {"down", 0x28}, {"left", 0x25}, {"right", 0x27},
         {"mouse1", 0x01}, {"mouse2", 0x02}, {"mouse3", 0x04}, {"mouse4", 0x05}, {"mouse5", 0x06},
         {"backtick", 0xC0}, {"grave", 0xC0}, {"tilde", 0xC0},
@@ -267,8 +278,10 @@ static int keyCode(const char *v) {
         int c = lower(*p), d = c >= '0' && c <= '9' ? c - '0' : base == 16 && c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
         if (d < 0) return -1;
         n = n * base + d;
+        if (n > 255) return -1;
     }
-    return n > 0 && n < 256 ? n : -1;
+    if (n >= 0x10 && n <= 0x12) n = n == 0x10 ? 0xA0 : n == 0x11 ? 0xA2 : 0xA4; // Shift, Ctrl, Alt: the left key
+    return n > 0 ? n : -1;
 }
 
 // "Space, Enter" -> up to two keys; the text is kept for the legend.
@@ -344,9 +357,11 @@ static void loadSettings(void) {
     cfg.requireFocus = GetPrivateProfileIntA("Options", "RequireFocus", 1, ini);
     cfg.alwaysConnected = GetPrivateProfileIntA("Options", "AlwaysConnected", 1, ini);
     cfg.detectText = GetPrivateProfileIntA("Options", "DetectTextBoxes", 1, ini);
-    cfg.hideMouse = GetPrivateProfileIntA("Options", "HideMouse", 1, ini);
+    cfg.hideMouse = 1; // always: a mouse move the game sees switches it to keyboard mode (old files may still say HideMouse=0)
     cfg.legend = GetPrivateProfileIntA("Options", "Legend", 1, ini);
     cfg.legendSeconds = GetPrivateProfileIntA("Options", "LegendSeconds", 15, ini);
+    cfg.typingBanner = GetPrivateProfileIntA("Options", "TypingBanner", 1, ini);
+    cfg.offBanner = GetPrivateProfileIntA("Options", "OffBanner", 1, ini);
     readBinding("Move", "Up", "W", &moveUp);
     readBinding("Move", "Down", "S", &moveDown);
     readBinding("Move", "Left", "A", &moveLeft);
@@ -357,7 +372,7 @@ static void loadSettings(void) {
     cfg.dodgeFlickMs = GetPrivateProfileIntA("Move", "DodgeFlickMs", 80, ini);
     readBinding("Keys", "Toggle", "Backtick", &toggleKey);
     readBinding("Keys", "Legend", "F9", &legendKey);
-    readBinding("Keys", "Cursor", "Alt", &cursorKey);
+    readBinding("Keys", "Cursor", "LAlt", &cursorKey);
     {   // Hold: the cursor shows while the key is held. Toggle: one press shows it,
         // the next press locks it again.
         char v[16]; GetPrivateProfileStringA("Keys", "CursorMode", "Hold", v, sizeof(v), ini);
@@ -365,7 +380,7 @@ static void loadSettings(void) {
     }
     readKeyList("MenuKeys", "I, M, J, F, G, U, K, Escape", menuVk, menuText, sizeof(menuText));
     readKeyList("PassKeys", "Z, F1, F2, F3, F4, X", passVk, 0, 0);
-    readKeyList("DisabledKeys", "Q, Shift", disabledVk, 0, 0);
+    readKeyList("DisabledKeys", "Q, LShift", disabledVk, 0, 0);
     readKeyList("InstantKeys", "", instantVk, 0, 0);
     readKeyList("BackKeys", "Escape", backVk, 0, 0);
     {
@@ -439,6 +454,7 @@ static void readButtonList(const char *section, const char *name, const char *fa
 
 // Every key the mod owns; these are hidden from the game while it is active.
 static BYTE owned[256];
+static BYTE cmdBound[2]; // left and right Command / Windows key, when the layout binds them
 // Before loading another layout: the lists the settings add to start empty again.
 static void clearSettings(void) {
     memset(menuVk, 0, sizeof(menuVk)); memset(passVk, 0, sizeof(passVk)); memset(disabledVk, 0, sizeof(disabledVk));
@@ -453,9 +469,11 @@ static void buildOwned(void) {
     markOwned(&moveUp); markOwned(&moveDown); markOwned(&moveLeft); markOwned(&moveRight); markOwned(&dodgeMouse);
     markOwned(&toggleKey); markOwned(&legendKey); markOwned(&cursorKey);
     for (int i = 0; i < NBTN; i++) markOwned(&btn[i]);
-    if (owned[0x10]) owned[0xA0] = owned[0xA1] = 1; // Shift arrives as VK_SHIFT, L/R variants too
-    if (owned[0x11]) owned[0xA2] = owned[0xA3] = 1;
-    if (owned[0x12]) owned[0xA4] = owned[0xA5] = 1;
+    // (Shift, Ctrl and Alt are only ever their left or right key here: key messages and
+    // raw input are told apart by side as they arrive, see sidedVk.)
+    // A Command / Windows key the layout itself uses is a key like any other, not the
+    // "Command held: no key registers" one (commandHeld).
+    for (int i = 0; i < 2; i++) { int vk = 0x5B + i; cmdBound[i] = owned[vk] || menuVk[vk] || backVk[vk] || remapTo[vk] || typeVk[vk]; }
     // A key the layout uses is never also passed through or blocked (the editor never
     // writes both; this keeps a layout that leaves PassKeys/DisabledKeys out working).
     for (int vk = 0; vk < 256; vk++) if (owned[vk]) passVk[vk] = disabledVk[vk] = 0;
@@ -517,7 +535,7 @@ static void init(void) {
         typedef struct { DWORD size, major, minor, build, platform; unsigned short csd[128]; } OSVER;
         long (*rtlVer)(OSVER *) = nt ? GetProcAddress(nt, "RtlGetVersion") : 0;
         OSVER v; memset(&v, 0, sizeof(v)); v.size = sizeof(v);
-        if (wine) { append(head, sizeof(head), "Wine "); append(head, sizeof(head), wine()); }
+        if (wine) { append(head, sizeof(head), "Wine "); append(head, sizeof(head), wine()); wineKeys = 1; }
         else if (rtlVer && !rtlVer(&v)) { append(head, sizeof(head), "Windows "); appendNum(head, sizeof(head), v.major); append(head, sizeof(head), "."); appendNum(head, sizeof(head), v.minor); append(head, sizeof(head), "."); appendNum(head, sizeof(head), v.build); }
         else append(head, sizeof(head), "Windows");
         append(head, sizeof(head), " ===");
@@ -538,14 +556,29 @@ static void *realfn(const char *name) { init(); return real ? GetProcAddress(rea
 
 static volatile int typing, paused; // text box focused / mod switched off with the toggle key
 static volatile int typingManual;     // typing mode (Enter), until Enter or Esc
+// The x that closes a banner (legend.inc): its window, and whether the pointer is over
+// it. A click there is the mod's own, so no mouse button counts for the game meanwhile.
+static HANDLE closeWnd; static volatile int overClose;
 
 // Keys the mod pressed for a remap (Tab -> S...) and hasn't released yet.
 static BYTE remapSent[256];
 
+// Wine (CrossOver) keeps one state for both Shift keys: GetAsyncKeyState(VK_LSHIFT) is
+// down for either one and VK_RSHIFT never is. So under Wine which Shift is down comes from
+// the key messages and raw input the input filter sees (their scan code says the side),
+// while the key state still has to say a Shift is held (a release in another app never
+// arrives). Right Ctrl and Alt have their own state there; Windows has it for all of them.
+static volatile BYTE shiftDown[2]; // left, right: from the input filter
+static int keyDown(unsigned vk) {
+    if (vk <= 0x06 && overClose) return 0; // clicking a banner's x
+    if (wineKeys && (vk == 0xA0 || vk == 0xA1)) return (GetAsyncKeyState(0x10) & 0x8000) && shiftDown[vk - 0xA0];
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
+}
+
 // A key the mod itself holds down for a remap doesn't count as pressed: Tab sends
 // the game's menu-wheel key S, which is also "move down".
 static int held(const Binding *b) {
-    for (int i = 0; i < MAXKEYS; i++) if (b->vk[i] && !remapSent[b->vk[i]] && (GetAsyncKeyState(b->vk[i]) & 0x8000)) return 1;
+    for (int i = 0; i < MAXKEYS; i++) if (b->vk[i] && !remapSent[b->vk[i]] && keyDown(b->vk[i])) return 1;
     return 0;
 }
 
@@ -679,11 +712,11 @@ static void checkRecording(void) {
 static void vkName(unsigned vk, char *out, unsigned cap) {
     static const struct { BYTE vk; const char *name; } names[] = {
         {0x01, "Left click"}, {0x02, "Right click"}, {0x04, "Middle click"}, {0x05, "Side 4 (back)"}, {0x06, "Side 5 (front)"},
-        {0x08, "Backspace"}, {0x09, "Tab"}, {0x0D, "Enter"}, {0x10, "Shift"}, {0xA0, "Shift"}, {0xA1, "Right Shift"},
-        {0x11, "Ctrl"}, {0xA2, "Ctrl"}, {0xA3, "Right Ctrl"}, {0x12, "Alt"}, {0xA4, "Alt"}, {0xA5, "Right Alt"},
+        {0x08, "Backspace"}, {0x09, "Tab"}, {0x0D, "Enter"}, {0x10, "Shift"}, {0xA0, "Left Shift"}, {0xA1, "Right Shift"},
+        {0x11, "Ctrl"}, {0xA2, "Left Ctrl"}, {0xA3, "Right Ctrl"}, {0x12, "Alt"}, {0xA4, "Left Alt"}, {0xA5, "Right Alt"},
         {0x14, "Caps Lock"}, {0x1B, "Esc"}, {0x20, "Space"}, {0x25, "Left"}, {0x26, "Up"}, {0x27, "Right"}, {0x28, "Down"},
         {0xC0, "`"}, {0xBD, "-"}, {0xBB, "="}, {0xDB, "["}, {0xDD, "]"}, {0xBA, ";"}, {0xDE, "'"}, {0xBC, ","}, {0xBE, "."},
-        {0xBF, "/"}, {0x5B, "Cmd/Windows"}, {0x5C, "Cmd/Windows"},
+        {0xBF, "/"}, {0x5B, "Left Cmd/Windows"}, {0x5C, "Right Cmd/Windows"},
     };
     out[0] = 0;
     if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9')) { char c[2] = {(char)vk, 0}; append(out, cap, c); return; }
@@ -726,8 +759,17 @@ static int seenCursor(POINT *p) {
     p->x = (LONG)(int)(DWORD)(v >> 32); p->y = (LONG)(int)(DWORD)v;
     return 1;
 }
+// A key press (or release) the mod sends for a remap. Shift, Ctrl, Alt and Cmd/Win go
+// out as the side asked for, with that key's own scan code (right Ctrl and Alt and both
+// Windows keys are extended keys), so the game sees the same key a real press gives.
+static void sendKey(BYTE vk, int up) {
+    static const struct { BYTE vk; WORD scan; } sided[] = {{0xA0, 0x2A}, {0xA1, 0x36}, {0xA2, 0x1D}, {0xA3, 0x11D}, {0xA4, 0x38}, {0xA5, 0x138}, {0x5B, 0x15B}, {0x5C, 0x15C}};
+    UINT scan = MapVirtualKeyA(vk, 0);
+    for (unsigned i = 0; i < sizeof(sided) / sizeof(*sided); i++) if (sided[i].vk == vk) scan = sided[i].scan;
+    keybd_event(vk, (BYTE)scan, (scan & 0x100 ? 1 /*KEYEVENTF_EXTENDEDKEY*/ : 0) | (up ? 2 /*KEYEVENTF_KEYUP*/ : 0), 0);
+}
 static void releaseRemaps(void) {
-    for (int vk = 1; vk < 256; vk++) if (remapSent[vk]) { remapSent[vk] = 0; keybd_event((BYTE)vk, (BYTE)MapVirtualKeyA(vk, 0), 2 /*KEYEVENTF_KEYUP*/, 0); }
+    for (int vk = 1; vk < 256; vk++) if (remapSent[vk]) { remapSent[vk] = 0; sendKey((BYTE)vk, 1); }
 }
 static int movementHeld(void) { return held(&moveUp) || held(&moveDown) || held(&moveLeft) || held(&moveRight); }
 
@@ -771,7 +813,7 @@ static void updateModes(void) {
             U64 tick = GetTickCount64();
             for (int vk = 1; vk < 256; vk++) {
                 if (!menuVk[vk] && !backVk[vk]) continue;
-                int down = (GetAsyncKeyState(vk) & 0x8000) != 0;
+                int down = keyDown(vk);
                 if (down && !was[vk]) pending[vk] = tick;
                 was[vk] = (BYTE)down;
                 if (!pending[vk] || tick - pending[vk] < 150) continue;
@@ -802,13 +844,13 @@ static void updateModes(void) {
         {
             static int menuWas; static U64 menuSince;
             int menuNow = 0;
-            for (int vk = 1; vk < 256 && !menuNow; vk++) if (menuVk[vk] && (GetAsyncKeyState(vk) & 0x8000)) menuNow = 1;
+            for (int vk = 1; vk < 256 && !menuNow; vk++) if (menuVk[vk] && keyDown(vk)) menuNow = 1;
             U64 tick = GetTickCount64();
             if (menuNow && !menuWas) menuSince = tick;
             if (!menuNow && menuWas && mouseMenu && tick - menuSince >= (U64)cfg.menuTapMs) { mouseMenu = 0; logline("Controller mode (menu key held, overlay closed)"); }
             menuWas = menuNow;
         }
-    } else { cursorHeld = cursorKeyMsg = 0; releaseRemaps(); } // a release in another app never arrives: start over
+    } else { cursorHeld = cursorKeyMsg = 0; shiftDown[0] = shiftDown[1] = 0; releaseRemaps(); } // a release in another app never arrives: start over
     toggleWas = t; legendWas = l;
     // Moving the mouse while not moving the character switches to mouse mode (the
     // cursor stays where it is). While a movement key or mouse button is held the
@@ -851,7 +893,7 @@ static void updateModes(void) {
     if (now != typing) { typing = now; logline(now ? "Text box focused: keyboard passes through" : "Text box closed: controller keys on"); }
 }
 
-static int commandHeld(void) { return (GetAsyncKeyState(0x5B) & 0x8000) || (GetAsyncKeyState(0x5C) & 0x8000); }
+static int commandHeld(void) { return (!cmdBound[0] && (GetAsyncKeyState(0x5B) & 0x8000)) || (!cmdBound[1] && (GetAsyncKeyState(0x5C) & 0x8000)); }
 
 
 static int active(void) { return !typing && !typingManual && !paused && !mouseMode() && focused(); }
@@ -898,7 +940,7 @@ static int keyboardPad(XINPUT_GAMEPAD *g) {
     int any = 0;
     for (int i = 0; i < NBTN; i++) {
         int down = held(&btn[i]), press = down;
-        if (i == B_RT && cfg.bowMouseAim) { down = 0; for (int k = 0; k < MAXKEYS; k++) if (btn[i].vk[k] && !bowVk[btn[i].vk[k]] && (GetAsyncKeyState(btn[i].vk[k]) & 0x8000)) down = 1; press = down; }
+        if (i == B_RT && cfg.bowMouseAim) { down = 0; for (int k = 0; k < MAXKEYS; k++) if (btn[i].vk[k] && !bowVk[btn[i].vk[k]] && keyDown(btn[i].vk[k])) down = 1; press = down; }
         if (mouseAfter[i]) {
             // A tap opens the full menu -> mouse mode on release. A long hold is a
             // quick overlay (e.g. the mini inventory) that closes on release, so the
@@ -953,6 +995,18 @@ static int keyboardPad(XINPUT_GAMEPAD *g) {
 
 typedef struct { HANDLE hwnd; UINT message; WPARAM wParam; LPARAM lParam; DWORD time; long x, y; } MSG;
 
+// Key messages and raw input name Shift, Ctrl and Alt without their side (VK_SHIFT...).
+// The scan code says which Shift (0x36: the right one), the extended-key flag which Ctrl
+// or Alt (set: the right one). A message that already names the side keeps it.
+static unsigned sidedVk(unsigned vk, unsigned scan, int extended) {
+    if (vk == 0x10) return scan == 0x36 ? 0xA1 : 0xA0;
+    if (vk == 0x11) return extended ? 0xA3 : 0xA2;
+    if (vk == 0x12) return extended ? 0xA5 : 0xA4;
+    return vk;
+}
+// WM_KEYDOWN and friends: the scan code is in bits 16-23 of lParam, the extended flag in bit 24.
+static unsigned keyMsgVk(WPARAM wp, LPARAM lp) { return sidedVk((unsigned)(wp & 0xFF), (unsigned)(lp >> 16) & 0xFF, (int)(lp >> 24) & 1); }
+
 static int mouseVk(UINT msg, WPARAM wParam) {
     if (msg >= 0x201 && msg <= 0x203) return 0x01;
     if (msg >= 0x204 && msg <= 0x206) return 0x02;
@@ -973,8 +1027,10 @@ static unsigned rawKeyboardVk(LPARAM handle, int *isDown) {
     // RAWINPUT: header {dwType, dwSize, hDevice, wParam} = 24 bytes, then RAWKEYBOARD
     // {MakeCode, Flags, Reserved, VKey, Message, ExtraInformation}.
     if (GetRawInputData((HANDLE)handle, 0x10000003 /*RID_INPUT*/, raw, &size, 24) != (UINT)-1 && size >= 36 && *(DWORD *)raw == 1 /*RIM_TYPEKEYBOARD*/) {
-        vk = *(WORD *)(raw + 30);
-        *isDown = !(*(WORD *)(raw + 26) & 1 /*RI_KEY_BREAK*/);
+        WORD flags = *(WORD *)(raw + 26);
+        vk = sidedVk(*(WORD *)(raw + 30) & 0xFF, *(WORD *)(raw + 24) /*MakeCode*/, (flags & 2 /*RI_KEY_E0*/) != 0);
+        *isDown = !(flags & 1 /*RI_KEY_BREAK*/);
+        if (vk == 0xA0 || vk == 0xA1) shiftDown[vk - 0xA0] = (BYTE)*isDown;
     }
     if (t0) { QueryPerformanceCounter(&t1); rawTime += t1 - t0; rawCalls++; }
     return vk & 0xFF;
@@ -992,12 +1048,15 @@ static int isFightVk(unsigned vk) {
 static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
     MSG *m = (MSG *)lParam;
     if (code != 0 || !m) return 0;
+    if (m->hwnd && m->hwnd == closeWnd) return 0; // the overlay thread is hooked too: the banner's x gets its clicks
     UINT msg = m->message;
+    if ((msg == 0x100 || msg == 0x101 || msg == 0x104 || msg == 0x105) && (m->wParam & 0xFF) == 0x10) // which Shift is down (see keyDown)
+        shiftDown[keyMsgVk(m->wParam, m->lParam) - 0xA0] = msg == 0x100 || msg == 0x104;
     // Typing mode: the type key (T) starts it and is swallowed, so it doesn't
     // type itself. While typing every key reaches the game (T and Enter included);
     // Esc ends it and is kept from the game (so it can't open the pause menu).
     if (msg == 0x100 || msg == 0x104) {
-        unsigned tk = m->wParam & 0xFF; int repeat = (m->lParam >> 30) & 1;
+        unsigned tk = keyMsgVk(m->wParam, m->lParam); int repeat = (m->lParam >> 30) & 1;
         if (!typingManual && typeVk[tk] && !paused && !typing) {
             if (!repeat && wParam == 1 /*PM_REMOVE*/) { typingManual = 1; logline("Typing mode on (type key)"); }
             m->message = 0;
@@ -1020,7 +1079,7 @@ static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
     if ((msg == 0x100 || msg == 0x101 || msg == 0x104 || msg == 0x105) && commandHeld()) { m->message = 0; return 0; }
     // Remapped keys: hide the original (and its raw copy) and press the target key.
     if (msg == 0x100 || msg == 0x101 || msg == 0x104 || msg == 0x105) {
-        unsigned rk = m->wParam & 0xFF; BYTE to = remapTo[rk];
+        unsigned rk = keyMsgVk(m->wParam, m->lParam); BYTE to = remapTo[rk];
         if (to) {
             int isDown = msg == 0x100 || msg == 0x104, repeat = (m->lParam >> 30) & 1;
             // The key goes down only while the game is in front, and always comes back up
@@ -1028,7 +1087,7 @@ static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
             if (wParam == 1 /*PM_REMOVE*/ && (!isDown || !repeat) && (isDown ? focused() : remapSent[to])) {
                 sentUntil[to] = GetTickCount64() + 500;
                 remapSent[to] = (BYTE)isDown;
-                keybd_event(to, (BYTE)MapVirtualKeyA(to, 0), isDown ? 0 : 2 /*KEYEVENTF_KEYUP*/, 0);
+                sendKey(to, !isDown);
                 // A remap onto one of the PassKeys is an instant action (teleport...), not a menu.
                 if (isDown && !passVk[to] && !instantVk[to]) menuKeyPress(1, backVk[to], "Controller mode (remapped back key)", "Mouse mode (remapped menu key)");
             }
@@ -1042,7 +1101,7 @@ static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
     }
     unsigned vk = 0; int down = 0, raw = 0;
     if (msg == 0x100 || msg == 0x101 || msg == 0x104 || msg == 0x105) { // WM_(SYS)KEYDOWN/UP
-        vk = m->wParam & 0xFF; down = msg == 0x100 || msg == 0x104;
+        vk = keyMsgVk(m->wParam, m->lParam); down = msg == 0x100 || msg == 0x104;
     } else if (msg == 0xFF) { // WM_INPUT: raw keyboard is handled like keys, raw mouse like the mouse
         vk = rawKeyboardVk(m->lParam, &down); raw = 1;
         if (!vk) {
@@ -1086,7 +1145,7 @@ static LRESULT filterInput(int code, WPARAM wParam, LPARAM lParam) {
     // lone Alt can't open the window menu or count as a keyboard press.
     for (int k = 0; k < MAXKEYS; k++) {
         BYTE c = cursorKey.vk[k];
-        if (c && (c == vk || (c == 0x12 && (vk == 0xA4 || vk == 0xA5)) || (c == 0x11 && (vk == 0xA2 || vk == 0xA3)))) {
+        if (c && c == vk) {
             if (!raw && wParam == 1 /*PM_REMOVE*/) cursorKeyMsg = down;
             m->message = 0; return 0;
         }
@@ -1134,7 +1193,7 @@ static void recordInput(UINT msg, WPARAM wp, LPARAM lp, UINT after, WPARAM after
     if ((!key && !btn) || typing || typingManual) return;
     int down = key ? msg == 0x100 || msg == 0x104 : msg == 0x201 || msg == 0x204 || msg == 0x207 || msg == 0x20B;
     if (key && down && ((lp >> 30) & 1)) return; // auto-repeat
-    unsigned vk = key ? (unsigned)(wp & 0xFF) : (unsigned)mouseVk(msg, wp);
+    unsigned vk = key ? keyMsgVk(wp, lp) : (unsigned)mouseVk(msg, wp);
     char l[200] = {0}, name[32];
     if (layoutKey(vk)) vkName(vk, name, sizeof(name)); else { name[0] = 0; append(name, sizeof(name), "other key"); }
     append(l, sizeof(l), name); append(l, sizeof(l), down ? " down: " : " up: ");
@@ -1160,23 +1219,24 @@ static LRESULT inputFilter(int code, WPARAM wParam, LPARAM lParam) {
 }
 
 static DWORD hooked[16];
-static int hookedCount;
+static int hookedCount, gameHooked; // gameHooked: a thread other than the overlay's own
 static BOOL hookWindowThread(HANDLE w, LPARAM unused) {
     DWORD pid = 0, tid = GetWindowThreadProcessId(w, &pid);
     if (pid != GetCurrentProcessId() || !tid) return 1;
     for (int i = 0; i < hookedCount; i++) if (hooked[i] == tid) return 1;
     if (hookedCount >= 16) return 0;
     hooked[hookedCount++] = tid;
+    if (tid != GetCurrentThreadId()) gameHooked = 1;
     HANDLE h = SetWindowsHookExW(3 /*WH_GETMESSAGE*/, inputFilter, 0, tid);
     logline(h ? "Keyboard/mouse hidden from the game on a window thread" : "Could not hook a window thread");
     return 1;
 }
-// Rescans every 2 s to catch windows created after startup. From the overlay
+// Rescans every tick until the game has a window, then every 2 s to catch windows created later. From the overlay
 // thread: EnumWindows walks every window in the bottle (Steam's too), which the
 // game's own thread shouldn't wait for.
 static void ensureFilter(void) {
     static U64 at; U64 now = GetTickCount64();
-    if (at && now - at < 2000) return;
+    if (at && now - at < (gameHooked ? 2000u : 100u)) return; // every tick until the game has a window, then every 2 s
     at = now;
     EnumWindows(hookWindowThread, 0);
 }

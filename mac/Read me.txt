@@ -10,34 +10,36 @@ yet, set it up with MCD2 Crossover: https://github.com/Wanzho/mcd2-crossover
 2. Open it. The first time, macOS says it can't check the app for malware
    (it isn't from the App Store): click Done, open System Settings > Privacy &
    Security, scroll down and click "Open Anyway" next to wasdmod.
-3. Quit the game, click Install at the top of the wasdmod window, then start
-   the game.
+3. Quit the game, click Install Mod at the top right of the wasdmod window,
+   then start the game.
 
 If wasdmod doesn't find the game (a Minecraft Launcher copy, or a copy in
 another folder or bottle), click Choose Game Folder and pick the game's folder,
 its Dungeons-Win64-Shipping.exe, or the CrossOver bottle it's in.
 
 The window below is the key layout editor: pick Official layout (the
-game's own keys), Recommended, or "+ Create" your own, and click "Save to
-game". A running game switches to it within a second. The yellow notice
+game's own keys), Recommended, or one of your own (make one in "Manage
+Layouts…"), and click "Install/Apply Layout". A running game switches to it within a second. The yellow notice
 lists the game's own keyboard settings to change so keyboard mode uses the
 same keys.
 
 In game: Tab opens the menu wheel (the game's own key, S, is "move down"
-now), F9 shows the key list (fn + F9 on most Mac keyboards), hold Option for
-the cursor, T starts typing (Esc ends it), and the backtick key (`) turns the
-mod off and on.
+now), F9 shows the key list (fn + F9 on most Mac keyboards), hold left Option
+for the cursor, T starts typing (Esc ends it), and the backtick key (`) turns
+the mod off and on.
 
 Languages: wasdmod starts in your Mac's language if it's one of the game's 16;
-change it with the globe menu at the top of the editor. The in-game key list
+change it with the globe menu in the window's toolbar. The in-game key list
 follows the language you set in the game.
 
-If something isn't working, click Record Logs in wasdmod, play until it
-happens, then click Stop & Save Logs and attach the file from your Desktop to
-a report on https://github.com/Wanzho/mcd2-wasd/issues
+If something isn't working, click Record logs under Troubleshooting at the end
+of the wasdmod window, play until it happens, then come back and stop recording.
+Attach the file it saves on your Desktop to a report on
+https://github.com/Wanzho/mcd2-wasd/issues
 
-To play without it for a while, click Turn Off in wasdmod (the game then starts
-without it; Turn On brings it back, with your layouts). Uninstall removes it.
+To play without it for a while, click Disable at the top right of the wasdmod
+window (the game then starts without it; Enable brings it back, with your
+layouts). Uninstall, next to it, removes it.
 
 Install also sets three CrossOver options, for Dungeons II only (other games in
 the bottle keep their own settings): use the mod's xinput1_4.dll, send Option as

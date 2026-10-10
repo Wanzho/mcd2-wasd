@@ -7,6 +7,8 @@ English text with its translation:
   "setup"   the Windows setup (installer.c, updater.inc)
   "mac"     the Mac app (mac/main.swift, mac/updater.swift, and the messages of mac/wasdmod.sh)
   "editor"  the key layout editor (configurator.html)
+  "zip"     the zip's scripts for Windows and Linux (manual/wasdmod.ps1, manual/wasdmod.py);
+            text the Windows setup or the Mac app already has is taken from there
 English is the key, so text without a translation shows in English. Text that
 changes with a number is {"one": ..., "other": ...} (with "few"/"many" where
 the language has them), keyed by the English "other" form.
@@ -17,6 +19,8 @@ Writes:
   build/lang.json      the "mac" text, for the Mac app
   Keybinder.html       configurator.html with every language's "editor" text built in
                        (WASDMOD_FLAVOR=nexus: without the web fonts it loads as a plain page)
+  build/zip/           the zip's scripts as that build ships them (WASDMOD_VERSION filled in;
+                       WASDMOD_FLAVOR=nexus: without their update check), and lang.json, their text
 
 python3 lang.py --check   lists, per language, the text the code uses that it
                           doesn't translate yet, and translations nothing uses.
@@ -25,7 +29,8 @@ import json, os, re, sys
 
 # The game's languages; one Portuguese and one Spanish, French and English.
 ORDER = ["en", "de", "es", "fr", "it", "nl", "pl", "pt", "sv", "tr", "ru", "uk", "ja", "ko", "zh-Hans", "zh-Hant"]
-PARTS = ["game", "setup", "mac", "editor"]
+PARTS = ["game", "setup", "mac", "editor", "zip"]
+SCRIPTS = ["manual/wasdmod.py", "manual/wasdmod.ps1"]
 
 
 def load():
@@ -73,6 +78,32 @@ def flavor(src, nexus):
     return "\n".join(out)
 
 
+def script_flavor(src, nexus):
+    """A script of the zip as the given build ships it: the lines between #if !NEXUS (or #if NEXUS),
+    #else and #endif kept or dropped (in both scripts these are comment lines of their own)."""
+    out, keep = [], []
+    for line in src.split("\n"):
+        t = line.strip()
+        if t in ("#if !NEXUS", "#if NEXUS"):
+            keep.append(nexus == (t == "#if NEXUS"))
+        elif t == "#else" and keep:
+            keep[-1] = not keep[-1]
+        elif t == "#endif" and keep:
+            keep.pop()
+        elif all(keep):
+            out.append(line)
+    assert not keep, "an #if without its #endif"
+    return "\n".join(out)
+
+
+def translation(l, part, key):
+    """A language's text for a key. The zip's scripts also take what the setup or the Mac app has."""
+    for p in ([part, "setup", "mac"] if part == "zip" else [part]):
+        if l.get(p, {}).get(key):
+            return l[p][key]
+    return None
+
+
 def used(nexus=None):
     """English text each part uses: {part: {text: plural?}}. With nexus=True/False,
     only what that build compiles (the Nexus Mods build has no updater); by default both."""
@@ -95,6 +126,18 @@ def used(nexus=None):
     for m in re.finditer(r'\bfail "([^"$]*)"', open("mac/wasdmod.sh", encoding="utf-8").read()):
         if " " in m.group(1) and not m.group(1).startswith(("usage", "use ", "record ")):
             out["mac"][m.group(1)] = False
+    # The zip's scripts: T("...") and N_("...") in Python; T '...' and N_ '...' in PowerShell
+    # ('' is an apostrophe there, and \n a new line, as T reads it).
+    for path in SCRIPTS:
+        src = open(path, encoding="utf-8").read()
+        if nexus is not None:
+            src = script_flavor(src, nexus)
+        if path.endswith(".py"):
+            for m in re.finditer(r'\b(?:T|N_)\(\s*' + STR, src):
+                out["zip"][unescape(m.group(1))] = False
+        else:
+            for m in re.finditer(r"\b(?:T|N_) '((?:[^']|'')*)'", src):
+                out["zip"][m.group(1).replace("''", "'").replace("\\n", "\n")] = False
     scan("editor", "configurator.html", [
         (r'\bt\(\s*' + STR, 1, False), (r'\btx\(\s*' + STR, 1, False), (r'\b_\(\s*' + STR, 1, False),
         (r'\btn\(\s*' + STR + r'\s*,\s*' + STR, 2, True),
@@ -110,7 +153,7 @@ def check(langs):
             continue
         for part in PARTS:
             have = l.get(part, {})
-            missing = [k for k in need[part] if not have.get(k)]
+            missing = [k for k in need[part] if not translation(l, part, k)]
             unused = [k for k in have if k not in need[part]]
             wrong = [k for k, plural in need[part].items() if plural and k in have and not isinstance(have[k], (dict, str))]
             for k in missing:
@@ -193,10 +236,23 @@ def main():
     with open("Keybinder.html", "w", encoding="utf-8") as f:
         f.write('<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width,initial-scale=1">\n' + page)
+    # The zip's scripts, as this build ships them (the PowerShell one with a byte order mark:
+    # Windows PowerShell reads a script without one in the system's code page), and their text.
+    os.makedirs("build/zip", exist_ok=True)
+    version = os.environ.get("WASDMOD_VERSION", "dev")
+    for path in SCRIPTS:
+        src = script_flavor(open(path, encoding="utf-8").read(), NEXUS).replace("@VERSION@", version)
+        ps = path.endswith(".ps1")  # (also Windows' line ends, for Notepad)
+        with open(os.path.join("build/zip", os.path.basename(path)), "w", encoding="utf-8-sig" if ps else "utf-8", newline="\r\n" if ps else "\n") as f:
+            f.write(src)
+    zipped = used(nexus=NEXUS)["zip"]
+    with open("build/zip/lang.json", "w", encoding="utf-8") as f:
+        json.dump({"order": list(langs), "text": {c: {k: translation(l, "zip", k) for k in zipped if translation(l, "zip", k)}
+                                                  for c, l in langs.items() if c != "en"}}, f, ensure_ascii=False)
     need, gaps = used(), 0
     for code, l in langs.items():
         if code != "en":
-            gaps += sum(1 for part in PARTS for k in need[part] if not l.get(part, {}).get(k))
+            gaps += sum(1 for part in PARTS for k in need[part] if not translation(l, part, k))
     print("Languages: %s%s" % (", ".join(langs), "" if not gaps else " (%d texts not translated yet: python3 lang.py --check)" % gaps))
 
 

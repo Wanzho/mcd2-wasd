@@ -59,12 +59,16 @@ needQuit() { running && fail "Minecraft Dungeons II is running. Quit it, then tr
 # The mod reads whichever settings file is newest.
 active() { (cd "$GAME" && ls -t default.txt author.txt wasdmod*.txt wasdmod.ini 2>/dev/null | head -1); }
 own() { (cd "$GAME" && ls -t wasdmod*.txt 2>/dev/null | head -1); }
+# CrossOver, wherever it is and whatever the app is called ("CrossOver 2", "CrossOver
+# Preview"...): the usual places first, then any app with CrossOver's bundle ID.
+cxapp() {
+    { for c in /Applications/CrossOver.app "$HOME/Applications/CrossOver.app" /Applications/CrossOver*.app "$HOME/Applications"/CrossOver*.app; do echo "$c"; done
+      mdfind "kMDItemCFBundleIdentifier == 'com.codeweavers.CrossOver'" 2>/dev/null; } |
+    while IFS= read -r c; do [ -x "$c/Contents/SharedSupport/CrossOver/bin/wine" ] && { echo "$c"; break; }; done
+}
 wine() {
-    for w in /Applications/CrossOver.app "$HOME/Applications/CrossOver.app"; do
-        w="$w/Contents/SharedSupport/CrossOver/bin/wine"
-        [ -x "$w" ] && { "$w" --bottle "$(basename "$BOTTLE")" --debugmsg -all "$@"; return; }
-    done
-    return 1
+    c=$(cxapp); [ -n "$c" ] || return 1
+    "$c/Contents/SharedSupport/CrossOver/bin/wine" --bottle "$(basename "$BOTTLE")" --debugmsg -all "$@"
 }
 # CrossOver settings for this game only: Wine reads AppDefaults\<exe>\... before the
 # bottle-wide keys, so other games in the bottle (CS2...) keep their defaults.
@@ -212,9 +216,7 @@ report)
         echo "wasdmod logs, $(date '+%Y-%m-%d %H:%M')"
         echo "App: wasdmod for Mac ${WASDMOD_VERSION:-dev}"
         echo "System: macOS $(sw_vers -productVersion) ($(uname -m))"
-        for c in /Applications/CrossOver.app "$HOME/Applications/CrossOver.app"; do
-            [ -d "$c" ] && { echo "CrossOver: $(defaults read "$c/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null)"; break; }
-        done
+        c=$(cxapp); [ -n "$c" ] && echo "CrossOver: $(defaults read "$c/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null) ($(basename "$c"))"
         echo "Bottle: $(basename "$BOTTLE")"
         echo "Game folder: $GAME"
         echo "Mod: $ST"
@@ -233,11 +235,11 @@ controls)
     needGame
     B="${GAME%%/drive_c/*}"
     F=$(ls "$B"/drive_c/users/*/AppData/Local/Dungeons2/Saved/SaveGames/EnhancedInputUserSettings.sav 2>/dev/null | head -1)
-    [ -n "$F" ] || fail "The game's controls file wasn't found. Change any key in the game's settings once, then try again."
+    [ -n "$F" ] || fail "The in-game controls file wasn't found. Change any key in the game's settings once, then try again."
     if [ -n "$2" ]; then
         needQuit
-        [ -f "$F.wasdmod-backup" ] || cp "$F" "$F.wasdmod-backup" || fail "Couldn't write the game's controls file."
-        cp "$2" "$F.tmp" && mv -f "$F.tmp" "$F" || fail "Couldn't write the game's controls file."
+        [ -f "$F.wasdmod-backup" ] || cp "$F" "$F.wasdmod-backup" || fail "Couldn't write the in-game controls file."
+        cp "$2" "$F.tmp" && mv -f "$F.tmp" "$F" || fail "Couldn't write the in-game controls file."
     fi
     echo "controls=$F" ;;
 locate)

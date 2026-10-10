@@ -30,7 +30,6 @@ IMP BOOL WinHttpCloseHandle(HANDLE);
 // kernel32 (wide paths: the exe may sit under a user name outside the ANSI code page)
 IMP DWORD GetModuleFileNameW(HANDLE, WCHAR *, DWORD);
 IMP BOOL MoveFileExW(const WCHAR *, const WCHAR *, DWORD);
-IMP HANDLE CreateFileW(const WCHAR *, DWORD, DWORD, void *, DWORD, DWORD, HANDLE);
 IMP BOOL DeleteFileW(const WCHAR *);
 IMP DWORD GetFileAttributesW(const WCHAR *);
 IMP DWORD GetEnvironmentVariableW(const WCHAR *, WCHAR *, DWORD);

@@ -523,7 +523,7 @@ final class Updater: NSObject {
         if !found { step2 = .none }
         else if st == "none" || st == "other" { step2 = .install }
         else if st == "current" || (st == "off" && gameVersion == app.version) { step2 = .current }
-        else { // older (or turned off with an older mod): installed again, its layouts kept
+        else { // older (or disabled with an older mod): installed again, its layouts kept
             let wasOff = st == "off"
             step2 = .busy; app.refresh(); show()
             app.work(L("Updating the mod in the game…"), ["install"]) { ok, out in
@@ -605,7 +605,7 @@ final class Updater: NSObject {
             case .none: closable = true
             case .busy: row2.show(.busy, L("Step 2 of 2: updating the mod in the game…"))
             case .done: row2.show(.done, L("Step 2 of 2: the mod in the game is updated."), L("Start the game to use it.")); closable = true
-            case .doneOff: row2.show(.done, L("Step 2 of 2: the mod in the game is updated."), L("It's still turned off: click Turn On to use it.")); closable = true
+            case .doneOff: row2.show(.done, L("Step 2 of 2: the mod in the game is updated."), L("It's still disabled: click Enable to use it.")); closable = true
             case .current: row2.show(.done, L("Step 2 of 2: the mod in the game is up to date.")); closable = true
             case .waiting:
                 row2.show(.waiting, L("Step 2 of 2: quit the game to finish."), gameVersion.isEmpty
@@ -613,7 +613,7 @@ final class Updater: NSObject {
                           : L("The mod in the game is still {version}. The update finishes by itself once you close the game.", ["version": gameVersion]))
                 main = L("Finish Update")
             case .failed(let why): row2.show(.problem, L("Step 2 of 2: the mod in the game wasn't updated."), why); main = L("Try Again"); closable = true
-            case .install: row2.show(.next, L("Next: install the mod in the game."), L("Click Install at the top.")); closable = true
+            case .install: row2.show(.next, L("Next: install the mod in the game."), L("Click Install Mod at the top.")); closable = true
             }
         }
         card.tint = { if case .failed = phase { return .systemOrange }; return phase == .after && step2Finished ? .systemGreen : .controlAccentColor }()

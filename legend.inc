@@ -1,7 +1,8 @@
 // On-screen key list and banners (typing mode, mod off, layout loaded): click-through
-// windows that never take focus, on their own thread with their own message loop, so
-// they never block the game. The key list sits at the top-left of the game window. It
-// is shown for LegendSeconds after startup and whenever the legend key turns it on.
+// windows that never take focus (a banner's x takes clicks, see closeSync), on their own
+// thread with their own message loop, so they never block the game. The key list sits
+// at the top-left of the game window. It is shown for LegendSeconds after startup and
+// whenever the legend key turns it on.
 //
 // The look matches the wasdmod app and website: a dark glass panel, keys as keycaps
 // tinted by group (movement, actions, menus, mod keys) and the controller button each
@@ -21,6 +22,7 @@ typedef struct { BYTE op, flags, alpha, format; } BLENDFUNCTION;
 typedef struct { LONG height, ascent, descent, internalLeading, externalLeading, aveCharWidth, maxCharWidth, weight, overhang, aspectX, aspectY; WCHAR first, last, fallback, brk; BYTE italic, underlined, struckOut, pitchFamily, charSet; } TEXTMETRICW;
 
 IMP WORD RegisterClassA(const WNDCLASSA *);
+IMP HANDLE LoadCursorA(HANDLE, const char *);
 IMP HANDLE CreateWindowExA(DWORD, const char *, const char *, DWORD, int, int, int, int, HANDLE, HANDLE, HANDLE, void *);
 IMP LRESULT DefWindowProcA(HANDLE, UINT, WPARAM, LPARAM);
 IMP BOOL ShowWindow(HANDLE, int);
@@ -601,6 +603,12 @@ static int capLabel(const char *name, WCHAR *out, int *n) {
     };
     for (unsigned i = 0; i < sizeof(special) / sizeof(*special); i++)
         if (named(name, special[i].name)) { *n = widen(special[i].label, out, 24); return special[i].icon; }
+    // Shift, Ctrl, Alt and Cmd/Win show their side, however the layout names them ("Shift"
+    // is the left one): "L Shift", "R Alt". Command is the Windows key on a PC.
+    static const struct { BYTE vk; const char *label; } sided[] = {{0xA0, "L Shift"}, {0xA1, "R Shift"}, {0xA2, "L Ctrl"}, {0xA3, "R Ctrl"}, {0xA4, "L Alt"}, {0xA5, "R Alt"}};
+    int vk = keyCode(name);
+    for (unsigned i = 0; i < sizeof(sided) / sizeof(*sided); i++) if (sided[i].vk == vk) { *n = widen(sided[i].label, out, 24); return IC_NONE; }
+    if (vk == 0x5B || vk == 0x5C) { *n = widen(vk == 0x5B ? (underWine ? "L Cmd" : "L Win") : (underWine ? "R Cmd" : "R Win"), out, 24); return IC_NONE; }
     char t[32] = {0}; append(t, sizeof(t), name);
     if (t[0] >= 'a' && t[0] <= 'z') t[0] -= 32; // "w" -> "W", "space" -> "Space"
     *n = widen(t, out, 24);
@@ -999,7 +1007,7 @@ static HANDLE typeWnd, frameWnd[4];
 static LONG gameArea;
 static BOOL findGameWindow(HANDLE w, LPARAM unused) {
     DWORD pid = 0; GetWindowThreadProcessId(w, &pid);
-    if (pid != GetCurrentProcessId() || w == legendWnd || w == typeWnd || !IsWindowVisible(w)) return 1;
+    if (pid != GetCurrentProcessId() || w == legendWnd || w == typeWnd || w == closeWnd || !IsWindowVisible(w)) return 1;
     for (int i = 0; i < 4; i++) if (w == frameWnd[i]) return 1;
     RECT r; if (!GetClientRect(w, &r)) return 1; // just closed
     LONG area = (r.right - r.left) * (r.bottom - r.top);
@@ -1160,12 +1168,16 @@ static HANDLE tickWnd;
 // "wasdmod on" when it's switched back on. A layout saved while the game runs gets a
 // third one ("Key layout loaded", the layout's name; cyan, no key, no frame) for 4 s,
 // which waits for the other two and for the key list. One banner at a time.
+// Each has an x at its right end that closes it until its state next changes (typing
+// mode left and entered again, the mod switched on and off again, the next layout
+// loaded); closing the typing banner leaves the frame, which shows you're typing.
+// TypingBanner=0 and OffBanner=0 ([Options]) leave those banners out altogether.
 // The windows are placed once when a banner starts and only move if the game window
 // does (a window moving over the game every tick makes CrossOver stutter): the
 // animations are drawn inside them, from one 15 ms timer that runs only while
 // something moves. Idle, nothing is redrawn but the typing caret, twice a second.
 // Without per-pixel alpha: plain banners and a plain frame, without animation.
-static HANDLE typeFont, typeBrush, typeEdge, offEdge, layEdge, frameBrush; // the plain banner and frame
+static HANDLE typeFont, typeBrush, typeEdge, offEdge, layEdge, frameBrush, closeBrush; // the plain banner, frame and x
 static int typeW, typeH, typeShown;
 static int typeFancy, frameFancy, typeDirty = 1;
 static Surf typeSurf, tyBase, tyWords, tyToast, ofBase, ofWords, ofToast, lyBase, lyWords, tyKey, frameSurf[4], frameFull[4];
@@ -1194,6 +1206,15 @@ enum { BN_TYPING, BN_OFF, BN_LAYOUT }; // what the banner shows
 // A layout loaded while the game runs: waiting to be shown (the game in the background,
 // another banner or the key list up), or shown until layoutUntil (GetTickCount64).
 static int layoutPending; static U64 layoutUntil;
+// Closed with the x until the state changes (the typing banner, "wasdmod off"; a closed
+// "Key layout loaded" is simply over), and whether the typing banner is left out (closed,
+// or TypingBanner=0): then only the frame shows while typing.
+static int bnClosed[2], tyHidden;
+static int typingBannerWanted(void) { return cfg.typingBanner && !bnClosed[BN_TYPING]; }
+// The x's own window (see closeSync): its picture, state and place on the screen.
+static Surf closeSurf;
+static int closeFancy, closeShown, closeHover, closePressed, closeL, closeT, closeSide;
+static float closeCX, closeCY; // the x's centre, in the window
 static int tyState, bnKind, tyTimer, tyShaking, caretLit = 1, caretTimer;
 static long long tyAt, tyShakeAt, caretSince;
 static float frameTraceDrawn = -1; static int frameAlphaShown = -1;
@@ -1261,12 +1282,12 @@ static void typingParts(void) {
 }
 
 // Sizes and places within the banner window: each banner's pill, centred.
-typedef struct { int pillW, pillL, dotCX, labelX, labelW, caretX, divX, preX, preW, keyX, keyW, postX, toastW; } PillLay;
+typedef struct { int pillW, pillL, dotCX, labelX, labelW, caretX, divX, preX, preW, keyX, keyW, postX, closeX, toastW; } PillLay;
 static struct {
     float s; int lang;
     HANDLE label, hint, key, toast;
     int labelAsc, hintAsc, keyAsc, toastAsc;
-    int winW, winH, mx, mt, mb, H, keyH, keyTW, toastH, caretW, caretTop, caretBottom, labelTop, hintTop;
+    int winW, winH, mx, mt, mb, H, keyH, keyTW, toastH, caretW, caretTop, caretBottom, labelTop, hintTop, closeD;
     PillLay typ, off, lay;
 } ty;
 static int tpx(float v) { return iround(v * ty.s); }
@@ -1278,7 +1299,7 @@ static int keyCapW(const Cap *c, int keyH) {
 }
 // A pill's parts, from its left edge (moved into the window by placePill).
 static void layoutPill(PillLay *p, const BannerText *b, int caret) {
-    int padL = tpx(22), dot = tpx(10), dotGap = tpx(12), divGap = tpx(18), padR = tpx(22);
+    int padL = tpx(22), dot = tpx(10), dotGap = tpx(12), divGap = tpx(18), padR = tpx(17);
     int gapPre = b->preN ? (b->spacePre ? tpx(8) : tpx(3)) : 0, gapPost = b->postN && !b->keyless ? (b->spacePost ? tpx(8) : tpx(3)) : 0;
     int caretSpace = caret ? tpx(2) + ty.caretW : 0, postW = textWidth(ty.hint, b->post, b->postN);
     p->labelW = textWidth(ty.label, b->label, b->labelN);
@@ -1291,13 +1312,14 @@ static void layoutPill(PillLay *p, const BannerText *b, int caret) {
     p->preX = p->divX + tpx(1) + divGap;
     p->keyX = p->preX + p->preW + gapPre;
     p->postX = p->keyX + p->keyW + gapPost;
-    p->pillW = p->postX + postW + padR;
+    p->closeX = p->postX + postW + tpx(16) + ty.closeD / 2; // the x's centre
+    p->pillW = p->closeX + ty.closeD / 2 + padR;
     p->toastW = tpx(16) + tpx(24) + tpx(11) + textWidth(ty.toast, b->toast, b->toastN) + tpx(20);
 }
 static void placePill(PillLay *p) {
     p->pillL = (ty.winW - p->pillW) / 2;
     p->dotCX += p->pillL; p->labelX += p->pillL; p->caretX += p->pillL; p->divX += p->pillL;
-    p->preX += p->pillL; p->keyX += p->pillL; p->postX += p->pillL;
+    p->preX += p->pillL; p->keyX += p->pillL; p->postX += p->pillL; p->closeX += p->pillL;
 }
 static void layoutTyping(float s) {
     if (!ty.label || ty.s != s || ty.lang != langIndex) {
@@ -1311,7 +1333,7 @@ static void layoutTyping(float s) {
         fontMetrics(ty.label, &ty.labelAsc, &h); fontMetrics(ty.hint, &ty.hintAsc, &h);
         fontMetrics(ty.key, &ty.keyAsc, &h); fontMetrics(ty.toast, &ty.toastAsc, &h);
     }
-    ty.H = tpx(58); ty.keyH = tpx(28); ty.toastH = tpx(44);
+    ty.H = tpx(58); ty.keyH = tpx(28); ty.toastH = tpx(44); ty.closeD = tpx(24);
     ty.caretW = tpx(2) > 2 ? tpx(2) : 2;
     ty.keyTW = keyCapW(&tyTypeKey, ty.keyH);
     layoutPill(&ty.typ, &tyText, 1); layoutPill(&ty.off, &ofText, 0); layoutPill(&ty.lay, &lyText, 0);
@@ -1328,9 +1350,19 @@ static void layoutTyping(float s) {
     ty.caretTop = baseline - tpx(22 * 0.74f); ty.caretBottom = baseline + tpx(1);
     ty.hintTop = centreText(ty.mt, ty.H, ty.hintAsc, tpx(16));
 }
+// The x that closes a banner, centred on (cx, cy): a round button, opaque, so the x's
+// own window (drawn the same, see closeSync) covers the banner's copy exactly.
+static void drawClose(Surf *S, float cx, float cy, int hover) {
+    float u = ty.s, r = ty.closeD / 2.0f, a = 3.7f * u;
+    DWORD c = hover ? C_TEXT : C_SUB;
+    box(S, cx - r, cy - r, cx + r, cy + r, r, BOX_FILL, 0, ink(hover ? 0x4A4A52 : 0x2A2A2F, 255));
+    box(S, cx - r, cy - r, cx + r, cy + r, r, BOX_LINE, 1.0f * u, ink(0xFFFFFF, hover ? 70 : 30));
+    capsule(S, cx - a, cy - a, cx + a, cy + a, 0.95f * u, c, 255);
+    capsule(S, cx - a, cy + a, cx + a, cy - a, 0.95f * u, c, 255);
+}
 // The parts that don't move against each other, drawn once: the pill with its dot,
-// label and divider (in the banner's colours, c1 to c2); the words around the keycap;
-// the toast.
+// label, divider and x (in the banner's colours, c1 to c2); the words around the
+// keycap; the toast.
 static void renderBase(Surf *S, const PillLay *p, const BannerText *b, DWORD c1, DWORD c2, DWORD dotTop, int glowA, int edgeA) {
     surfClear(S);
     float u = ty.s, l = (float)p->pillL, t = (float)ty.mt, r = l + p->pillW, bt = t + ty.H, rad = ty.H / 2.0f, cy = t + ty.H / 2.0f;
@@ -1344,6 +1376,7 @@ static void renderBase(Surf *S, const PillLay *p, const BannerText *b, DWORD c1,
     box(S, dx - dr, cy - dr, dx + dr, cy + dr, dr, BOX_FILL, 0, grad(dotTop, 255, c2, 255, 0));
     drawText(S, ty.label, p->labelX, ty.labelTop, b->label, b->labelN, ink(C_TEXT, 255), 0, 0);
     box(S, (float)p->divX, cy - 14 * u, p->divX + 1 * u, cy + 14 * u, 0.5f * u, BOX_FILL, 0, ink(0xFFFFFF, 46));
+    if (closeFancy) drawClose(S, (float)p->closeX, cy, 0); // (without its window it couldn't be clicked)
 }
 static void renderWords(Surf *S, const PillLay *p, const BannerText *b) {
     surfClear(S);
@@ -1590,10 +1623,12 @@ static int renderFrame(float s, int L, int Tp, int W, int H, float trace) {
     return 1;
 }
 
+static void closeHide(void);
 static void typingToPlain(void) {
     logline("Banner: drawing the plain one instead");
     typeFancy = frameFancy = 0;
     SetLayeredWindowAttributes(typeWnd, 0, 230, 2 /*LWA_ALPHA*/);
+    if (closeWnd && closeFancy) { closeHide(); closeFancy = 0; SetLayeredWindowAttributes(closeWnd, 0, 230, 2); }
     for (int i = 0; i < 4; i++) if (frameWnd[i]) SetLayeredWindowAttributes(frameWnd[i], 0, FRAME_ALPHA, 2);
 }
 // The banners' fixed parts at scale s (again only if the scale, the language or the
@@ -1629,7 +1664,46 @@ static int placeTyping(void) {
     frameAlphaShown = -1;
     return 1;
 }
+// The x's own window: a small layered window over the banner's x, shown while the banner
+// sits still (not while it drops in, shakes or leaves; the banner's own copy of the x moves
+// with it then). It's the only overlay that takes clicks: no WS_EX_TRANSPARENT, so
+// Windows and Wine (and, on a Mac, Cocoa) send it the clicks on it, and the corners
+// outside the round button, which are fully transparent, pass through. It never
+// activates (WS_EX_NOACTIVATE, MA_NOACTIVATE), so the game keeps the focus. The banner
+// windows themselves stay WS_EX_TRANSPARENT: HTTRANSPARENT from WM_NCHITTEST only passes
+// a click on to windows of the same thread, and the game's window is on another one.
+static void closePaint(void) {
+    if (!closeFancy) { InvalidateRect(closeWnd, 0, 1); return; }
+    if (!surfMake(&closeSurf, closeSide, closeSide)) return;
+    surfClear(&closeSurf);
+    drawClose(&closeSurf, closeCX, closeCY, closeHover);
+    pushLayer(closeWnd, &closeSurf, closeL, closeT, 255);
+}
+static void closeHide(void) {
+    overClose = 0; closeHover = closePressed = 0;
+    if (closeShown) { ShowWindow(closeWnd, 0); closeShown = 0; }
+}
+static void closeAt(int l, int t, int side, float cx, float cy) {
+    int moved = !closeShown || l != closeL || t != closeT || side != closeSide;
+    closeL = l; closeT = t; closeSide = side; closeCX = cx; closeCY = cy;
+    if (!moved) return;
+    if (closeFancy) closePaint();
+    SetWindowPos(closeWnd, (HANDLE)-1, l, t, side, side, 0x10 | 0x40 /*NOACTIVATE|SHOWWINDOW*/ | (closeFancy ? 0x1 /*NOSIZE*/ : 0));
+    if (!closeFancy) InvalidateRect(closeWnd, 0, 1);
+    closeShown = 1;
+}
+// Shows, moves or hides the x with the banner (after each frame is drawn: cheap when
+// nothing changed).
+static void closeSync(void) {
+    if (!closeWnd || !typeFancy || !closeFancy) return;
+    if (!typeShown || tyHidden || tyState != TY_ON || tyShaking) { closeHide(); return; }
+    const PillLay *p = bnKind == BN_OFF ? &ty.off : bnKind == BN_LAYOUT ? &ty.lay : &ty.typ;
+    int side = evenUp(ty.closeD + 4), x = typeX + p->closeX, y = typeY + ty.mt + ty.H / 2;
+    int l = evenDown(x - side / 2), t = evenDown(y - side / 2);
+    closeAt(l, t, side, (float)(x - l), (float)(typeY - t) + ty.mt + ty.H / 2.0f);
+}
 static void typingHide(void) {
+    closeHide(); tyHidden = 0;
     if (tyTimer) { KillTimer(typeWnd, TYPE_ANIM_TIMER); tyTimer = 0; animLog(); }
     if (caretTimer) { KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; }
     ShowWindow(typeWnd, 0 /*SW_HIDE*/);
@@ -1640,7 +1714,7 @@ static void animTimer(void) { if (!tyTimer) tyTimer = SetTimer(typeWnd, TYPE_ANI
 static void caretStart(void) {
     UINT blink = GetCaretBlinkTime();
     caretLit = 1;
-    if (bnKind == BN_TYPING && blink && blink < 10000 && !caretTimer) { caretTimer = SetTimer(typeWnd, TYPE_CARET_TIMER, blink, 0) != 0; QueryPerformanceCounter(&caretSince); }
+    if (bnKind == BN_TYPING && !tyHidden && blink && blink < 10000 && !caretTimer) { caretTimer = SetTimer(typeWnd, TYPE_CARET_TIMER, blink, 0) != 0; QueryPerformanceCounter(&caretSince); }
 }
 // The one animation step: works out the current frame from the clock, draws it into
 // the windows, and stops the timer when nothing moves any more.
@@ -1651,11 +1725,14 @@ static void drawTyping(void) {
     float st = perfFreq ? (float)(now - tyShakeAt) * 1000.0f / (float)perfFreq / ANIM_SLOW : 1e6f;
     if (tyState == TY_ENTER && t >= (bnKind == BN_TYPING ? TY_ENTER_MS : OFF_ENTER_MS)) { tyState = TY_ON; caretStart(); } // in place
     if (tyShaking && st >= TY_SHAKE_MS) tyShaking = 0;
-    if (tyState == TY_EXIT && t >= (bnKind == BN_LAYOUT ? LAYOUT_EXIT_MS : TY_EXIT_MS)) { typingHide(); return; }
+    // (A typing banner that was left out has no toast either: it's over when the frame has faded.)
+    if (tyState == TY_EXIT && t >= (bnKind == BN_LAYOUT ? LAYOUT_EXIT_MS : tyHidden ? 200.0f : TY_EXIT_MS)) { typingHide(); return; }
     TyFrame f; typingFrame(tyState, t, tyShaking, st, caretLit, &f);
     long long began; QueryPerformanceCounter(&began);
-    composeTyping(&f);
-    if (!pushLayer(typeWnd, &typeSurf, typeX, typeY, 255)) { typingToPlain(); typingHide(); return; }
+    if (!tyHidden) {
+        composeTyping(&f);
+        if (!pushLayer(typeWnd, &typeSurf, typeX, typeY, 255)) { typingToPlain(); typingHide(); return; }
+    }
     if (frameFancy && frameShown) {
         // Fading and blinking are drawn into the strips' pictures: changing a window's own
         // alpha each frame is much slower under CrossOver.
@@ -1678,18 +1755,22 @@ static void drawTyping(void) {
     int moving = tyState == TY_ENTER || tyState == TY_EXIT || tyShaking;
     if (tyTimer) { animCost += done - began; if (done - began > animWorst) animWorst = done - began; animFrames++; }
     if (!moving && tyTimer) { KillTimer(typeWnd, TYPE_ANIM_TIMER); tyTimer = 0; animLog(); }
+    closeSync();
 }
 // Shows the banner's windows (after its first frame is drawn).
 static void typingShow(void) {
     for (int i = 0; i < 4 && frameShown; i++) if (frameWnd[i]) SetWindowPos(frameWnd[i], (HANDLE)-1, 0, 0, 0, 0, 0x1 | 0x2 | 0x10 | 0x40 /*NOSIZE|NOMOVE|NOACTIVATE|SHOWWINDOW*/);
-    SetWindowPos(typeWnd, (HANDLE)-1, 0, 0, 0, 0, 0x1 | 0x2 | 0x10 | 0x40);
+    if (!tyHidden) SetWindowPos(typeWnd, (HANDLE)-1, 0, 0, 0, 0, 0x1 | 0x2 | 0x10 | 0x40);
+    else ShowWindow(typeWnd, 0); // (it may still show the last toast)
     typeShown = 1;
+    closeHide(); closeSync(); // (over the banner)
 }
 // A banner that was up as the game comes back to the front (or the key list goes
 // away): as it was, without the entry animation (the typing caret blinks again).
 static void typingSettled(int kind) {
     if (!placeTyping()) { typingToPlain(); return; }
     bnKind = kind; tyState = TY_ON; tyShaking = 0; caretLit = 1; frameTraceDrawn = -1;
+    tyHidden = kind == BN_TYPING && !typingBannerWanted();
     frameShown = frameFancy && kind == BN_TYPING;
     drawTyping();
     if (tyState == TY_OFF) return;
@@ -1700,6 +1781,7 @@ static void typingStart(int kind) {
     if (!placeTyping()) { typingToPlain(); return; }
     if (caretTimer) { KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; }
     bnKind = kind; tyState = TY_ENTER; tyShaking = 0; caretLit = 1; frameTraceDrawn = -1;
+    tyHidden = kind == BN_TYPING && !typingBannerWanted();
     QueryPerformanceCounter(&tyAt);
     frameShown = frameFancy && kind == BN_TYPING;
     drawTyping(); // the first frame, while still hidden
@@ -1724,7 +1806,12 @@ static void showTypingPlain(int kind) {
     if (kind < 0 || !gameWnd || gameWidth < 400) return;
     bnKind = kind; sizeTyping();
     typedL = gameLeft; typedT = gameTop; typedW = gameWidth; typedH = gameHeight;
-    SetWindowPos(typeWnd, (HANDLE)-1, evenDown(gameLeft + (gameWidth - typeW) / 2), evenDown(gameTop + 24), typeW, typeH, 0x10 | 0x40 /*NOACTIVATE|SHOWWINDOW*/);
+    tyHidden = kind == BN_TYPING && !typingBannerWanted();
+    if (!tyHidden) {
+        int x = evenDown(gameLeft + (gameWidth - typeW) / 2), y = evenDown(gameTop + 24), side = evenUp(typeH - 8);
+        SetWindowPos(typeWnd, (HANDLE)-1, x, y, typeW, typeH, 0x10 | 0x40 /*NOACTIVATE|SHOWWINDOW*/);
+        if (closeWnd && !closeFancy) closeAt(x + typeW - 4 - side, y + 4, side, side / 2.0f, side / 2.0f); // the x, at its right end
+    }
     if (kind == BN_TYPING) {
         frameStrips(gameLeft, gameTop, gameWidth, gameHeight, 4, frameX, frameY, frameW, frameH);
         for (int i = 0; i < 4; i++) if (frameWnd[i]) SetWindowPos(frameWnd[i], (HANDLE)-1, gameLeft + frameX[i], gameTop + frameY[i], frameW[i], frameH[i], 0x10 | 0x40);
@@ -1739,7 +1826,9 @@ static void showTypingPlain(int kind) {
 static int awayKind = -1; // the banner that was up when the game went to the background (or the key list came)
 static void showTyping(int front) {
     if (!typeWnd) return;
-    int kind = paused && toggleKey.vk[0] ? BN_OFF : typingManual ? BN_TYPING : -1;
+    if (!paused) bnClosed[BN_OFF] = 0; // switched on: the next "wasdmod off" shows again
+    if (!typingManual) bnClosed[BN_TYPING] = 0;
+    int kind = paused && toggleKey.vk[0] ? (cfg.offBanner && !bnClosed[BN_OFF] ? BN_OFF : -1) : typingManual ? BN_TYPING : -1;
     U64 now = GetTickCount64();
     if (kind >= 0 && bnKind == BN_LAYOUT && (tyState == TY_ENTER || tyState == TY_ON || (typeShown && !typeFancy)))
         { layoutPending = 1; layoutUntil = 0; } // cut short by another banner: shown again after it
@@ -1766,7 +1855,10 @@ static void showTyping(int front) {
     if (kind >= 0 && kind == awayKind && (tyState == TY_OFF || tyState == TY_EXIT)) { awayKind = -1; typingSettled(kind); return; }
     awayKind = -1; // what ended meanwhile gets no toast
     if (kind < 0) {
-        // Esc ended typing: "Back to playing". The mod is on again: "wasdmod on".
+        // Esc ended typing: "Back to playing". The mod is on again: "wasdmod on". With the
+        // mod off and "wasdmod off" left out (OffBanner=0, or closed), neither happened:
+        // the banner just goes.
+        if (paused && bnKind != BN_LAYOUT && (tyState == TY_ENTER || tyState == TY_ON)) { typingHide(); return; }
         if (tyState == TY_ENTER || tyState == TY_ON) {
             if (caretTimer) { KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; }
             tyState = TY_EXIT; tyShaking = 0; QueryPerformanceCounter(&tyAt);
@@ -1776,6 +1868,11 @@ static void showTyping(int front) {
     }
     if ((tyState == TY_ENTER || tyState == TY_ON) && bnKind != kind) typingHide(); // one straight into the other (the mod switched off while typing): no toast
     if (tyState == TY_OFF || tyState == TY_EXIT) { if (gameWnd && gameWidth >= 400) typingStart(kind); return; }
+    if (kind == BN_TYPING && tyHidden == typingBannerWanted()) { // TypingBanner changed in a layout loaded meanwhile
+        tyHidden = !tyHidden;
+        if (tyHidden) { ShowWindow(typeWnd, 0); closeHide(); if (caretTimer) { KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; } }
+        else { drawTyping(); typingShow(); caretStart(); }
+    }
     if (kind == BN_TYPING) { // a movement key held 400 ms while typing: shake, once per hold
         static U64 heldSince; static int shook;
         if (!movementHeld()) heldSince = 0, shook = 0;
@@ -1793,7 +1890,7 @@ static void showTyping(int front) {
 }
 // The caret's blink: one small redraw per toggle (solid while something else moves).
 static void caretBlink(void) {
-    if (tyState != TY_ON || bnKind != BN_TYPING) return;
+    if (tyState != TY_ON || bnKind != BN_TYPING || tyHidden) return;
     long long now; QueryPerformanceCounter(&now);
     if (CARET_BLINK_FOR_MS && perfFreq && (now - caretSince) * 1000 / perfFreq > CARET_BLINK_FOR_MS) {
         KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; caretLit = 1; drawTyping(); return;
@@ -1810,7 +1907,7 @@ static LRESULT typeProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(dc, typeFont); SetBkMode(dc, 1 /*TRANSPARENT*/);
             SetTextColor(dc, bnKind == BN_OFF ? RGB(196, 180, 246) : bnKind == BN_LAYOUT ? RGB(170, 218, 240) : RGB(255, 214, 102));
             char text[LINE_BYTES]; SIZE sz; plainBannerText(text, sizeof(text));
-            if (textSize(dc, text, &sz)) textOut(dc, (typeW - sz.cx) / 2, (typeH - sz.cy) / 2, text);
+            if (textSize(dc, text, &sz)) textOut(dc, (typeW - (closeWnd ? typeH - 12 : 0) - sz.cx) / 2, (typeH - sz.cy) / 2, text);
         }
         EndPaint(w, &ps);
         return 0;
@@ -1834,8 +1931,56 @@ static LRESULT frameProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcA(w, msg, wp, lp);
 }
 
+// The x clicked: that banner goes at once. The typing banner leaves its frame (and the
+// key list may come); "wasdmod off" stays away until the mod is switched on and off
+// again; "Key layout loaded" is over (the next load shows it again).
+static void closeBanner(void) {
+    if (!typeShown) return;
+    closeHide();
+    if (bnKind == BN_TYPING) {
+        bnClosed[BN_TYPING] = 1; tyHidden = 1;
+        ShowWindow(typeWnd, 0);
+        if (caretTimer) { KillTimer(typeWnd, TYPE_CARET_TIMER); caretTimer = 0; }
+        logline("Typing banner closed (its x): the frame stays until typing mode ends");
+        return;
+    }
+    if (bnKind == BN_OFF) { bnClosed[BN_OFF] = 1; logline("\"wasdmod off\" closed (its x) until the mod is switched on and off again"); }
+    else { layoutPending = 0; layoutUntil = 0; logline("\"Key layout loaded\" closed (its x)"); }
+    typingHide();
+}
+// Leaving the x (no WM_MOUSELEAVE, which would need a timer of its own): checked on the
+// overlay's tick while the pointer is over it.
+static void closeTrack(void) {
+    POINT p;
+    if (closeShown && GetCursorPos(&p) && p.x >= closeL && p.y >= closeT && p.x < closeL + closeSide && p.y < closeT + closeSide) return;
+    overClose = 0; closePressed = 0;
+    if (closeHover) { closeHover = 0; if (closeShown) closePaint(); }
+}
+static LRESULT closeProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == 0x84) { // WM_NCHITTEST: the round button is the window's only part that takes a click
+        if (!closeFancy) return 1; // HTCLIENT
+        float dx = (short)(lp & 0xFFFF) - closeL - closeCX, dy = (short)((lp >> 16) & 0xFFFF) - closeT - closeCY, r = ty.closeD / 2.0f + 1;
+        return dx * dx + dy * dy <= r * r ? 1 : -1;
+    }
+    if (msg == 0x21) return 3; // WM_MOUSEACTIVATE: MA_NOACTIVATE, the game keeps the focus
+    if (msg == 0x200) { overClose = 1; if (!closeHover && closeFancy) { closeHover = 1; closePaint(); } return 0; } // WM_MOUSEMOVE: hover
+    if (msg == 0x201) { overClose = 1; closePressed = 1; return 0; }                    // WM_LBUTTONDOWN
+    if (msg == 0x202) { if (closePressed) closeBanner(); closePressed = 0; return 0; } // WM_LBUTTONUP: closed
+    if (msg == 0x0F) { // WM_PAINT: the plain x
+        PAINTSTRUCT ps; HANDLE dc = BeginPaint(w, &ps);
+        if (!closeFancy) {
+            RECT r = {0, 0, closeSide, closeSide}; FillRect(dc, &r, closeBrush);
+            SelectObject(dc, typeFont); SetBkMode(dc, 1 /*TRANSPARENT*/); SetTextColor(dc, RGB(200, 200, 206));
+            SIZE sz; if (textSize(dc, "\xC3\x97", &sz)) textOut(dc, (closeSide - sz.cx) / 2, (closeSide - sz.cy) / 2, "\xC3\x97"); // the multiplication sign
+        }
+        EndPaint(w, &ps);
+        return 0;
+    }
+    return DefWindowProcA(w, msg, wp, lp);
+}
+
 // The typing banner (or a toast) has the top of the screen: the key list waits.
-static int typingOnScreen(void) { return (tyState != TY_OFF && (bnKind == BN_TYPING || tyState == TY_EXIT)) || (typeShown && !typeFancy && bnKind == BN_TYPING); }
+static int typingOnScreen(void) { return !tyHidden && ((tyState != TY_OFF && (bnKind == BN_TYPING || tyState == TY_EXIT)) || (typeShown && !typeFancy && bnKind == BN_TYPING)); }
 
 // A few seconds after the game started, the key list and the typing banner are drawn
 // once in the background (one per key list tick), so the first F9 or typing mode
@@ -1859,6 +2004,7 @@ static LRESULT tickProc(HANDLE w, UINT msg, WPARAM wp, LPARAM lp) {
         }
         if (!front && legendShown) legendAway(); // at once, not at the key list's next check
         showTyping(front);
+        if (overClose || closePressed) closeTrack();
         int inControl = gameWnd && active();
         // Keep the mouse inside the game while playing. The game hides its cursor in
         // controller mode, so while you move with the keys the invisible cursor is
@@ -1901,7 +2047,7 @@ static void sizeTyping(void) {
     plainBannerText(text, sizeof(text));
     if (!textSize(tdc, text, &ts)) { ts.cx = 260; ts.cy = 26; }
     ReleaseDC(0, tdc);
-    typeW = evenUp(ts.cx + 40); typeH = evenUp(ts.cy + 18);
+    typeH = evenUp(ts.cy + 18); typeW = evenUp(ts.cx + 40 + (closeWnd ? typeH - 12 : 0)); // (and the x, at the right end)
 }
 
 // A layout saved or picked while the game runs (a newer settings file in the game
@@ -1947,6 +2093,7 @@ static void reloadIfChanged(void) {
 static DWORD legendThread(void *unused) {
     ClipCursor(0); // an older build could leave the mouse confined
     { HANDLE nt = GetModuleHandleA("ntdll.dll"); underWine = nt && GetProcAddress(nt, "wine_get_version"); }
+    ensureFilter(); // first, before the windows and fonts: keys are hidden from the game as soon as possible
     buildLegend();
     measureDC = CreateCompatibleDC(0);
     WNDCLASSA wc; memset(&wc, 0, sizeof(wc));
@@ -1980,8 +2127,17 @@ static DWORD legendThread(void *unused) {
         RegisterClassA(&fc);
         for (int i = 0; i < 4 && typeWnd; i++)
             frameWnd[i] = CreateWindowExA(0x80000 | 0x20 | 0x8 | 0x80 | 0x8000000, "WasdModFrame", "Typing mode frame", 0x80000000, 0, 0, 4, 4, 0, 0, self, 0);
+        WNDCLASSA xc; memset(&xc, 0, sizeof(xc));
+        xc.proc = closeProc; xc.instance = self; xc.className = "WasdModClose";
+        xc.cursor = LoadCursorA(0, (const char *)32512 /*IDC_ARROW*/); // without one the pointer vanishes over the x
+        RegisterClassA(&xc);
+        closeBrush = CreateSolidBrush(RGB(44, 44, 50));
+        if (typeWnd) closeWnd = CreateWindowExA(0x80000 | 0x8 | 0x80 | 0x8000000 /*LAYERED|TOPMOST|TOOLWINDOW|NOACTIVATE: not TRANSPARENT, it takes clicks*/,
+                                                "WasdModClose", "Close banner", 0x80000000 /*WS_POPUP*/, 0, 0, 4, 4, 0, 0, self, 0);
         typeFancy = typeWnd && measureDC && canLayer(typeWnd);
         frameFancy = typeFancy && frameWnd[0] && canLayer(frameWnd[0]);
+        closeFancy = typeFancy && closeWnd && canLayer(closeWnd);
+        if (closeWnd && !closeFancy) SetLayeredWindowAttributes(closeWnd, 0, 230, 2);
         if (typeWnd && !typeFancy) SetLayeredWindowAttributes(typeWnd, 0, 230, 2 /*LWA_ALPHA*/);
         for (int i = 0; i < 4; i++) if (frameWnd[i] && !frameFancy) SetLayeredWindowAttributes(frameWnd[i], 0, FRAME_ALPHA, 2);
     }
