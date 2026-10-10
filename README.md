@@ -9,7 +9,7 @@ It comes in the same 16 languages as the game: English, Deutsch, Español, Fran�
 
 <img width="1195" height="842" alt="Screenshot 2026-10-07 at 09 20 48" src="https://github.com/user-attachments/assets/1981122e-0cc5-4fd2-8cdc-e3d5f431381d" />
 
-**Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
+**Download:** [Windows](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.exe) · [Mac](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.dmg) · [Linux / Steam Deck](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.zip) · [all versions](https://github.com/Wanzho/mcd2-wasd/releases)
 
 **Website:** [wasdmod.com](https://wasdmod.com/), with a playable demo and an interactive key map.
 
@@ -17,28 +17,28 @@ It comes in the same 16 languages as the game: English, Deutsch, Español, Fran�
 
 | System | Download |
 |---|---|
-| Windows | [**wasdmod-1.5.0.exe**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.exe) |
-| Mac (CrossOver) | [**wasdmod-1.5.0.dmg**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.dmg) |
-| Linux / Steam Deck, or Windows without the app | [**wasdmod-1.5.0.zip**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.0/wasdmod-1.5.0.zip) |
+| Windows | [**wasdmod-1.5.1.exe**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.exe) |
+| Mac (CrossOver) | [**wasdmod-1.5.1.dmg**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.dmg) |
+| Linux / Steam Deck, or Windows without the app | [**wasdmod-1.5.1.zip**](https://github.com/Wanzho/mcd2-wasd/releases/download/v1.5.1/wasdmod-1.5.1.zip) |
 
 wasdmod works with the Steam version of the game, and with the version from Minecraft.net (Minecraft Launcher) or the Xbox app. On a Mac or Linux, the Launcher version works only if you already have it running there; MCD2 Crossover sets up the Steam version.
 
 ### Windows
 
-1. Close the game and run **wasdmod-1.5.0.exe**.
+1. Close the game and run **wasdmod-1.5.1.exe**.
 2. If Windows says "Windows protected your PC", click **More info → Run anyway**. (The file isn't signed; that costs money every year.)
 3. wasdmod opens with the key layout editor as its window (titled "wasdmod for Minecraft Dungeons II"). It looks for the game in Steam, and in `XboxGames` for the Minecraft Launcher and Xbox app. If it doesn't find it, open the **Game folder** menu at the top, click **Choose game folder…** and pick the game's `Dungeons-Win64-Shipping.exe` (Steam) or `Dungeons-WinGDK-Shipping.exe` (Minecraft Launcher and Xbox app).
 4. Click **Install Mod** at the top right of the window, then start the game. For another layout, pick **Official layout** or **Recommended** under Layout and click **Install/Apply Layout**.
 
 The **Game folder** menu also has **Show in Explorer** and **Find game automatically**.
 
-The window uses Microsoft's WebView2, which Windows 11 has built in and most Windows 10 PCs have too. On a PC without it, wasdmod opens its setup window instead, with **Install**, **Browse…**, the layout choices and **Edit key layout…**, which opens the editor in Edge, Chrome or your browser. `wasdmod-1.5.0.exe /setup` opens the setup window on any PC.
+The window uses Microsoft's WebView2, which Windows 11 has built in and most Windows 10 PCs have too. On a PC without it, wasdmod opens its setup window instead, with **Install**, **Browse…**, the layout choices and **Edit key layout…**, which opens the editor in Edge, Chrome or your browser. `wasdmod-1.5.1.exe /setup` opens the setup window on any PC.
 
 ### Mac
 
 The game has to run in CrossOver first. If it doesn't yet, set it up with [MCD2 Crossover](https://github.com/Wanzho/mcd2-crossover), which fixes Steam startup and Microsoft sign-in. Then:
 
-1. Open **wasdmod-1.5.0.dmg** and drag **wasdmod** into **Applications**.
+1. Open **wasdmod-1.5.1.dmg** and drag **wasdmod** into **Applications**.
 2. Open wasdmod. If macOS blocks it, approve it in **System Settings → Privacy & Security → Open Anyway**. Keep Gatekeeper enabled.
 3. Quit the game, click **Install Mod** at the top right of the window (titled "wasdmod for Minecraft Dungeons II"), then start the game.
 
@@ -50,7 +50,7 @@ Install also sets three CrossOver options, for Dungeons II only, so other games 
 
 The game must already run under Proton: start it once before you install. On a Steam Deck, switch to Desktop Mode. Then:
 
-1. Unzip **wasdmod-1.5.0.zip** and keep the files of its `wasdmod` folder together.
+1. Unzip **wasdmod-1.5.1.zip** and keep the files of its `wasdmod` folder together.
 2. Start **wasdmod-linux.sh**: double-click it in the file manager and choose to run it, or open a terminal in the folder and enter `./wasdmod-linux.sh`. It needs Python 3, which the Steam Deck and most Linux systems have.
 3. The key layout editor opens in your browser (in a window of its own if you have Chrome or Chromium). It looks for the game in Steam's libraries, also on an SD card. If it doesn't find it, open the **Game folder** menu at the top, click **Choose game folder…** and pick the game's `Dungeons-Win64-Shipping.exe`.
 4. Quit the game, click **Install Mod** at the top right, then start the game.
@@ -73,7 +73,7 @@ If you play the Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles�
 
 The zip has everything the app does, as a script you can read:
 
-1. Unzip **wasdmod-1.5.0.zip** (right-click → **Extract All**) and keep the files of its `wasdmod` folder together.
+1. Unzip **wasdmod-1.5.1.zip** (right-click → **Extract All**) and keep the files of its `wasdmod` folder together.
 2. Double-click **wasdmod-windows.cmd**. Windows asks first, because the file came from the internet and isn't signed: in "Open File - Security Warning" ("The publisher could not be verified"), click **Run**. (If you get "Windows protected your PC" instead, click **More info → Run anyway**.)
 3. A window named "wasdmod" stays open while it runs, and the key layout editor opens in a window of its own (Edge or Chrome, otherwise your browser). It looks for the game in Steam and in `XboxGames`. If it doesn't find it, open the **Game folder** menu at the top, click **Choose game folder…** and pick the game's exe.
 4. Quit the game, click **Install Mod** at the top right, then start the game.

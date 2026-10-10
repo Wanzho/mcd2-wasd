@@ -3029,14 +3029,16 @@ function keepView(build) {
   const focused = document.activeElement && document.activeElement !== document.body && document.activeElement.closest(".wrap") ? document.activeElement : null;
   const focusSteps = focused && keyPath(focused);
   const pageHold = top > 0 ? pickHold(pageArea, pinned ? HOLD : HOLD + ", " + SIDE_HOLD, viewTop, innerHeight) : null; // at the very top, stay there: a notice that opens should be seen
-  let sideHold = null;
-  if (pinned && (sideTop > 0 || !quiet)) { const r = side.getBoundingClientRect(); sideHold = pickHold(e => !!e.closest(".side"), SIDE_HOLD, Math.max(r.top, viewTop), Math.min(r.bottom, innerHeight)); }
+  let sideHold = null, sideBase = 0;
+  if (pinned && (sideTop > 0 || !quiet)) { const r = side.getBoundingClientRect(); sideBase = r.top; sideHold = pickHold(e => !!e.closest(".side"), SIDE_HOLD, Math.max(r.top, viewTop), Math.min(r.bottom, innerHeight)); }
   keeping = true;
   try { build(); } finally { keeping = false; }
   if (side) side.scrollTop = sideTop;
   page.scrollTop = top; // reading the layout here lets WebKit finish it; then the old position fits again
   if (pageHold) page.scrollTop = top + holdShift(pageHold);
-  if (sideHold) side.scrollTop = sideTop + holdShift(sideHold);
+  // Only what changed inside the column counts. When the column itself moved (a notice opened
+  // above it), its own scroll stays, or the top of the checklist would slide out of sight.
+  if (sideHold) side.scrollTop = sideTop + holdShift(sideHold) - (side.getBoundingClientRect().top - sideBase);
   tipQuietUntil = performance.now() + 250;
   // Focus back on the same control; if it's gone or can't be used now (a key removed, a line
   // ticked off, a button greyed out), on the nearest control where it was.
