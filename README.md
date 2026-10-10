@@ -74,7 +74,7 @@ If you play the Minecraft Launcher copy outside Steam (Lutris, Heroic, Bottles�
 The zip has everything the app does, as a script you can read:
 
 1. Unzip **wasdmod-1.5.0.zip** (right-click → **Extract All**) and keep the files of its `wasdmod` folder together.
-2. Double-click **wasdmod-windows.cmd**. Windows asks first, because the file came from the internet and isn't signed: in "Open File – Security Warning" ("The publisher could not be verified"), click **Run**. (If you get "Windows protected your PC" instead, click **More info → Run anyway**.)
+2. Double-click **wasdmod-windows.cmd**. Windows asks first, because the file came from the internet and isn't signed: in "Open File - Security Warning" ("The publisher could not be verified"), click **Run**. (If you get "Windows protected your PC" instead, click **More info → Run anyway**.)
 3. A window named "wasdmod" stays open while it runs, and the key layout editor opens in a window of its own (Edge or Chrome, otherwise your browser). It looks for the game in Steam and in `XboxGames`. If it doesn't find it, open the **Game folder** menu at the top, click **Choose game folder…** and pick the game's exe.
 4. Quit the game, click **Install Mod** at the top right, then start the game.
 
