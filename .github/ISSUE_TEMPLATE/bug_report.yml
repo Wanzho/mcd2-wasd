@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in wasdmod doesn't work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [Troubleshooting](https://github.com/Wanzho/mcd2-wasd#troubleshooting) first. Press F9 in the game: if no key list appears, the mod isn't loaded.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you pressed or clicked, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Windows
+        - Mac (CrossOver)
+        - Linux (Proton)
+        - Steam Deck
+    validations:
+      required: true
+  - type: dropdown
+    id: game
+    attributes:
+      label: Copy of the game
+      options:
+        - Steam
+        - Minecraft Launcher
+        - Xbox app / Microsoft Store
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: wasdmod version
+      description: The name of the file you downloaded has it, and so does wasdmod.log.
+      placeholder: "1.4.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: layout
+    attributes:
+      label: Key layout
+      options:
+        - Official layout
+        - Recommended
+        - My own
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        In the wasdmod app, click Record logs, play until the problem happens, then come back and stop the recording. Drag the wasdmod-logs file from your Desktop into this box. With a manual install, attach wasdmod.log from the game's Dungeons/Binaries/Win64 folder. Nothing you type is recorded.
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Other mods you use, a screenshot, or what you already tried.

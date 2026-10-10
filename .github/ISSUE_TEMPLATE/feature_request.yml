@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest a change or something new.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What were you trying to do
+      description: The situation in the game or in the app where wasdmod got in your way or was missing something.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you imagine it working. One idea per request.
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: What you do now instead
+      description: A workaround, another mod or a setting you use today, if any.

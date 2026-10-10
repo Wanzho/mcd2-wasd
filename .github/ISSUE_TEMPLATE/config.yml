@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Install help and troubleshooting
+    url: https://github.com/Wanzho/mcd2-wasd#troubleshooting
+    about: Nothing changes in the game, antivirus warnings, the cursor, keys doing their old thing in menus.
+  - name: Security problem
+    url: https://github.com/Wanzho/mcd2-wasd/security
+    about: Please report security problems privately, not in a public issue.
